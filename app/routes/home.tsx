@@ -1,13 +1,34 @@
-import type { Route } from "./+types/home";
-import { Welcome } from "../welcome/welcome";
+import { useEffect } from "react";
+import { useNavigate } from "react-router";
+import { useAuth } from "~/context/AuthContext";
 
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
-  ];
+export function meta() {
+  return [{ title: "CitaPro" }];
 }
 
 export default function Home() {
-  return <Welcome />;
+  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) {
+      navigate("/login", { replace: true });
+    } else if (user.role === "client") {
+      navigate("/client", { replace: true });
+    } else if (user.role === "professional") {
+      navigate("/professional", { replace: true });
+    } else if (user.role === "admin") {
+      navigate("/admin", { replace: true });
+    }
+  }, [user, isLoading, navigate]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-bg">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <span className="text-ink-muted text-sm">Cargando...</span>
+      </div>
+    </div>
+  );
 }

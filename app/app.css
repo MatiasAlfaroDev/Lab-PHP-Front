@@ -1,15 +1,62 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* Editorial Geometric — paleta tinta-citrina */
+  --font-display: "Bricolage Grotesque", "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-bg: #eeece4;
+  --color-surface: #ffffff;
+  --color-ink: #1c1c1c;
+  --color-ink-muted: #6b6b6b;
+  --color-primary: #2b2d3a;
+  --color-primary-hover: #1a1c27;
+  --color-primary-soft: #e0dff0;
+  --color-accent: #d4e600;
+  --color-accent-hover: #bccf00;
+  --color-border: #dbd9d0;
+  --color-sidebar: #1c1c1c;
+  --color-sidebar-text: #f0ece4;
+  --color-sidebar-muted: #8a8a8a;
 }
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
-
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
-  }
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body);
 }
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Badges — estilo uppercase geométrico */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.badge-confirmada { background-color: #d1fae5; color: #065f46; }
+.badge-pendiente  { background-color: #fef9c3; color: #713f12; }
+.badge-pagada     { background-color: #dbeafe; color: #1e40af; }
+.badge-en-curso   { background-color: #f3e8ff; color: #6b21a8; }
+.badge-cancelada  { background-color: #fee2e2; color: #991b1b; }
+.badge-no-asistida{ background-color: #f3f4f6; color: #374151; }
+.badge-en-vivo    { background-color: #fee2e2; color: #991b1b; }

@@ -1,3 +1,37 @@
-import { type RouteConfig, index } from "@react-router/dev/routes";
+import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
-export default [index("routes/home.tsx")] satisfies RouteConfig;
+export default [
+  index("routes/home.tsx"),
+  route("login", "routes/login.tsx"),
+  route("register", "routes/register.tsx"),
+
+  route("client", "routes/client/_layout.tsx", [
+    index("routes/client/dashboard.tsx"),
+    route("discover", "routes/client/discover.tsx"),
+    route("professional/:id", "routes/client/professional.$id.tsx"),
+    route("booking/:id/pay", "routes/client/booking.$id.pay.tsx"),
+    route("packages", "routes/client/packages.tsx"),
+    route("messages", "routes/client/messages.tsx"),
+    route("payments", "routes/client/payments.tsx"),
+    route("notifications", "routes/client/notifications.tsx"),
+  ]),
+
+  route("professional", "routes/professional/_layout.tsx", [
+    index("routes/professional/dashboard.tsx"),
+    route("agenda", "routes/professional/agenda.tsx"),
+    route("clients", "routes/professional/clients.tsx"),
+    route("services", "routes/professional/services.tsx"),
+    route("availability", "routes/professional/availability.tsx"),
+    route("payments", "routes/professional/payments.tsx"),
+    route("messages", "routes/professional/messages.tsx"),
+  ]),
+
+  route("admin", "routes/admin/_layout.tsx", [
+    index("routes/admin/dashboard.tsx"),
+    route("users", "routes/admin/users.tsx"),
+    route("payments", "routes/admin/payments.tsx"),
+  ]),
+
+  route("session/:id", "routes/session.$id.tsx"),
+  route("session/:id/rating", "routes/session.$id.rating.tsx"),
+] satisfies RouteConfig;
