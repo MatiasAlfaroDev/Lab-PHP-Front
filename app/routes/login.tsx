@@ -20,7 +20,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const data = await api.post<{ token: string; user: any }>("/auth/login", {
+      const data = await api.post<{ token: string; user: any }>("/login", {
         email, password, role,
       });
       login(data.token, data.user);
@@ -165,9 +165,15 @@ export default function Login() {
           </div>
 
           <div className="flex gap-3 mb-6">
-            <button className="flex-1 flex items-center justify-center gap-2 border border-border rounded py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink">
-              <GoogleIcon /> Google
-            </button>
+            <button
+            onClick={() => {
+              window.location.href =
+                `http://localhost:8000/auth/google/redirect?role=${role}`;
+            }}
+            className="flex-1 flex items-center justify-center gap-2 border border-border rounded py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink"
+          >
+            <GoogleIcon /> Google
+          </button>
             <button className="flex-1 flex items-center justify-center gap-2 border border-border rounded py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink">
               Apple
             </button>

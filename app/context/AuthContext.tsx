@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { api } from "~/lib/api";
 
 export type UserRole = "client" | "professional" | "admin";
 
@@ -53,9 +54,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      if (token) {
+        await api.post("/logout", {}, token);
+      }
+    } catch (error) {
+      console.error("Error al cerrar sesión", error);
+    }
+
     localStorage.removeItem("citapro_token");
     localStorage.removeItem("citapro_user");
+
     setToken(null);
     setUser(null);
   };

@@ -25,7 +25,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const data = await api.post<{ token: string; user: any }>("/auth/register", {
+      const data = await api.post<{ token: string; user: any }>("/register", {
         name,
         email,
         password,

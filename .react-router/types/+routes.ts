@@ -20,6 +20,9 @@ type Pages = {
   "/register": {
     params: {};
   };
+  "/auth/google/callback": {
+    params: {};
+  };
   "/client": {
     params: {};
   };
@@ -93,7 +96,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/register" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/professional" | "/professional/agenda" | "/professional/clients" | "/professional/services" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/admin" | "/admin/users" | "/admin/payments" | "/session/:id" | "/session/:id/rating";
+    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/professional" | "/professional/agenda" | "/professional/clients" | "/professional/services" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/admin" | "/admin/users" | "/admin/payments" | "/session/:id" | "/session/:id/rating";
   };
   "routes/home.tsx": {
     id: "routes/home";
@@ -106,6 +109,10 @@ type RouteFiles = {
   "routes/register.tsx": {
     id: "routes/register";
     page: "/register";
+  };
+  "routes/auth.google.callback.tsx": {
+    id: "routes/auth.google.callback";
+    page: "/auth/google/callback";
   };
   "routes/client/_layout.tsx": {
     id: "routes/client/_layout";
@@ -206,6 +213,7 @@ type RouteModules = {
   "routes/home": typeof import("./app/routes/home.tsx");
   "routes/login": typeof import("./app/routes/login.tsx");
   "routes/register": typeof import("./app/routes/register.tsx");
+  "routes/auth.google.callback": typeof import("./app/routes/auth.google.callback.tsx");
   "routes/client/_layout": typeof import("./app/routes/client/_layout.tsx");
   "routes/client/dashboard": typeof import("./app/routes/client/dashboard.tsx");
   "routes/client/discover": typeof import("./app/routes/client/discover.tsx");

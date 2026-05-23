@@ -62,7 +62,10 @@ export function ClientSidebar() {
             <p className="text-xs text-sidebar-muted">Cliente</p>
           </div>
           <button
-            onClick={() => { logout(); navigate("/login"); }}
+            onClick={async () => {
+              await logout();
+              navigate("/login");
+            }}
             title="Cerrar sesión"
             className="text-sidebar-muted hover:text-sidebar-text transition-colors"
           >
