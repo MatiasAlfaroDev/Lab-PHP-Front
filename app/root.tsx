@@ -32,6 +32,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
+        <script
+          type="module"
+          src="https://unpkg.com/ionicons@7.4.0/dist/ionicons/ionicons.esm.js"
+        />
+        <script
+          noModule
+          src="https://unpkg.com/ionicons@7.4.0/dist/ionicons/ionicons.js"
+        />
       </head>
       <body>
         <AuthProvider>{children}</AuthProvider>

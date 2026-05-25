@@ -1,11 +1,12 @@
 import { Outlet, useNavigate } from "react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { ClientSidebar } from "~/components/ClientSidebar";
 
 export default function ClientLayout() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/login", { replace: true });
@@ -23,8 +24,11 @@ export default function ClientLayout() {
 
   return (
     <div className="flex min-h-screen bg-bg">
-      <ClientSidebar />
-      <main className="flex-1 overflow-auto">
+      <ClientSidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((v) => !v)}
+      />
+      <main className="flex-1 overflow-auto min-w-0">
         <Outlet />
       </main>
     </div>
