@@ -21,6 +21,7 @@ export default [
     route("agenda", "routes/professional/agenda.tsx"),
     route("clients", "routes/professional/clients.tsx"),
     route("services", "routes/professional/services.tsx"),
+    route("service-packages", "routes/professional/service-packages.tsx"),
     route("availability", "routes/professional/availability.tsx"),
     route("payments", "routes/professional/payments.tsx"),
     route("messages", "routes/professional/messages.tsx"),

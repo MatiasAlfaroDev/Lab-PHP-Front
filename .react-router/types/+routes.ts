@@ -63,6 +63,9 @@ type Pages = {
   "/professional/services": {
     params: {};
   };
+  "/professional/service-packages": {
+    params: {};
+  };
   "/professional/availability": {
     params: {};
   };
@@ -96,7 +99,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/professional" | "/professional/agenda" | "/professional/clients" | "/professional/services" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/admin" | "/admin/users" | "/admin/payments" | "/session/:id" | "/session/:id/rating";
+    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/professional" | "/professional/agenda" | "/professional/clients" | "/professional/services" | "/professional/service-packages" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/admin" | "/admin/users" | "/admin/payments" | "/session/:id" | "/session/:id/rating";
   };
   "routes/home.tsx": {
     id: "routes/home";
@@ -152,7 +155,7 @@ type RouteFiles = {
   };
   "routes/professional/_layout.tsx": {
     id: "routes/professional/_layout";
-    page: "/professional" | "/professional/agenda" | "/professional/clients" | "/professional/services" | "/professional/availability" | "/professional/payments" | "/professional/messages";
+    page: "/professional" | "/professional/agenda" | "/professional/clients" | "/professional/services" | "/professional/service-packages" | "/professional/availability" | "/professional/payments" | "/professional/messages";
   };
   "routes/professional/dashboard.tsx": {
     id: "routes/professional/dashboard";
@@ -169,6 +172,10 @@ type RouteFiles = {
   "routes/professional/services.tsx": {
     id: "routes/professional/services";
     page: "/professional/services";
+  };
+  "routes/professional/service-packages.tsx": {
+    id: "routes/professional/service-packages";
+    page: "/professional/service-packages";
   };
   "routes/professional/availability.tsx": {
     id: "routes/professional/availability";
@@ -228,6 +235,7 @@ type RouteModules = {
   "routes/professional/agenda": typeof import("./app/routes/professional/agenda.tsx");
   "routes/professional/clients": typeof import("./app/routes/professional/clients.tsx");
   "routes/professional/services": typeof import("./app/routes/professional/services.tsx");
+  "routes/professional/service-packages": typeof import("./app/routes/professional/service-packages.tsx");
   "routes/professional/availability": typeof import("./app/routes/professional/availability.tsx");
   "routes/professional/payments": typeof import("./app/routes/professional/payments.tsx");
   "routes/professional/messages": typeof import("./app/routes/professional/messages.tsx");
