@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useParams } from "react-router";
 import { api } from "~/lib/api";
+import { useAuth } from "~/context/AuthContext";
 
 declare global {
   namespace JSX {
@@ -143,9 +144,250 @@ function MiniCalendar({
   );
 }
 
+const MONTH_NAMES_SHORT = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const DOW_FULL = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+
+function formatDateHuman(dateStr: string) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dow = DOW_FULL[new Date(y, m - 1, d).getDay()];
+  return `${dow.charAt(0).toUpperCase() + dow.slice(1)} ${d} ${MONTH_NAMES_SHORT[m - 1]}`;
+}
+
+const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID as string;
+
+// ── Booking Modal ──────────────────────────────────────────────────────────
+function BookingModal({
+  service, date, slot, onClose, token,
+}: {
+  service: Servicio; date: string; slot: string;
+  onClose: (success: boolean) => void; token: string | null;
+}) {
+  const [method, setMethod]         = useState<"sitio" | "paypal">("sitio");
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+  const [success, setSuccess]       = useState(false);
+  // PayPal SDK state
+  const [reservaId, setReservaId]   = useState<number | null>(null);
+  const [ppReady, setPpReady]       = useState(false);
+  const ppContainerRef              = useRef<HTMLDivElement>(null);
+  const ppRendered                  = useRef(false);
+
+  // Load PayPal SDK once
+  useEffect(() => {
+    if (document.getElementById("paypal-sdk")) { setPpReady(true); return; }
+    const script = document.createElement("script");
+    script.id  = "paypal-sdk";
+    script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD`;
+    script.onload = () => setPpReady(true);
+    document.body.appendChild(script);
+  }, []);
+
+  // Render PayPal button when we have a reserva_id and SDK is ready
+  useEffect(() => {
+    if (!ppReady || !reservaId || !ppContainerRef.current || ppRendered.current) return;
+    ppRendered.current = true;
+    const win = window as any;
+    win.paypal.Buttons({
+      style: { layout: "vertical", color: "gold", shape: "rect", label: "paypal" },
+      createOrder: async () => {
+        setError(null);
+        const res = await api.post<{ paypal_order_id: string }>(
+          `/pagos/reserva/${reservaId}/iniciar`, {}, token
+        );
+        return res.paypal_order_id;
+      },
+      onApprove: async (_data: any, _actions: any) => {
+        try {
+          await api.post(
+            `/pagos/reserva/${reservaId}/capturar`,
+            { paypal_order_id: _data.orderID },
+            token
+          );
+          setSuccess(true);
+        } catch (e: any) {
+          setError(e.message ?? "Error al capturar el pago");
+        }
+      },
+      onError: (err: any) => {
+        setError("Error en el pago de PayPal. Intentá nuevamente.");
+        console.error(err);
+      },
+    }).render(ppContainerRef.current);
+  }, [ppReady, reservaId]);
+
+  // Step 1: create the reservation (only for "sitio"; PayPal does it in createOrder)
+  const confirmSitio = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.post<{ success: boolean; data: { reserva_id: number }; message?: string }>(
+        "/reservas",
+        { servicio_id: service.servicio_id, fecha: date, hora: slot },
+        token
+      );
+      if (!res.success) throw new Error(res.message ?? "Error al crear la reserva");
+      setSuccess(true);
+    } catch (e: any) {
+      setError(e.message ?? "Error al reservar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // When switching to PayPal, pre-create the reservation so the button has an ID
+  const activatePaypal = async () => {
+    if (reservaId) { setMethod("paypal"); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.post<{ success: boolean; data: { reserva_id: number }; message?: string }>(
+        "/reservas",
+        { servicio_id: service.servicio_id, fecha: date, hora: slot },
+        token
+      );
+      if (!res.success) throw new Error(res.message ?? "Error al crear la reserva");
+      setReservaId(res.data.reserva_id);
+      setMethod("paypal");
+    } catch (e: any) {
+      setError(e.message ?? "Error al preparar el pago");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.4)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(success); }}
+    >
+      <div className="bg-surface border border-border rounded-2xl w-full max-w-sm shadow-2xl">
+        {success ? (
+          <div className="p-8 flex flex-col items-center text-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-1">
+              <ion-icon name="checkmark-outline" style={{ fontSize: "28px", color: "#22c55e" }} />
+            </div>
+            <h3 className="font-display text-xl text-ink">¡Reserva confirmada!</h3>
+            <p className="text-sm text-ink-muted">
+              {service.nombre} · {formatDateHuman(date)} · {slot}
+            </p>
+            <div className="flex gap-2 mt-2 w-full">
+              <button
+                onClick={() => onClose(true)}
+                className="flex-1 py-2.5 rounded-xl border border-border text-sm text-ink hover:bg-bg transition-colors"
+              >
+                Seguir explorando
+              </button>
+              <Link
+                to="/client"
+                className="flex-1 py-2.5 rounded-xl bg-ink text-white text-sm text-center font-medium hover:bg-primary transition-colors"
+              >
+                Mis reservas
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
+              <h3 className="font-display text-lg text-ink">Confirmar reserva</h3>
+              <button
+                onClick={() => onClose(false)}
+                className="w-7 h-7 rounded-full hover:bg-bg flex items-center justify-center text-ink-muted transition-colors"
+              >
+                <ion-icon name="close-outline" style={{ fontSize: "16px" }} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Summary */}
+              <div className="bg-bg rounded-xl p-4 space-y-1.5">
+                <p className="text-sm font-semibold text-ink">{service.nombre}</p>
+                <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+                  <ion-icon name="calendar-outline" style={{ fontSize: "13px" }} />
+                  {formatDateHuman(date)}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+                  <ion-icon name="time-outline" style={{ fontSize: "13px" }} />
+                  {slot} · {service.duracion} min
+                </div>
+                <p className="text-base font-bold text-ink pt-1">$ {Number(service.precio).toFixed(0)}</p>
+              </div>
+
+              {/* Payment method selector */}
+              <div>
+                <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">Forma de pago</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setMethod("sitio")}
+                    disabled={!!reservaId}
+                    className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-medium transition-colors ${
+                      method === "sitio"
+                        ? "border-primary bg-primary-soft/20 text-ink"
+                        : "border-border text-ink-muted hover:border-primary/40"
+                    }`}
+                  >
+                    <ion-icon name="cash-outline" style={{ fontSize: "16px" }} />
+                    En el sitio
+                  </button>
+                  <button
+                    onClick={activatePaypal}
+                    disabled={loading}
+                    className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-medium transition-colors ${
+                      method === "paypal"
+                        ? "border-[#0070ba] bg-[#0070ba]/5 text-[#003087]"
+                        : "border-border text-ink-muted hover:border-[#0070ba]/40"
+                    }`}
+                  >
+                    <img src="https://www.paypalobjects.com/webstatic/mktg/Logo/pp-logo-100px.png" alt="PayPal" className="h-4" />
+                    PayPal
+                  </button>
+                </div>
+              </div>
+
+              {/* PayPal button container */}
+              {method === "paypal" && (
+                <div>
+                  {!ppReady || !reservaId ? (
+                    <div className="flex justify-center py-3">
+                      <span className="w-5 h-5 border-2 border-[#0070ba] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <div ref={ppContainerRef} />
+                  )}
+                </div>
+              )}
+
+              {error && (
+                <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+              )}
+
+              {/* Confirm button — only for "sitio" */}
+              {method === "sitio" && (
+                <button
+                  onClick={confirmSitio}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-primary disabled:opacity-60 transition-colors"
+                >
+                  {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                  {loading ? "Procesando..." : "Confirmar reserva"}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function ProfessionalDetail() {
   const { id } = useParams();
+  const { token } = useAuth();
+
+  // Booking modal
+  const [showModal, setShowModal] = useState(false);
 
   // Profile
   const [profile, setProfile] = useState<ProfesionalProfile | null>(null);
@@ -504,15 +746,14 @@ export default function ProfessionalDetail() {
 
                 <button
                   disabled={!selectedSlot}
+                  onClick={() => selectedSlot && setShowModal(true)}
                   className={`w-full font-medium py-3 rounded-xl transition-colors ${
                     selectedSlot
                       ? "bg-primary hover:bg-primary-hover text-white"
                       : "bg-primary/30 text-white cursor-not-allowed"
                   }`}
                 >
-                  {selectedSlot
-                    ? `Reservar · ${selectedDate} ${selectedSlot}`
-                    : "Seleccioná fecha y horario"}
+                  {selectedSlot ? "Reservar" : "Seleccioná fecha y horario"}
                 </button>
               </>
             ) : (
@@ -523,6 +764,19 @@ export default function ProfessionalDetail() {
           </div>
         </div>
       </div>
+
+      {showModal && selectedService && selectedDate && selectedSlot && (
+        <BookingModal
+          service={selectedService}
+          date={selectedDate}
+          slot={selectedSlot}
+          token={token}
+          onClose={(success) => {
+            setShowModal(false);
+            if (success) { setSelectedSlot(null); setSelectedDate(null); }
+          }}
+        />
+      )}
     </div>
   );
 }

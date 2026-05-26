@@ -1,84 +1,210 @@
+import { useState, useEffect } from "react";
+import { useAuth } from "~/context/AuthContext";
+import { api } from "~/lib/api";
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      "ion-icon": React.HTMLAttributes<HTMLElement> & { name?: string };
+    }
+  }
+}
+
+interface Reserva {
+  reserva_id: number;
+  fecha: string;
+  hora: string;
+  estado: string;
+  cliente_nombre: string;
+  servicio: { nombre: string; duracion: number; modalidad: string };
+}
+
+const HOURS = Array.from({ length: 14 }, (_, i) => `${String(i + 8).padStart(2, "0")}:00`);
+const CELL  = 48;
+const GRID_START = 8;
+
+const ESTADO_COLOR: Record<string, string> = {
+  pendiente:  "bg-amber-100 border-l-4 border-amber-400",
+  confirmada: "bg-blue-100 border-l-4 border-blue-400",
+  pagada:     "bg-green-100 border-l-4 border-green-500",
+  en_curso:   "bg-violet-100 border-l-4 border-violet-500",
+  finalizada: "bg-surface border-l-4 border-border",
+};
+
+function getWeekDates(referenceMonday: Date): Date[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(referenceMonday);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+}
+
+function toMonday(date: Date): Date {
+  const d = new Date(date);
+  const dow = d.getDay();
+  const diff = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function toDateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const MONTH_NAMES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const DOW_SHORT   = ["dom","lun","mar","mié","jue","vie","sáb"];
+
 export default function Agenda() {
-  const hours = Array.from({ length: 14 }, (_, i) => `${(i + 8).toString().padStart(2, "0")}:00`);
-  const days = ["LUN 19", "MAR 20", "MIÉ 21", "JUE 22", "VIE 23", "SÁB 24", "DOM 25"];
+  const { token } = useAuth();
+  const [reservas,  setReservas]  = useState<Reserva[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [weekStart, setWeekStart] = useState(() => toMonday(new Date()));
 
-  const events = [
-    { day: 1, start: 1, duration: 1, label: "Lucía Pérez", sub: "Sesión individual", color: "bg-accent/50" },
-    { day: 1, start: 2.5, duration: 1, label: "Carlos Ruiz", sub: "Primera consulta", color: "bg-primary-soft" },
-    { day: 1, start: 4, duration: 1.2, label: "Marta López", sub: "Sesión de pareja", color: "bg-accent/30 border-2 border-accent" },
-    { day: 2, start: 1, duration: 1, label: "Joaquín Vega", sub: "Sesión individual", color: "bg-primary-soft" },
-    { day: 3, start: 3, duration: 0.5, label: "Sol Méndez", sub: "Seguimiento breve", color: "bg-accent/50" },
-    { day: 4, start: 5, duration: 1, label: "Lucía Pérez", sub: "Sesión individual · paquete", color: "bg-accent/30" },
-  ];
+  useEffect(() => {
+    if (!token) return;
+    setLoading(true);
+    api
+      .get<{ success: boolean; data: Reserva[] }>("/mi-agenda", token)
+      .then((res) => { if (res.success) setReservas(res.data); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [token]);
 
-  const CELL = 48;
+  const weekDates = getWeekDates(weekStart);
+  const todayStr  = toDateStr(new Date());
+
+  const prevWeek = () => {
+    setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
+  };
+  const nextWeek = () => {
+    setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
+  };
+  const goToday = () => setWeekStart(toMonday(new Date()));
+
+  const reservasByDay: Record<string, Reserva[]> = {};
+  for (const r of reservas) {
+    if (!reservasByDay[r.fecha]) reservasByDay[r.fecha] = [];
+    reservasByDay[r.fecha].push(r);
+  }
+
+  const weekLabel = (() => {
+    const from = weekDates[0];
+    const to   = weekDates[6];
+    if (from.getMonth() === to.getMonth())
+      return `${from.getDate()}–${to.getDate()} ${MONTH_NAMES[from.getMonth()]} ${from.getFullYear()}`;
+    return `${from.getDate()} ${MONTH_NAMES[from.getMonth()]} – ${to.getDate()} ${MONTH_NAMES[to.getMonth()]} ${to.getFullYear()}`;
+  })();
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Profesional</nav>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="font-display text-3xl text-ink">Agenda</h1>
-        <div className="flex gap-2">
-          {["Día", "Semana", "Mes"].map((v) => (
-            <button
-              key={v}
-              className={`text-sm px-3 py-1.5 rounded font-semibold transition-colors ${
-                v === "Semana" ? "bg-ink text-white" : "border border-border text-ink-muted hover:bg-bg"
-              }`}
-            >
-              {v}
-            </button>
-          ))}
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={prevWeek}
+            className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg transition-colors"
+          >
+            <ion-icon name="chevron-back-outline" style={{ fontSize: "14px" }} />
+          </button>
+          <span className="text-sm font-medium text-ink min-w-[180px] text-center">{weekLabel}</span>
+          <button
+            onClick={nextWeek}
+            className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg transition-colors"
+          >
+            <ion-icon name="chevron-forward-outline" style={{ fontSize: "14px" }} />
+          </button>
+          <button
+            onClick={goToday}
+            className="ml-1 px-3 py-1.5 text-xs font-semibold border border-border rounded-lg hover:bg-bg text-ink-muted transition-colors"
+          >
+            Hoy
+          </button>
         </div>
       </div>
 
-      <div className="bg-surface border border-border rounded overflow-auto">
-        {/* Header */}
-        <div className="grid border-b border-border" style={{ gridTemplateColumns: "4rem repeat(7, 1fr)" }}>
-          <div className="p-3 border-r border-border" />
-          {days.map((d) => (
-            <div key={d} className="p-3 border-r border-border last:border-r-0 text-center">
-              <p className="text-xs font-bold text-ink-muted uppercase tracking-wide">{d}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Time grid */}
-        <div className="relative grid" style={{ gridTemplateColumns: "4rem repeat(7, 1fr)" }}>
-          {/* Hour labels */}
-          <div className="border-r border-border">
-            {hours.map((h) => (
-              <div key={h} className="border-b border-border/30 flex items-center px-2" style={{ height: CELL }}>
-                <span className="text-xs text-ink-muted">{h}</span>
-              </div>
-            ))}
+      {loading ? (
+        <div className="bg-surface border border-border rounded-2xl h-96 animate-pulse" />
+      ) : (
+        <div className="bg-surface border border-border rounded-2xl overflow-auto">
+          {/* Day headers */}
+          <div className="grid border-b border-border" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
+            <div className="border-r border-border" />
+            {weekDates.map((d) => {
+              const str    = toDateStr(d);
+              const isToday = str === todayStr;
+              return (
+                <div
+                  key={str}
+                  className={`p-3 border-r border-border last:border-r-0 text-center ${isToday ? "bg-primary/5" : ""}`}
+                >
+                  <p className="text-xs text-ink-muted uppercase tracking-wide font-semibold">{DOW_SHORT[d.getDay()]}</p>
+                  <p className={`text-base font-bold mt-0.5 ${isToday ? "text-primary" : "text-ink"}`}>
+                    {d.getDate()}
+                  </p>
+                  {reservasByDay[str]?.length > 0 && (
+                    <p className="text-xs text-ink-muted mt-0.5">{reservasByDay[str].length} turno{reservasByDay[str].length !== 1 ? "s" : ""}</p>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Day columns */}
-          {days.map((_, di) => (
-            <div key={di} className="relative border-r border-border last:border-r-0">
-              {hours.map((_, hi) => (
-                <div key={hi} className="border-b border-border/20" style={{ height: CELL }} />
+          {/* Time grid */}
+          <div className="relative grid" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
+            {/* Hour labels */}
+            <div className="border-r border-border">
+              {HOURS.map((h) => (
+                <div key={h} className="border-b border-border/30 flex items-center justify-center px-1" style={{ height: CELL }}>
+                  <span className="text-xs text-ink-muted">{h}</span>
+                </div>
               ))}
-              {/* Events */}
-              {events
-                .filter((e) => e.day === di)
-                .map((e, ei) => (
-                  <div
-                    key={ei}
-                    className={`absolute left-1 right-1 ${e.color} rounded px-2 py-1 cursor-pointer hover:opacity-90 transition-opacity`}
-                    style={{
-                      top: e.start * CELL,
-                      height: e.duration * CELL - 2,
-                    }}
-                  >
-                    <p className="text-xs font-bold text-ink truncate">{e.label}</p>
-                    <p className="text-xs text-ink-muted truncate">{e.sub}</p>
-                  </div>
-                ))}
             </div>
-          ))}
+
+            {/* Day columns */}
+            {weekDates.map((d) => {
+              const str     = toDateStr(d);
+              const isToday = str === todayStr;
+              const dayRes  = reservasByDay[str] ?? [];
+              return (
+                <div key={str} className={`relative border-r border-border last:border-r-0 ${isToday ? "bg-primary/5" : ""}`}>
+                  {HOURS.map((_, hi) => (
+                    <div key={hi} className="border-b border-border/20" style={{ height: CELL }} />
+                  ))}
+                  {dayRes.map((r) => {
+                    const [hh, mm] = r.hora.split(":").map(Number);
+                    const topH  = hh + mm / 60 - GRID_START;
+                    const durH  = (r.servicio?.duracion ?? 60) / 60;
+                    const color = ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border";
+                    return (
+                      <div
+                        key={r.reserva_id}
+                        className={`absolute left-1 right-1 ${color} rounded-r-lg px-2 py-1 overflow-hidden`}
+                        style={{
+                          top:    topH * CELL,
+                          height: Math.max(durH * CELL - 2, 22),
+                        }}
+                      >
+                        <p className="text-xs font-bold text-ink truncate leading-tight">{r.cliente_nombre}</p>
+                        {durH * CELL > 34 && (
+                          <p className="text-xs text-ink-muted truncate">{r.servicio?.nombre}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* No reservations message */}
+      {!loading && reservas.length === 0 && (
+        <p className="text-center text-sm text-ink-muted mt-8">No tenés reservas en esta semana.</p>
+      )}
     </div>
   );
 }
