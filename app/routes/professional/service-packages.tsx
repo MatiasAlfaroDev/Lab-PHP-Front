@@ -15,7 +15,12 @@ type Servicio = {
 
 type PackageItem = {
   servicio_id: number;
-  cantidad_sesiones: number;
+
+  pivot?: {
+    cantidad_sesiones: number;
+  };
+
+  cantidad_sesiones?: number;
 };
 
 type ServicePackage = {
@@ -41,9 +46,14 @@ export default function ServicePackages() {
   const [editingPackage, setEditingPackage] =
     useState<ServicePackage | null>(null);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    nombre: string;
+    descripcion: string;
+    precio_total: string;
+  }>({
     nombre: "",
     descripcion: "",
+    precio_total: "",
   });
 
   const [selectedServices, setSelectedServices] = useState<
@@ -130,6 +140,7 @@ export default function ServicePackages() {
     setForm({
       nombre: "",
       descripcion: "",
+      precio_total: "",
     });
 
     setSelectedServices([]);
@@ -189,7 +200,11 @@ export default function ServicePackages() {
       if (!service) return acc;
 
       return (
-        acc + service.precio * item.cantidad_sesiones
+        acc +
+        service.precio *
+        (item.pivot?.cantidad_sesiones ||
+        item.cantidad_sesiones ||
+        0)
       );
     }, 0);
   };
@@ -219,32 +234,58 @@ export default function ServicePackages() {
       // EDIT MOCK
       // =====================
       if (editingPackage) {
-        const updated = packages.map((p) =>
-          p.paquete_id === editingPackage.paquete_id
-            ? {
-                ...p,
+
+        try {
+
+          const response = await fetch(
+            `${API_URL}/paquetes/${editingPackage.paquete_id}`,
+            {
+              method: "PUT",
+
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+              },
+
+              body: JSON.stringify({
                 nombre: form.nombre,
                 descripcion: form.descripcion,
+                precio_total: Number(form.precio_total),
                 servicios: selectedServices,
-              }
-            : p
-        );
+              }),
+            }
+          );
 
-        setPackages(updated);
+          const data = await response.json();
 
-        const updatedPackage = updated.find(
-          (p) =>
-            p.paquete_id === editingPackage.paquete_id
-        );
+          console.log("UPDATE PACKAGE:", data);
 
-        setSelectedPackage(
-          updatedPackage || null
-        );
+          if (data.success) {
 
-        alert("Paquete actualizado");
+            alert("Paquete actualizado");
 
-        setOpenModal(false);
-        resetForm();
+            await fetchPackages();
+
+            setOpenModal(false);
+
+            resetForm();
+
+          } else {
+
+            alert(
+              data.message ||
+              "Error al actualizar"
+            );
+          }
+
+        } catch (error) {
+
+          console.log(
+            "ERROR UPDATE PACKAGE",
+            error
+          );
+        }
 
         return;
       }
@@ -265,6 +306,7 @@ try {
       body: JSON.stringify({
         nombre: form.nombre,
         descripcion: form.descripcion,
+        precio_total: Number(form.precio_total),
         servicios: selectedServices,
       }),
     }
@@ -326,9 +368,20 @@ try {
     setForm({
       nombre: pkg.nombre,
       descripcion: pkg.descripcion,
+      precio_total: pkg.precio_total?.toString() || "",
     });
 
-    setSelectedServices(pkg.servicios);
+    setSelectedServices(
+
+      pkg.servicios.map((item) => ({
+        servicio_id: item.servicio_id,
+
+        cantidad_sesiones:
+          item.pivot?.cantidad_sesiones ||
+          item.cantidad_sesiones ||
+          1,
+      }))
+    );
 
     setOpenModal(true);
   };
@@ -446,9 +499,7 @@ try {
 
                 <span className="text-xs font-bold text-ink-muted">
                   $
-                  {calculateTotal(
-                    pkg.servicios
-                  )}
+                  {pkg.precio_total}
                 </span>
               </div>
             </button>
@@ -563,7 +614,12 @@ try {
                               <p className="font-bold text-ink">
                                 $
                                 {service.precio *
-                                  item.cantidad_sesiones}
+                                  (
+                                    item.pivot?.cantidad_sesiones ||
+                                    item.cantidad_sesiones ||
+                                  0
+                                  )
+                                }
                               </p>
                             </div>
                           </div>
@@ -572,19 +628,34 @@ try {
                     }
                   )}
                 </div>
+                  <div className="w-full">
 
-                <div className="mt-6 pt-6 border-t border-border flex justify-between items-center">
-                  <span className="text-lg font-semibold text-ink">
-                    Total del paquete
-                  </span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold text-ink">
+                      Subtotal servicios
+                    </span>
 
-                  <span className="text-2xl font-bold text-ink">
-                    $
-                    {calculateTotal(
-                      selectedPackage.servicios
-                    )}
-                  </span>
+                    <span className="text-xl font-bold text-ink">
+                      $
+                      {calculateTotal(
+                        selectedPackage.servicios
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center mt-3">
+                    <span className="text-lg font-semibold text-ink">
+                      Precio final del paquete
+                    </span>
+
+                    <span className="text-3xl font-bold text-ink">
+                      $
+                      {selectedPackage.precio_total}
+                    </span>
+                  </div>
+
                 </div>
+
               </div>
             </>
           ) : (
@@ -647,6 +718,31 @@ try {
                 />
               </div>
 
+              {/* PRECIO */}
+              <div>
+                <label className="text-sm font-semibold">
+                  Precio final del paquete
+                </label>
+
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  min={0}
+                  className="w-full border border-border rounded p-2 mt-1"
+                  value={form.precio_total}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      precio_total: e.target.value,
+                    })
+                  }
+                />
+
+                <p className="text-xs text-ink-muted mt-1">
+                  Subtotal servicios: ${selectedTotal}
+                </p>
+              </div>
+
               {/* SERVICES */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -655,7 +751,7 @@ try {
                   </h3>
 
                   <span className="text-sm text-ink-muted">
-                    Total: $
+                    Subtotal: $
                     {selectedTotal}
                   </span>
                 </div>
