@@ -1,5 +1,7 @@
 import { Link } from "react-router";
 import { useAuth } from "~/context/AuthContext";
+import { useState, useEffect } from "react";
+import { api } from "~/lib/api";
 
 const agenda = [
   { time: "09:00", duration: "50min", initials: "LP", name: "Lucía Pérez", type: "Sesión individual · Virtual", status: "finalizada", color: "bg-violet-500" },
@@ -36,9 +38,43 @@ const calendar = [
 const busyDays = [2, 5, 8, 12, 14, 15, 19, 22, 26, 27, 28];
 
 export default function ProfessionalDashboard() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const firstName = user?.name?.split(" ")[0] ?? "María";
+  const [pendientes, setPendientes] = useState<any[]>([]);
+  const [openSolicitudes, setOpenSolicitudes] = useState(false);
+  const [loadingId, setLoadingId] = useState<number | null>(null);
+  useEffect(() => {
+    if (!token) return;
 
+    api
+      .get("/reservas/pendientes", token)
+      .then((res: any) => {
+        setPendientes(res.data ?? []);
+      })
+      .catch(() => {
+        setPendientes([]);
+      });
+  }, [token]);
+
+  const cambiarEstado = async (
+    id: number,
+    estado: "confirmada" | "cancelada"
+  ) => {
+    try {
+      setLoadingId(id);
+
+      await api.put(`/reservas/${id}/estado`, { estado }, token);
+
+      // refrescar pendientes
+      const res: any = await api.get("/reservas/pendientes", token);
+      setPendientes(res.data?.data ?? []);
+
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingId(null);
+    }
+  };
   return (
     <div className="p-8 max-w-6xl mx-auto">
       {/* Header */}
@@ -199,28 +235,134 @@ export default function ProfessionalDashboard() {
           {/* Por revisar */}
           <div className="bg-surface border border-border rounded p-4">
             <h3 className="text-sm font-semibold text-ink mb-3">Por revisar</h3>
+
             <div className="space-y-2">
-              {[
-                { icon: "📅", text: "3 solicitudes de reserva", sub: "Esperan tu confirmación" },
-                { icon: "$", text: "€890 pendientes de liquidación", sub: "Se acreditan el viernes" },
-                { icon: "★", text: "2 reseñas nuevas", sub: "4.8 ★ promedio" },
-              ].map((item) => (
-                <div
-                  key={item.text}
-                  className="flex items-start gap-3 p-3 bg-bg rounded border border-border hover:bg-border/50 cursor-pointer transition-colors"
-                >
-                  <span className="text-sm shrink-0">{item.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink">{item.text}</p>
-                    <p className="text-xs text-ink-muted">{item.sub}</p>
-                  </div>
-                  <span className="text-ink-muted">›</span>
+
+              {/* SOLICITUDES REALES */}
+              <div
+                className="flex items-start gap-3 p-3 bg-bg rounded border border-border hover:bg-border/50 cursor-pointer transition-colors"
+                onClick={() => setOpenSolicitudes((v) => !v)}
+              >
+                <span className="text-sm shrink-0">📅</span>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-ink">
+                    {pendientes.length} solicitudes de reserva
+                  </p>
+                  <p className="text-xs text-ink-muted">
+                    Esperan tu confirmación
+                  </p>
                 </div>
-              ))}
+
+                <span className="text-ink-muted">
+                  {openSolicitudes ? "⌃" : "›"}
+                </span>
+              </div>
+
+              {/* LIQUIDACIONES (queda estático por ahora) */}
+              <div className="flex items-start gap-3 p-3 bg-bg rounded border border-border hover:bg-border/50 cursor-pointer transition-colors">
+                <span className="text-sm shrink-0">$</span>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-ink">
+                    €890 pendientes de liquidación
+                  </p>
+                  <p className="text-xs text-ink-muted">
+                    Se acreditan el viernes
+                  </p>
+                </div>
+
+                <span className="text-ink-muted">›</span>
+              </div>
+
+              {/* RESEÑAS (queda estático por ahora) */}
+              <div className="flex items-start gap-3 p-3 bg-bg rounded border border-border hover:bg-border/50 cursor-pointer transition-colors">
+                <span className="text-sm shrink-0">★</span>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-ink">
+                    2 reseñas nuevas
+                  </p>
+                  <p className="text-xs text-ink-muted">
+                    4.8 ★ promedio
+                  </p>
+                </div>
+
+                <span className="text-ink-muted">›</span>
+              </div>
+
             </div>
           </div>
         </div>
       </div>
+      {openSolicitudes && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    
+    <div className="bg-surface w-full max-w-lg rounded border border-border p-4">
+
+      {/* header */}
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-sm font-semibold text-ink">
+          Solicitudes de reserva
+        </h3>
+
+        <button
+          onClick={() => setOpenSolicitudes(false)}
+          className="text-ink-muted"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* contenido */}
+      <div className="space-y-3 max-h-[400px] overflow-y-auto">
+
+        {pendientes.length === 0 ? (
+          <p className="text-sm text-ink-muted">
+            No hay solicitudes
+          </p>
+        ) : (
+          pendientes.map((r) => (
+            <div key={r.reserva_id} className="p-3 border rounded bg-bg cursor-pointer hover:bg-border/50 transition-colors">
+
+              <p className="text-sm font-semibold text-ink">
+                {r.cliente_nombre}
+              </p>
+
+              <p className="text-xs text-ink-muted">
+                {r.servicio?.nombre}
+              </p>
+
+              <p className="text-xs text-ink-muted">
+                {r.fecha} · {r.hora}
+              </p>
+
+              <div className="flex gap-2 mt-3">
+
+                <button
+                  onClick={() => cambiarEstado(r.reserva_id, "confirmada")}
+                  className="px-3 py-1 text-xs bg-ink text-white rounded cursor-pointer hover:bg-primary"
+                >
+                  Confirmar
+                </button>
+
+                <button
+                  onClick={() => cambiarEstado(r.reserva_id, "cancelada")}
+                  className="px-3 py-1 text-xs bg-ink text-white rounded cursor-pointer hover:bg-primary"
+                >
+                  Cancelar
+                </button>
+
+              </div>
+
+            </div>
+          ))
+        )}
+
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

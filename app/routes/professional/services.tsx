@@ -11,6 +11,7 @@ type Servicio = {
   precio: number;
   duracion: number;
   pausa: number;
+  min_cancelacion: number;
 };
 
 export default function Services() {
@@ -27,6 +28,7 @@ export default function Services() {
     precio: "",
     duracion: "",
     pausa: "",
+    min_cancelacion: "",
   });
 
   const token = localStorage.getItem("citapro_token");
@@ -75,6 +77,7 @@ export default function Services() {
           precio: Number(form.precio),
           duracion: Number(form.duracion),
           pausa: Number(form.pausa),
+          min_cancelacion: Number(form.min_cancelacion),
         }),
       });
 
@@ -91,6 +94,7 @@ export default function Services() {
           precio: "",
           duracion: "",
           pausa: "",
+          min_cancelacion: "",
         });
         fetchServicios();
       } else {
@@ -181,6 +185,7 @@ export default function Services() {
             >
               <option value="VIRTUAL">Virtual</option>
               <option value="PRESENCIAL">Presencial</option>
+              <option value="HIBRIDO">Híbrido</option>
             </select>
 
             <input
@@ -214,6 +219,14 @@ export default function Services() {
               className="w-full border p-2"
               value={form.pausa}
               onChange={(e) => setForm({ ...form, pausa: e.target.value })}
+            />
+
+            <input
+              type="number"
+              placeholder="Mínimo de cancelación (hrs)"
+              className="w-full border p-2"
+              value={form.min_cancelacion}
+              onChange={(e) => setForm({ ...form, min_cancelacion: e.target.value })}
             />
 
             <div className="flex justify-end gap-2 pt-2">

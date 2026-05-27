@@ -142,6 +142,7 @@ export default function MisReservas() {
           {filtered.map((r) => {
             const badge = ESTADO_STYLE[r.estado] ?? { label: r.estado, cls: "bg-surface text-ink-muted border-border" };
             const canCancel = ["pendiente", "confirmada"].includes(r.estado);
+            console.log("estado:", r.estado);
             return (
               <div
                 key={r.reserva_id}

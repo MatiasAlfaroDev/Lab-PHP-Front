@@ -14,6 +14,7 @@ export default [
     route("messages", "routes/client/messages.tsx"),
     route("payments", "routes/client/payments.tsx"),
     route("notifications", "routes/client/notifications.tsx"),
+    route("reservas", "routes/client/mis-reservas.tsx"),
   ]),
 
   route("professional", "routes/professional/_layout.tsx", [

@@ -3,7 +3,7 @@ import { useAuth } from "~/context/AuthContext";
 
 const navItems = [
   { to: "/client/discover", label: "Descubrir", icon: SearchIcon },
-  { to: "/client", label: "Mis reservas", icon: CalendarIcon, end: true },
+  { to: "/client/reservas", label: "Mis reservas", icon: CalendarIcon, end: true },
   { to: "/client/packages", label: "Mis paquetes", icon: PackageIcon },
   { to: "/client/messages", label: "Mensajes", icon: MessageIcon, badge: 2 },
   { to: "/client/payments", label: "Pagos", icon: CardIcon },

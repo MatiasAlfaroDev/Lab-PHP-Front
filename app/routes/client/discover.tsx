@@ -65,8 +65,8 @@ function normalizeModality(m: string): string {
   const map: Record<string, string> = {
     presencial: "Presencial",
     virtual: "Virtual",
-    hibrida: "Híbrida",
-    híbrida: "Híbrida",
+    hibrido: "Híbrida",
+    híbrido: "Híbrida",
   };
   return map[m.toLowerCase()] ?? m;
 }

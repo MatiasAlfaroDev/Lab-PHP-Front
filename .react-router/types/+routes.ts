@@ -51,6 +51,9 @@ type Pages = {
   "/client/notifications": {
     params: {};
   };
+  "/client/reservas": {
+    params: {};
+  };
   "/professional": {
     params: {};
   };
@@ -99,7 +102,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/professional" | "/professional/agenda" | "/professional/clients" | "/professional/services" | "/professional/service-packages" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/admin" | "/admin/users" | "/admin/payments" | "/session/:id" | "/session/:id/rating";
+    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/client/reservas" | "/professional" | "/professional/agenda" | "/professional/clients" | "/professional/services" | "/professional/service-packages" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/admin" | "/admin/users" | "/admin/payments" | "/session/:id" | "/session/:id/rating";
   };
   "routes/home.tsx": {
     id: "routes/home";
@@ -119,7 +122,7 @@ type RouteFiles = {
   };
   "routes/client/_layout.tsx": {
     id: "routes/client/_layout";
-    page: "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications";
+    page: "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/client/reservas";
   };
   "routes/client/dashboard.tsx": {
     id: "routes/client/dashboard";
@@ -152,6 +155,10 @@ type RouteFiles = {
   "routes/client/notifications.tsx": {
     id: "routes/client/notifications";
     page: "/client/notifications";
+  };
+  "routes/client/mis-reservas.tsx": {
+    id: "routes/client/mis-reservas";
+    page: "/client/reservas";
   };
   "routes/professional/_layout.tsx": {
     id: "routes/professional/_layout";
@@ -230,6 +237,7 @@ type RouteModules = {
   "routes/client/messages": typeof import("./app/routes/client/messages.tsx");
   "routes/client/payments": typeof import("./app/routes/client/payments.tsx");
   "routes/client/notifications": typeof import("./app/routes/client/notifications.tsx");
+  "routes/client/mis-reservas": typeof import("./app/routes/client/mis-reservas.tsx");
   "routes/professional/_layout": typeof import("./app/routes/professional/_layout.tsx");
   "routes/professional/dashboard": typeof import("./app/routes/professional/dashboard.tsx");
   "routes/professional/agenda": typeof import("./app/routes/professional/agenda.tsx");
