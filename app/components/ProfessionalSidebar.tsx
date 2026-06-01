@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "~/context/AuthContext";
 
 const navItems = [
+  { to: "/professional/dashboard", label: "Resumen", icon: HomeIcon },
   { to: "/professional", label: "Clientes", icon: CalendarIcon, end: true },
   { to: "/professional/services", label: "Servicios", icon: PackageIcon },
   { to: "/professional/service-packages", label: "Paquetes", icon: BoxesIcon },

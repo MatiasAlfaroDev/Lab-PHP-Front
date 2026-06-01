@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "~/context/AuthContext";
 
 const navItems = [
+  { to: "/client", label: "Resumen", icon: HomeIcon, end: true },
   { to: "/client/discover", label: "Descubrir", icon: SearchIcon },
   { to: "/client/reservas", label: "Reservas",  icon: CalendarIcon, end: true },
   { to: "/client/messages", label: "Mensajes",  icon: MessageIcon,  disabled: true },
@@ -141,6 +142,9 @@ export function ClientSidebar({ collapsed, onToggle }: Props) {
   );
 }
 
+function HomeIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+}
 function SearchIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>;
 }

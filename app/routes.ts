@@ -20,6 +20,7 @@ export default [
 
   route("professional", "routes/professional/_layout.tsx", [
     index("routes/professional/clients.tsx"),
+    route("dashboard", "routes/professional/dashboard.tsx"),
     route("services", "routes/professional/services.tsx"),
     route("service-packages", "routes/professional/service-packages.tsx"),
     route("availability", "routes/professional/availability.tsx"),
