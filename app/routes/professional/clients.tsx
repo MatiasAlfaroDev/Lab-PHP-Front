@@ -30,11 +30,11 @@ const CELL       = 44;
 const GRID_START = 8;
 
 const ESTADO_COLOR: Record<string, string> = {
-  pendiente:  "bg-white border-l-4 border-amber-400",
-  confirmada: "bg-white border-l-4 border-blue-400",
-  pagada:     "bg-white border-l-4 border-green-500",
-  en_curso:   "bg-white border-l-4 border-violet-500",
-  finalizada: "bg-white border-l-4 border-gray-300",
+  pendiente:  "bg-amber-100  border-l-4 border-amber-400",
+  confirmada: "bg-blue-100   border-l-4 border-blue-400",
+  pagada:     "bg-green-100  border-l-4 border-green-500",
+  en_curso:   "bg-violet-100 border-l-4 border-violet-500",
+  finalizada: "bg-gray-50    border-l-4 border-gray-300",
 };
 
 const ESTADO_BADGE: Record<string, string> = {
@@ -213,21 +213,25 @@ export default function ClientsAndAgenda() {
 
   const panelOpen = !!selectedClient;
 
+  const panelClientColor = selectedClient
+    ? CLIENT_COLORS[Math.max(clients.findIndex(c => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length]
+    : CLIENT_COLORS[0];
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-8">
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="font-display text-3xl text-ink">Agenda & Clientes</h1>
+        <h1 className="font-display text-3xl text-ink">Clientes</h1>
         <p className="text-ink-muted mt-1">
           Hacé click en un turno o cliente para ver detalles y gestionar reservas
         </p>
       </div>
 
-      <div className="relative">
+      <div className="grid grid-cols-4 gap-6 items-start">
 
-        {/* ── Main content ──────────────────────────────────────────────── */}
-        <div className={`space-y-6 transition-[padding] duration-200 ${panelOpen ? "pr-80" : ""}`}>
+        {/* ── Main content (col-span-3) ─────────────────────────────────── */}
+        <div className="col-span-3 min-w-0 space-y-6">
 
           {/* AGENDA ─────────────────────────────────────────────────────── */}
           <section>
@@ -449,10 +453,9 @@ export default function ClientsAndAgenda() {
           </section>
         </div>
 
-        {/* ── Detail panel ──────────────────────────────────────────────── */}
-        {panelOpen && selectedClient && (
-          <div className="absolute top-0 right-0 w-72 z-10">
-          <div className="sticky top-8 space-y-3">
+        {/* ── Right panel — siempre presente como en disponibilidad ─────── */}
+        <div className="sticky top-8 space-y-3">
+          {panelOpen && selectedClient ? (
             <div className="bg-surface border border-border rounded overflow-hidden">
 
               {/* Header */}
@@ -460,14 +463,14 @@ export default function ClientsAndAgenda() {
                 <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">
                   {selectedReserva ? "Turno" : "Cliente"}
                 </p>
-                <button onClick={closePanel} className="text-ink-muted hover:text-ink transition-colors">
+                <button onClick={closePanel} className="text-ink-muted hover:text-ink transition-colors cursor-pointer">
                   <CloseIcon />
                 </button>
               </div>
 
               {/* Avatar + datos */}
               <div className="px-4 py-4 border-b border-border flex items-center gap-3">
-                <div className={`w-11 h-11 rounded-lg ${CLIENT_COLORS[clients.indexOf(selectedClient) % CLIENT_COLORS.length].avatar} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
+                <div className={`w-11 h-11 rounded-lg ${panelClientColor.avatar} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
                   {getInitials(selectedClient.nombre)}
                 </div>
                 <div className="min-w-0">
@@ -486,9 +489,7 @@ export default function ClientsAndAgenda() {
                 <div className="px-4 py-3">
                   <p className="text-xs text-ink-muted uppercase tracking-widest font-bold mb-1">Próxima</p>
                   <p className="text-xs text-ink font-semibold leading-snug">
-                    {selectedClient.proxima_sesion
-                      ? `${selectedClient.proxima_sesion}`
-                      : "—"}
+                    {selectedClient.proxima_sesion ? `${selectedClient.proxima_sesion}` : "—"}
                   </p>
                   <p className="text-xs text-ink-muted">
                     {selectedClient.hora_proxima_sesion?.slice(0, 5) ?? ""}
@@ -496,7 +497,7 @@ export default function ClientsAndAgenda() {
                 </div>
               </div>
 
-              {/* Turno seleccionado (si se clickeó desde el calendario) */}
+              {/* Turno seleccionado */}
               {selectedReserva && (
                 <div className="px-4 py-4 border-b border-border">
                   <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-2">
@@ -538,9 +539,15 @@ export default function ClientsAndAgenda() {
               </div>
 
             </div>
-          </div>
-          </div>
-        )}
+          ) : (
+            <div className="bg-surface border border-border rounded p-5 text-center">
+              <p className="text-xs text-ink-muted">
+                Seleccioná un turno o cliente para ver los detalles
+              </p>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
