@@ -19,6 +19,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (token: string, user: AuthUser) => void;
   logout: () => void;
+  updateUser: (updates: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   login: () => {},
   logout: () => {},
+  updateUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -54,6 +56,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
   };
 
+  const updateUser = (updates: Partial<AuthUser>) => {
+    if (!user) return;
+    const updated = { ...user, ...updates };
+    localStorage.setItem("citapro_user", JSON.stringify(updated));
+    setUser(updated);
+  };
+
   const logout = async () => {
     try {
       if (token) {
@@ -72,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isAuthenticated: !!token, isLoading, login, logout }}
+      value={{ user, token, isAuthenticated: !!token, isLoading, login, logout, updateUser }}
     >
       {children}
     </AuthContext.Provider>

@@ -15,17 +15,18 @@ export default [
     route("payments", "routes/client/payments.tsx"),
     route("notifications", "routes/client/notifications.tsx"),
     route("reservas", "routes/client/mis-reservas.tsx"),
+    route("profile", "routes/client/profile.tsx"),
   ]),
 
   route("professional", "routes/professional/_layout.tsx", [
     index("routes/professional/dashboard.tsx"),
-    route("agenda", "routes/professional/agenda.tsx"),
     route("clients", "routes/professional/clients.tsx"),
     route("services", "routes/professional/services.tsx"),
     route("service-packages", "routes/professional/service-packages.tsx"),
     route("availability", "routes/professional/availability.tsx"),
     route("payments", "routes/professional/payments.tsx"),
     route("messages", "routes/professional/messages.tsx"),
+    route("profile", "routes/professional/profile.tsx"),
   ]),
 
   route("admin", "routes/admin/_layout.tsx", [

@@ -3,8 +3,7 @@ import { useAuth } from "~/context/AuthContext";
 
 const navItems = [
   { to: "/professional", label: "Resumen", icon: HomeIcon, end: true },
-  { to: "/professional/agenda", label: "Agenda", icon: CalendarIcon },
-  { to: "/professional/clients", label: "Clientes", icon: UsersIcon },
+  { to: "/professional/clients", label: "Agenda & Clientes", icon: CalendarIcon },
   { to: "/professional/services", label: "Servicios", icon: PackageIcon },
   { to: "/professional/service-packages", label: "Paquetes", icon: BoxesIcon },
   { to: "/professional/availability", label: "Disponibilidad", icon: ClockIcon },
@@ -12,29 +11,67 @@ const navItems = [
   { to: "/professional/messages", label: "Mensajes", icon: MessageIcon, badge: 4 },
 ];
 
-export function ProfessionalSidebar() {
+interface Props {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export function ProfessionalSidebar({ collapsed, onToggle }: Props) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   return (
-    <aside className="w-56 min-h-screen bg-sidebar flex flex-col">
-      <div className="p-5 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <span className="w-5 h-5 rounded-sm bg-surface flex items-center justify-center">
-            <span className="text-ink font-bold text-xs">+</span>
-          </span>
-          <span className="font-display text-sidebar-text text-lg tracking-tight">Cita.Pro</span>
+    <aside
+      className={`${collapsed ? "w-14" : "w-56"} min-h-screen bg-sidebar flex flex-col transition-all duration-200 ease-in-out shrink-0`}
+    >
+      {/* Logo + toggle */}
+      <div className="p-4 border-b border-white/10">
+        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-sm bg-surface flex items-center justify-center shrink-0">
+              <span className="text-ink font-bold text-xs">+</span>
+            </span>
+            {!collapsed && (
+              <span className="font-display text-sidebar-text text-lg tracking-tight">
+                Cita.Pro
+              </span>
+            )}
+          </div>
+          {!collapsed && (
+            <button
+              onClick={onToggle}
+              title="Contraer menú"
+              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
+            >
+              <ChevronLeftIcon className="w-4 h-4" />
+            </button>
+          )}
         </div>
+        {collapsed && (
+          <div className="flex justify-center mt-3">
+            <button
+              onClick={onToggle}
+              title="Expandir menú"
+              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
+            >
+              <ChevronRightIcon className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
-      <nav className="flex-1 p-3 space-y-0.5">
+      {/* Nav */}
+      <nav className="flex-1 p-2 space-y-0.5">
         {navItems.map(({ to, label, icon: Icon, badge, end }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
+            title={collapsed ? label : undefined}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                collapsed ? "justify-center px-0" : ""
+              } ${
                 isActive
                   ? "bg-white text-ink"
                   : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"
@@ -42,8 +79,8 @@ export function ProfessionalSidebar() {
             }
           >
             <Icon className="w-4 h-4 shrink-0" />
-            <span className="flex-1">{label}</span>
-            {badge && (
+            {!collapsed && <span className="flex-1">{label}</span>}
+            {!collapsed && badge && (
               <span className="w-5 h-5 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold">
                 {badge}
               </span>
@@ -52,26 +89,43 @@ export function ProfessionalSidebar() {
         ))}
       </nav>
 
+      {/* User */}
       <div className="p-3 border-t border-white/10">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold shrink-0">
-            {user?.initials ?? "MO"}
+        {collapsed ? (
+          <div className="flex justify-center py-1">
+            <button
+              onClick={() => navigate("/professional/profile")}
+              title={user?.name ?? "Profesional"}
+              className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all"
+            >
+              {user?.initials ?? "MO"}
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-text truncate">{user?.name ?? "Profesional"}</p>
-            <p className="text-xs text-sidebar-muted">Profesional</p>
+        ) : (
+          <div className="flex items-center gap-3 px-3 py-2">
+            <button
+              onClick={() => navigate("/professional/profile")}
+              title="Editar perfil"
+              className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all"
+            >
+              {user?.initials ?? "MO"}
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-sidebar-text truncate">{user?.name ?? "Profesional"}</p>
+              <p className="text-xs text-sidebar-muted">Profesional</p>
+            </div>
+            <button
+              onClick={async () => {
+                await logout();
+                navigate("/login");
+              }}
+              title="Cerrar sesión"
+              className="text-sidebar-muted hover:text-sidebar-text transition-colors"
+            >
+              <LogoutIcon className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={async () => {
-              await logout();
-              navigate("/login");
-            }}
-            title="Cerrar sesión"
-            className="text-sidebar-muted hover:text-sidebar-text transition-colors"
-          >
-            <LogoutIcon className="w-4 h-4" />
-          </button>
-        </div>
+        )}
       </div>
     </aside>
   );
@@ -104,4 +158,10 @@ function LogoutIcon({ className }: { className?: string }) {
 function BoxesIcon({ className }: { className?: string }) {
   return (<svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} > <rect x="3" y="3" width="7" height="7" rx="1" /> <rect x="14" y="3" width="7" height="7" rx="1" /> <rect x="3" y="14" width="7" height="7" rx="1" /> <rect x="14" y="14" width="7" height="7" rx="1" /> </svg>
   );
+}
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="15 18 9 12 15 6"/></svg>;
+}
+function ChevronRightIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="9 18 15 12 9 6"/></svg>;
 }

@@ -1,11 +1,12 @@
 import { Outlet, useNavigate } from "react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { ProfessionalSidebar } from "~/components/ProfessionalSidebar";
 
 export default function ProfessionalLayout() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/login", { replace: true });
@@ -23,8 +24,11 @@ export default function ProfessionalLayout() {
 
   return (
     <div className="flex min-h-screen bg-bg">
-      <ProfessionalSidebar />
-      <main className="flex-1 overflow-auto">
+      <ProfessionalSidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((v) => !v)}
+      />
+      <main className="flex-1 overflow-auto min-w-0">
         <Outlet />
       </main>
     </div>

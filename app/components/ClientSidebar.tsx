@@ -91,18 +91,23 @@ export function ClientSidebar({ collapsed, onToggle }: Props) {
       <div className="p-3 border-t border-white/10">
         {collapsed ? (
           <div className="flex justify-center py-1">
-            <div
-              className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold cursor-default"
+            <button
+              onClick={() => navigate("/client/profile")}
               title={user?.name ?? "Usuario"}
+              className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all"
             >
               {user?.initials ?? "LP"}
-            </div>
+            </button>
           </div>
         ) : (
           <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold shrink-0">
+            <button
+              onClick={() => navigate("/client/profile")}
+              title="Editar perfil"
+              className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all"
+            >
               {user?.initials ?? "LP"}
-            </div>
+            </button>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-text truncate">
                 {user?.name ?? "Usuario"}
