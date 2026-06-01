@@ -30,7 +30,6 @@ const EMPTY_FORM = {
 };
 
 type PanelMode = "create" | "edit" | "delete" | null;
-type Tab       = "servicios" | "paquetes" | "precios";
 
 const MODALIDAD_CLS: Record<string, string> = {
   presencial: "bg-emerald-100 text-emerald-800",
@@ -64,7 +63,6 @@ export default function Services() {
   const { token } = useAuth();
   const [services,     setServices]     = useState<Servicio[]>([]);
   const [loading,      setLoading]      = useState(true);
-  const [activeTab,    setActiveTab]    = useState<Tab>("servicios");
   const [panelMode,    setPanelMode]    = useState<PanelMode>(null);
   const [editTarget,   setEditTarget]   = useState<Servicio | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Servicio | null>(null);
@@ -191,141 +189,112 @@ export default function Services() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 mb-6 border-b border-border pb-0">
-        {([
-          { id: "servicios", label: "Servicios individuales" },
-          { id: "paquetes",  label: "Paquetes" },
-          { id: "precios",   label: "Precios y promociones" },
-        ] as { id: Tab; label: string }[]).map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-semibold rounded-t transition-colors cursor-pointer -mb-px border-b-2 ${
-              activeTab === tab.id
-                ? "border-ink text-ink bg-surface"
-                : "border-transparent text-ink-muted hover:text-ink"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-ink-muted text-sm">
+          {loading ? "Cargando..." : `${services.length} servicios registrados`}
+        </p>
+        <button
+          onClick={openCreate}
+          className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
+        >
+          + Nuevo servicio
+        </button>
       </div>
 
-      {activeTab !== "servicios" ? (
+      {/* Tabla */}
+      {loading ? (
+        <div className="bg-surface border border-border rounded p-12 text-center text-ink-muted text-sm">
+          Cargando servicios...
+        </div>
+      ) : services.length === 0 ? (
         <div className="bg-surface border border-border rounded p-12 text-center">
-          <p className="text-sm text-ink-muted">Próximamente</p>
+          <p className="font-display text-xl text-ink mb-1">Sin servicios aún</p>
+          <p className="text-ink-muted text-sm mb-5">
+            Creá tu primer servicio para que los clientes puedan reservar
+          </p>
+          <button
+            onClick={openCreate}
+            className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
+          >
+            + Nuevo servicio
+          </button>
         </div>
       ) : (
-        <>
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-ink-muted text-sm">
-              {loading ? "Cargando..." : `${services.length} servicios registrados`}
-            </p>
-            <button
-              onClick={openCreate}
-              className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
-            >
-              + Nuevo servicio
-            </button>
+        <div className="bg-surface border border-border rounded overflow-hidden">
+          {/* Cabecera */}
+          <div className="grid px-5 py-2 border-b border-border bg-bg" style={{ gridTemplateColumns: "2fr 100px 140px 80px 140px 72px" }}>
+            {["SERVICIO", "DURACIÓN", "MODALIDAD", "PRECIO", "RESERVAS", ""].map((h) => (
+              <div key={h} className="text-xs font-bold text-ink-muted uppercase tracking-widest">{h}</div>
+            ))}
           </div>
 
-          {/* Tabla */}
-          {loading ? (
-            <div className="bg-surface border border-border rounded p-12 text-center text-ink-muted text-sm">
-              Cargando servicios...
-            </div>
-          ) : services.length === 0 ? (
-            <div className="bg-surface border border-border rounded p-12 text-center">
-              <p className="font-display text-xl text-ink mb-1">Sin servicios aún</p>
-              <p className="text-ink-muted text-sm mb-5">
-                Creá tu primer servicio para que los clientes puedan reservar
-              </p>
-              <button
-                onClick={openCreate}
-                className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
+          {/* Filas */}
+          {services.map((s) => {
+            const activo    = s.activo ?? true;
+            const isActive  = (panelMode === "edit"   && editTarget?.servicio_id   === s.servicio_id) ||
+                              (panelMode === "delete" && deleteTarget?.servicio_id === s.servicio_id);
+            const modalidad = s.modalidad?.toLowerCase();
+            return (
+              <div
+                key={s.servicio_id}
+                className={`grid px-5 py-4 border-b border-border last:border-b-0 items-center transition-colors ${
+                  isActive ? "bg-accent/10" : "hover:bg-bg"
+                }`}
+                style={{ gridTemplateColumns: "2fr 100px 140px 80px 140px 72px" }}
               >
-                + Nuevo servicio
-              </button>
-            </div>
-          ) : (
-            <div className="bg-surface border border-border rounded overflow-hidden">
-              {/* Cabecera */}
-              <div className="grid px-5 py-2 border-b border-border bg-bg" style={{ gridTemplateColumns: "2fr 100px 140px 80px 140px 72px" }}>
-                {["SERVICIO", "DURACIÓN", "MODALIDAD", "PRECIO", "RESERVAS", ""].map((h) => (
-                  <div key={h} className="text-xs font-bold text-ink-muted uppercase tracking-widest">{h}</div>
-                ))}
-              </div>
-
-              {/* Filas */}
-              {services.map((s) => {
-                const activo    = s.activo ?? true;
-                const isActive  = (panelMode === "edit"   && editTarget?.servicio_id   === s.servicio_id) ||
-                                  (panelMode === "delete" && deleteTarget?.servicio_id === s.servicio_id);
-                const modalidad = s.modalidad?.toLowerCase();
-                return (
-                  <div
-                    key={s.servicio_id}
-                    className={`grid px-5 py-4 border-b border-border last:border-b-0 items-center transition-colors ${
-                      isActive ? "bg-accent/10" : "hover:bg-bg"
-                    }`}
-                    style={{ gridTemplateColumns: "2fr 100px 140px 80px 140px 72px" }}
-                  >
-                    {/* Servicio */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Toggle checked={activo} onChange={() => toggleActivo(s)} />
-                      <div className="min-w-0">
-                        <p className={`text-sm font-semibold truncate ${activo ? "text-ink" : "text-ink-muted"}`}>
-                          {s.nombre}
-                        </p>
-                        {s.descripcion && (
-                          <p className="text-xs text-ink-muted truncate">{s.descripcion}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Duración */}
-                    <div className="text-sm text-ink">{s.duracion} min</div>
-
-                    {/* Modalidad */}
-                    <div className="flex flex-wrap gap-1">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${MODALIDAD_CLS[modalidad] ?? "bg-gray-100 text-gray-700"}`}>
-                        {s.modalidad}
-                      </span>
-                    </div>
-
-                    {/* Precio */}
-                    <div className="font-display text-sm font-bold text-ink">${s.precio}</div>
-
-                    {/* Reservas */}
-                    <div className="text-sm text-ink-muted">
-                      {s.reservas_count != null ? `${s.reservas_count} este año` : "—"}
-                    </div>
-
-                    {/* Acciones */}
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEdit(s)}
-                        className="p-1.5 rounded hover:bg-border/40 text-ink-muted hover:text-ink transition-colors cursor-pointer"
-                        title="Editar"
-                      >
-                        <EditIcon />
-                      </button>
-                      <button
-                        onClick={() => openDelete(s)}
-                        className="p-1.5 rounded hover:bg-border/40 text-ink-muted hover:text-ink transition-colors cursor-pointer"
-                        title="Más opciones"
-                      >
-                        <DotsIcon />
-                      </button>
-                    </div>
+                {/* Servicio */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <Toggle checked={activo} onChange={() => toggleActivo(s)} />
+                  <div className="min-w-0">
+                    <p className={`text-sm font-semibold truncate ${activo ? "text-ink" : "text-ink-muted"}`}>
+                      {s.nombre}
+                    </p>
+                    {s.descripcion && (
+                      <p className="text-xs text-ink-muted truncate">{s.descripcion}</p>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </>
+                </div>
+
+                {/* Duración */}
+                <div className="text-sm text-ink">{s.duracion} min</div>
+
+                {/* Modalidad */}
+                <div className="flex flex-wrap gap-1">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded ${MODALIDAD_CLS[modalidad] ?? "bg-gray-100 text-gray-700"}`}>
+                    {s.modalidad}
+                  </span>
+                </div>
+
+                {/* Precio */}
+                <div className="font-display text-sm font-bold text-ink">${s.precio}</div>
+
+                {/* Reservas */}
+                <div className="text-sm text-ink-muted">
+                  {s.reservas_count != null ? `${s.reservas_count} este año` : "—"}
+                </div>
+
+                {/* Acciones */}
+                <div className="flex items-center justify-end gap-1">
+                  <button
+                    onClick={() => openEdit(s)}
+                    className="p-1.5 rounded hover:bg-border/40 text-ink-muted hover:text-ink transition-colors cursor-pointer"
+                    title="Editar"
+                  >
+                    <EditIcon />
+                  </button>
+                  <button
+                    onClick={() => openDelete(s)}
+                    className="p-1.5 rounded hover:bg-border/40 text-ink-muted hover:text-ink transition-colors cursor-pointer"
+                    title="Más opciones"
+                  >
+                    <DotsIcon />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* ── Drawer de edición / creación / borrado ─────────────────────────── */}

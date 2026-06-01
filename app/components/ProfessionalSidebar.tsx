@@ -2,13 +2,12 @@ import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "~/context/AuthContext";
 
 const navItems = [
-  { to: "/professional", label: "Resumen", icon: HomeIcon, end: true },
-  { to: "/professional/clients", label: "Agenda & Clientes", icon: CalendarIcon },
+  { to: "/professional", label: "Clientes", icon: CalendarIcon, end: true },
   { to: "/professional/services", label: "Servicios", icon: PackageIcon },
   { to: "/professional/service-packages", label: "Paquetes", icon: BoxesIcon },
   { to: "/professional/availability", label: "Disponibilidad", icon: ClockIcon },
   { to: "/professional/payments", label: "Cobros", icon: CardIcon },
-  { to: "/professional/messages", label: "Mensajes", icon: MessageIcon, badge: 4 },
+  { to: "/professional/messages", label: "Mensajes", icon: MessageIcon, disabled: true },
 ];
 
 interface Props {
@@ -62,30 +61,41 @@ export function ProfessionalSidebar({ collapsed, onToggle }: Props) {
 
       {/* Nav */}
       <nav className="flex-1 p-2 space-y-0.5">
-        {navItems.map(({ to, label, icon: Icon, badge, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            title={collapsed ? label : undefined}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+        {navItems.map(({ to, label, icon: Icon, end, disabled }) => (
+          disabled ? (
+            <div
+              key={to}
+              title={collapsed ? label : undefined}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${
                 collapsed ? "justify-center px-0" : ""
-              } ${
-                isActive
-                  ? "bg-white text-ink"
-                  : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"
-              }`
-            }
-          >
-            <Icon className="w-4 h-4 shrink-0" />
-            {!collapsed && <span className="flex-1">{label}</span>}
-            {!collapsed && badge && (
-              <span className="w-5 h-5 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold">
-                {badge}
-              </span>
-            )}
-          </NavLink>
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {!collapsed && <span className="flex-1">{label}</span>}
+              {!collapsed && (
+                <span className="text-[10px] text-sidebar-muted/60 font-normal">pronto</span>
+              )}
+            </div>
+          ) : (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              title={collapsed ? label : undefined}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  collapsed ? "justify-center px-0" : ""
+                } ${
+                  isActive
+                    ? "bg-white text-ink"
+                    : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"
+                }`
+              }
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {!collapsed && <span className="flex-1">{label}</span>}
+            </NavLink>
+          )
         ))}
       </nav>
 

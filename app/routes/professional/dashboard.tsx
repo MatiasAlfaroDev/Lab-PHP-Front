@@ -62,13 +62,8 @@ export default function ProfessionalDashboard() {
   ) => {
     try {
       setLoadingId(id);
-
       await api.put(`/reservas/${id}/estado`, { estado }, token);
-
-      // refrescar pendientes
-      const res: any = await api.get("/reservas/pendientes", token);
-      setPendientes(res.data?.data ?? []);
-
+      setPendientes((prev) => prev.filter((r) => r.reserva_id !== id));
     } catch (err) {
       console.error(err);
     } finally {
