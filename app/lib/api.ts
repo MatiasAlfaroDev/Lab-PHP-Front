@@ -44,8 +44,13 @@ async function request<T>(
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message ?? "Request failed");
+    const err = await res.json().catch(() => null);
+    // Laravel validation: { message, errors: { field: [msg] } }
+    if (err?.errors) {
+      const first = Object.values(err.errors as Record<string, string[]>)[0];
+      throw new Error(Array.isArray(first) ? first[0] : err.message ?? `Error ${res.status}`);
+    }
+    throw new Error(err?.message ?? err?.error ?? `Error ${res.status}: ${res.statusText || "Request failed"}`);
   }
   const data = await res.json();
 

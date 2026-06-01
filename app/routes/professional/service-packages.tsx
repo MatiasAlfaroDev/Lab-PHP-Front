@@ -53,8 +53,17 @@ const EMPTY_FORM: FormState = {
   items: [],
 };
 
-const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-bg text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
+const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 const labelCls = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
+
+const SVC_COLORS = [
+  "bg-violet-100 text-violet-700",
+  "bg-orange-100 text-orange-700",
+  "bg-teal-100   text-teal-700",
+  "bg-rose-100   text-rose-700",
+  "bg-amber-100  text-amber-700",
+  "bg-sky-100    text-sky-700",
+];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -205,7 +214,7 @@ export default function ServicePackages() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-8 max-w-6xl mx-auto">
 
       {/* Toast */}
       {toast && (
@@ -224,14 +233,14 @@ export default function ServicePackages() {
             {loading ? "Cargando..." : `${paquetes.length} paquete${paquetes.length !== 1 ? "s" : ""} creado${paquetes.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        {!creating && (
-          <button
-            onClick={openCreate}
-            className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
-          >
-            + Nuevo paquete
-          </button>
-        )}
+        <button
+          onClick={() => creating ? closeAll() : openCreate()}
+          className={`px-4 py-2 rounded text-sm font-semibold transition-colors cursor-pointer ${
+            creating ? "bg-border text-ink-muted" : "bg-ink text-white hover:bg-primary"
+          }`}
+        >
+          {creating ? "Cancelar" : <b>+ Nuevo paquete</b>}
+        </button>
       </div>
 
       {/* Form de creación inline (arriba de la lista) */}
@@ -282,42 +291,43 @@ export default function ServicePackages() {
               (acc, s) => acc + (s.pivot?.cantidad_sesiones ?? s.cantidad_sesiones ?? 1), 0
             ) ?? 0;
 
-            return (
-              <div key={pkg.paquete_id} className={idx > 0 ? "border-t border-border" : ""}>
-                {/* Fila del paquete */}
-                <div className={`grid items-center px-5 py-4 gap-4 ${isEditing || isDeleting ? "bg-accent/10" : "hover:bg-bg"}`}
-                  style={{ gridTemplateColumns: "1fr auto auto 120px 80px" }}>
+            const isDimmed = editingId !== null && !isEditing;
 
-                  {/* Nombre + descripción */}
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-ink">{pkg.nombre}</p>
-                    {pkg.descripcion && (
-                      <p className="text-xs text-ink-muted truncate">{pkg.descripcion}</p>
-                    )}
+            return (
+              <div key={pkg.paquete_id} className={`${idx > 0 ? "border-t border-border" : ""} ${isDimmed ? "opacity-40 pointer-events-none" : "transition-opacity"}`}>
+                {/* Fila del paquete */}
+                <div className={`flex items-center px-5 py-4 gap-6 ${isEditing || isDeleting ? "bg-accent/10" : ""}`}>
+
+                  {/* Nombre */}
+                  <div className="min-w-0 w-40 shrink-0">
+                    <p className="text-sm font-semibold text-ink truncate">{pkg.nombre}</p>
                     <p className="text-xs text-ink-muted mt-0.5">
-                      {pkg.servicios?.length ?? 0} servicio{pkg.servicios?.length !== 1 ? "s" : ""} · {totalSesiones} sesión{totalSesiones !== 1 ? "es" : ""}
+                      {totalSesiones} sesión{totalSesiones !== 1 ? "es" : ""}
                     </p>
                   </div>
 
-                  {/* Servicios (badges) */}
-                  <div className="flex flex-wrap gap-1">
-                    {pkg.servicios?.slice(0, 3).map((s) => (
-                      <span key={s.servicio_id} className="text-xs bg-bg border border-border px-2 py-0.5 rounded text-ink-muted">
-                        {s.nombre ?? `#${s.servicio_id}`}
+                  {/* Servicios — grilla 2 cols × 3 filas */}
+                  <div className="flex-1 grid grid-cols-2 gap-1.5" style={{ maxWidth: 420 }}>
+                    {pkg.servicios?.slice(0, 6).map((s, si) => (
+                      <span
+                        key={s.servicio_id}
+                        className={`text-xs px-2.5 py-1 rounded font-medium truncate ${SVC_COLORS[si % SVC_COLORS.length]}`}
+                      >
+                        {s.nombre ?? `Servicio #${s.servicio_id}`}
                       </span>
                     ))}
-                    {(pkg.servicios?.length ?? 0) > 3 && (
-                      <span className="text-xs text-ink-muted">+{pkg.servicios.length - 3}</span>
+                    {(pkg.servicios?.length ?? 0) > 6 && (
+                      <span className="text-xs text-ink-muted px-2 py-1">+{pkg.servicios.length - 6} más</span>
                     )}
                   </div>
 
                   {/* Precio */}
-                  <div className="font-display text-sm font-bold text-ink whitespace-nowrap">
+                  <div className="font-display text-sm font-bold text-ink whitespace-nowrap ml-auto">
                     $ {Number(pkg.precio_total).toFixed(0)}
                   </div>
 
-                  {/* Acciones */}
-                  <div className="flex items-center justify-end gap-1">
+                  {/* Acciones — extremo derecho */}
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => openEdit(pkg)}
                       title="Editar"
@@ -333,9 +343,6 @@ export default function ServicePackages() {
                       <TrashIcon />
                     </button>
                   </div>
-
-                  {/* Placeholder para alinear grid */}
-                  <div />
                 </div>
 
                 {/* Confirmar eliminación inline */}
@@ -410,7 +417,7 @@ function PackageForm({
   const available = servicios.filter((s) => !form.items.some((i) => i.servicio_id === s.servicio_id));
 
   return (
-    <div className="bg-bg border border-border rounded p-5 mb-4 space-y-5">
+    <div className="bg-white border border-border rounded p-5 space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">
           {isEdit ? "Editar paquete" : "Nuevo paquete"}
@@ -476,7 +483,7 @@ function PackageForm({
                       <input
                         type="number"
                         min={1}
-                        className="w-16 border border-border rounded px-2 py-1 text-sm bg-bg text-ink text-center focus:outline-none focus:ring-2 focus:ring-ink"
+                        className="w-16 border border-border rounded px-2 py-1 text-sm bg-white text-ink text-center focus:outline-none focus:ring-2 focus:ring-ink"
                         value={item.cantidad_sesiones}
                         onChange={(e) => updateItem(item.servicio_id, { cantidad_sesiones: Math.max(1, Number(e.target.value)) })}
                       />
@@ -539,7 +546,7 @@ function PackageForm({
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-2 border-t border-border">
+      <div className="flex items-center justify-between pt-2">
         <p className="text-sm text-ink-muted">
           {form.items.length > 0 && (
             <span>

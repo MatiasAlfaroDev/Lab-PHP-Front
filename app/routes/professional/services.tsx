@@ -14,22 +14,34 @@ type Servicio = {
   duracion: number;
   pausa: number;
   min_cancelacion: number;
+  ubicacion?: string;
   activo?: boolean;
   reservas_count?: number;
 };
 
-const EMPTY_FORM = {
+type FormState = {
+  nombre: string;
+  descripcion: string;
+  modalidad: string;
+  tipo: string;
+  precio: string;
+  duracion: string;
+  pausa: string;
+  min_cancelacion: string;
+  ubicacion: string;
+};
+
+const EMPTY_FORM: FormState = {
   nombre: "",
   descripcion: "",
-  modalidad: "PRESENCIAL",
+  modalidad: "presencial",
   tipo: "",
   precio: "",
   duracion: "",
   pausa: "",
   min_cancelacion: "",
+  ubicacion: "",
 };
-
-type PanelMode = "create" | "edit" | "delete" | null;
 
 const MODALIDAD_CLS: Record<string, string> = {
   presencial: "bg-emerald-100 text-emerald-800",
@@ -37,7 +49,7 @@ const MODALIDAD_CLS: Record<string, string> = {
   hibrido:    "bg-amber-100   text-amber-800",
 };
 
-const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-bg text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
+const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 const labelCls = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
@@ -61,14 +73,14 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 
 export default function Services() {
   const { token } = useAuth();
-  const [services,     setServices]     = useState<Servicio[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [panelMode,    setPanelMode]    = useState<PanelMode>(null);
-  const [editTarget,   setEditTarget]   = useState<Servicio | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Servicio | null>(null);
-  const [form,         setForm]         = useState({ ...EMPTY_FORM });
-  const [saving,       setSaving]       = useState(false);
-  const [toast,        setToast]        = useState<{ msg: string; ok: boolean } | null>(null);
+
+  const [services,   setServices]   = useState<Servicio[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [saving,     setSaving]     = useState(false);
+  const [editingId,  setEditingId]  = useState<number | "new" | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [form,       setForm]       = useState<FormState>({ ...EMPTY_FORM });
+  const [toast,      setToast]      = useState<{ msg: string; ok: boolean } | null>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -89,18 +101,18 @@ export default function Services() {
 
   useEffect(() => { fetchServicios(); }, [token]);
 
-  // ── Panel handlers ─────────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   const openCreate = () => {
+    setDeletingId(null);
     setForm({ ...EMPTY_FORM });
-    setEditTarget(null);
-    setDeleteTarget(null);
-    setPanelMode("create");
+    setEditingId(editingId === "new" ? null : "new");
   };
 
   const openEdit = (s: Servicio) => {
-    setDeleteTarget(null);
-    setEditTarget(s);
+    setDeletingId(null);
+    const id = s.servicio_id;
+    if (editingId === id) { setEditingId(null); return; }
     setForm({
       nombre:          s.nombre,
       descripcion:     s.descripcion,
@@ -110,42 +122,50 @@ export default function Services() {
       duracion:        String(s.duracion),
       pausa:           String(s.pausa),
       min_cancelacion: String(s.min_cancelacion),
+      ubicacion:       s.ubicacion ?? "",
     });
-    setPanelMode("edit");
+    setEditingId(id);
   };
 
-  const openDelete = (s: Servicio) => {
-    setEditTarget(null);
-    setDeleteTarget(s);
-    setPanelMode("delete");
-  };
-
-  const closePanel = () => {
-    setPanelMode(null);
-    setEditTarget(null);
-    setDeleteTarget(null);
+  const closeAll = () => {
+    setEditingId(null);
+    setDeletingId(null);
     setForm({ ...EMPTY_FORM });
   };
 
+  const setF = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
+
+  const needsLocation = ["presencial", "hibrido"].includes(form.modalidad.toLowerCase());
+
+  // ── Save / Delete ──────────────────────────────────────────────────────────
+
   const handleSave = async () => {
+    if (!form.nombre.trim())   return showToast("El nombre es requerido", false);
+    if (!form.tipo.trim())     return showToast("El tipo es requerido", false);
+    if (!form.precio)          return showToast("El precio es requerido", false);
+    if (!form.duracion)        return showToast("La duración es requerida", false);
+    setSaving(true);
     try {
-      setSaving(true);
-      const body = {
-        ...form,
-        modalidad:       form.modalidad.toUpperCase(),
+      const body: Record<string, unknown> = {
+        nombre:          form.nombre,
+        descripcion:     form.descripcion,
+        modalidad:       form.modalidad.toLowerCase(),
+        tipo:            form.tipo,
         precio:          Number(form.precio),
         duracion:        Number(form.duracion),
         pausa:           Number(form.pausa),
         min_cancelacion: Number(form.min_cancelacion),
       };
-      if (panelMode === "create") {
+      if (needsLocation && form.ubicacion.trim()) body.ubicacion = form.ubicacion.trim();
+
+      if (editingId === "new") {
         await api.post("/servicios", body, token);
         showToast("Servicio creado");
-      } else if (panelMode === "edit" && editTarget) {
-        await api.put(`/servicios/${editTarget.servicio_id}`, body, token);
+      } else if (typeof editingId === "number") {
+        await api.put(`/servicios/${editingId}`, body, token);
         showToast("Servicio actualizado");
       }
-      closePanel();
+      closeAll();
       fetchServicios();
     } catch (err: any) {
       showToast(err.message ?? "Error al guardar", false);
@@ -154,13 +174,12 @@ export default function Services() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
+  const handleDelete = async (id: number) => {
+    setSaving(true);
     try {
-      setSaving(true);
-      await api.delete(`/servicios/${deleteTarget.servicio_id}`, token);
+      await api.delete(`/servicios/${id}`, token);
       showToast("Servicio eliminado");
-      closePanel();
+      setDeletingId(null);
       fetchServicios();
     } catch (err: any) {
       showToast(err.message ?? "Error al eliminar", false);
@@ -178,7 +197,7 @@ export default function Services() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-w-6xl mx-auto">
 
       {/* Toast */}
       {toast && (
@@ -190,24 +209,44 @@ export default function Services() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-ink-muted text-sm">
-          {loading ? "Cargando..." : `${services.length} servicios registrados`}
-        </p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="font-display text-3xl text-ink">Servicios</h1>
+          <p className="text-sm text-ink-muted mt-0.5">
+            {loading ? "Cargando..." : `${services.length} servicio${services.length !== 1 ? "s" : ""} registrado${services.length !== 1 ? "s" : ""}`}
+          </p>
+        </div>
         <button
           onClick={openCreate}
-          className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
+          className={`px-4 py-2 rounded text-sm font-semibold transition-colors cursor-pointer ${
+            editingId === "new"
+              ? "bg-border text-ink-muted"
+              : "bg-ink text-white hover:bg-primary"
+          }`}
         >
-          + Nuevo servicio
+          {editingId === "new" ? "Cancelar" : <b>+ Nuevo servicio</b>}
         </button>
       </div>
 
-      {/* Tabla */}
-      {loading ? (
+      {/* Form de creación (antes de la tabla) */}
+      {editingId === "new" && (
+        <ServiceForm
+          form={form} setF={setF}
+          saving={saving} isEdit={false}
+          onSave={handleSave} onCancel={closeAll}
+          needsLocation={needsLocation}
+        />
+      )}
+
+      {/* Loading */}
+      {loading && (
         <div className="bg-surface border border-border rounded p-12 text-center text-ink-muted text-sm">
           Cargando servicios...
         </div>
-      ) : services.length === 0 ? (
+      )}
+
+      {/* Empty */}
+      {!loading && services.length === 0 && editingId !== "new" && (
         <div className="bg-surface border border-border rounded p-12 text-center">
           <p className="font-display text-xl text-ink mb-1">Sin servicios aún</p>
           <p className="text-ink-muted text-sm mb-5">
@@ -220,196 +259,234 @@ export default function Services() {
             + Nuevo servicio
           </button>
         </div>
-      ) : (
+      )}
+
+      {/* Tabla */}
+      {!loading && services.length > 0 && (
         <div className="bg-surface border border-border rounded overflow-hidden">
           {/* Cabecera */}
-          <div className="grid px-5 py-2 border-b border-border bg-bg" style={{ gridTemplateColumns: "2fr 100px 140px 80px 140px 72px" }}>
-            {["SERVICIO", "DURACIÓN", "MODALIDAD", "PRECIO", "RESERVAS", ""].map((h) => (
+          <div
+            className="grid px-5 py-2 border-b border-border bg-bg"
+            style={{ gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" }}
+          >
+            {["Servicio", "Duración", "Modalidad", "Precio", "Reservas", ""].map((h) => (
               <div key={h} className="text-xs font-bold text-ink-muted uppercase tracking-widest">{h}</div>
             ))}
           </div>
 
-          {/* Filas */}
-          {services.map((s) => {
-            const activo    = s.activo ?? true;
-            const isActive  = (panelMode === "edit"   && editTarget?.servicio_id   === s.servicio_id) ||
-                              (panelMode === "delete" && deleteTarget?.servicio_id === s.servicio_id);
-            const modalidad = s.modalidad?.toLowerCase();
+          {services.map((s, idx) => {
+            const activo     = s.activo ?? true;
+            const isEditing  = editingId === s.servicio_id;
+            const isDeleting = deletingId === s.servicio_id;
+            const isDimmed   = typeof editingId === "number" && !isEditing;
+            const modalidad  = s.modalidad?.toLowerCase();
+
             return (
-              <div
-                key={s.servicio_id}
-                className={`grid px-5 py-4 border-b border-border last:border-b-0 items-center transition-colors ${
-                  isActive ? "bg-accent/10" : "hover:bg-bg"
-                }`}
-                style={{ gridTemplateColumns: "2fr 100px 140px 80px 140px 72px" }}
-              >
-                {/* Servicio */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <Toggle checked={activo} onChange={() => toggleActivo(s)} />
-                  <div className="min-w-0">
-                    <p className={`text-sm font-semibold truncate ${activo ? "text-ink" : "text-ink-muted"}`}>
-                      {s.nombre}
-                    </p>
-                    {s.descripcion && (
-                      <p className="text-xs text-ink-muted truncate">{s.descripcion}</p>
-                    )}
+              <div key={s.servicio_id} className={`${idx > 0 ? "border-t border-border" : ""} ${isDimmed ? "opacity-40 pointer-events-none" : "transition-opacity"}`}>
+                {/* Fila */}
+                <div
+                  className={`grid px-5 py-4 items-center ${
+                    isEditing || isDeleting ? "bg-accent/10" : ""
+                  }`}
+                  style={{ gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" }}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Toggle checked={activo} onChange={() => toggleActivo(s)} />
+                    <div className="min-w-0">
+                      <p className={`text-sm font-semibold truncate ${activo ? "text-ink" : "text-ink-muted"}`}>
+                        {s.nombre}
+                      </p>
+                      {s.ubicacion && (
+                        <p className="text-xs text-ink-muted truncate flex items-center gap-1 mt-0.5">
+                          <PinIcon /> {s.ubicacion}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-ink">{s.duracion} min</div>
+
+                  <div>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${MODALIDAD_CLS[modalidad] ?? "bg-gray-100 text-gray-700"}`}>
+                      {s.modalidad}
+                    </span>
+                  </div>
+
+                  <div className="font-display text-sm font-bold text-ink">${s.precio}</div>
+
+                  <div className="text-sm text-ink-muted">
+                    {s.reservas_count != null ? `${s.reservas_count} este año` : "—"}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => { setDeletingId(null); openEdit(s); }}
+                      title="Editar"
+                      className={`p-1.5 rounded transition-colors cursor-pointer ${
+                        isEditing ? "bg-ink text-white" : "hover:bg-border/40 text-ink-muted hover:text-ink"
+                      }`}
+                    >
+                      <EditIcon />
+                    </button>
+                    <button
+                      onClick={() => { setEditingId(null); setDeletingId(isDeleting ? null : s.servicio_id); }}
+                      title="Eliminar"
+                      className={`p-1.5 rounded transition-colors cursor-pointer ${
+                        isDeleting ? "bg-red-500 text-white" : "hover:bg-border/40 text-ink-muted hover:text-red-500"
+                      }`}
+                    >
+                      <TrashIcon />
+                    </button>
                   </div>
                 </div>
 
-                {/* Duración */}
-                <div className="text-sm text-ink">{s.duracion} min</div>
+                {/* Confirmar eliminación inline */}
+                {isDeleting && (
+                  <div className="px-5 py-4 border-t border-border bg-red-50 flex items-center justify-between gap-4">
+                    <p className="text-sm text-red-700">
+                      ¿Eliminar <span className="font-semibold">"{s.nombre}"</span>? Esta acción no se puede deshacer.
+                    </p>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => setDeletingId(null)}
+                        className="px-3 py-1.5 rounded border border-border bg-white text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(s.servicio_id)}
+                        disabled={saving}
+                        className="px-3 py-1.5 rounded bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer"
+                      >
+                        {saving ? "Eliminando..." : "Eliminar"}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                {/* Modalidad */}
-                <div className="flex flex-wrap gap-1">
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded ${MODALIDAD_CLS[modalidad] ?? "bg-gray-100 text-gray-700"}`}>
-                    {s.modalidad}
-                  </span>
-                </div>
-
-                {/* Precio */}
-                <div className="font-display text-sm font-bold text-ink">${s.precio}</div>
-
-                {/* Reservas */}
-                <div className="text-sm text-ink-muted">
-                  {s.reservas_count != null ? `${s.reservas_count} este año` : "—"}
-                </div>
-
-                {/* Acciones */}
-                <div className="flex items-center justify-end gap-1">
-                  <button
-                    onClick={() => openEdit(s)}
-                    className="p-1.5 rounded hover:bg-border/40 text-ink-muted hover:text-ink transition-colors cursor-pointer"
-                    title="Editar"
-                  >
-                    <EditIcon />
-                  </button>
-                  <button
-                    onClick={() => openDelete(s)}
-                    className="p-1.5 rounded hover:bg-border/40 text-ink-muted hover:text-ink transition-colors cursor-pointer"
-                    title="Más opciones"
-                  >
-                    <DotsIcon />
-                  </button>
-                </div>
+                {/* Formulario de edición inline */}
+                {isEditing && (
+                  <div className="border-t border-border">
+                    <ServiceForm
+                      form={form} setF={setF}
+                      saving={saving} isEdit={true}
+                      onSave={handleSave} onCancel={closeAll}
+                      needsLocation={needsLocation}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* ── Drawer de edición / creación / borrado ─────────────────────────── */}
-      {panelMode && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-40" onClick={closePanel} />
+// ─── Inline form ──────────────────────────────────────────────────────────────
 
-          {/* Drawer */}
-          <div className="fixed right-0 top-0 h-full w-80 bg-surface border-l border-border shadow-2xl z-50 flex flex-col">
+function ServiceForm({
+  form, setF, saving, isEdit, onSave, onCancel, needsLocation,
+}: {
+  form: FormState;
+  setF: (p: Partial<FormState>) => void;
+  saving: boolean;
+  isEdit: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+  needsLocation: boolean;
+}) {
+  return (
+    <div className="bg-white border border-border rounded p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">
+          {isEdit ? "Editar servicio" : "Nuevo servicio"}
+        </p>
+        <button onClick={onCancel} className="text-ink-muted hover:text-ink transition-colors cursor-pointer">
+          <CloseIcon />
+        </button>
+      </div>
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-bg shrink-0">
-              <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">
-                {panelMode === "create" ? "Nuevo servicio" : panelMode === "edit" ? "Editar servicio" : "Eliminar servicio"}
-              </p>
-              <button onClick={closePanel} className="text-ink-muted hover:text-ink transition-colors cursor-pointer">
-                <CloseIcon />
-              </button>
-            </div>
+      {/* Fila 1: nombre + tipo */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>Nombre</label>
+          <input className={inputCls} placeholder="Ej. Sesión individual"
+            value={form.nombre} onChange={(e) => setF({ nombre: e.target.value })} />
+        </div>
+        <div>
+          <label className={labelCls}>Tipo</label>
+          <input className={inputCls} placeholder="Ej. Consulta, Terapia..."
+            value={form.tipo} onChange={(e) => setF({ tipo: e.target.value })} />
+        </div>
+      </div>
 
-            {panelMode === "delete" && deleteTarget ? (
-              <>
-                <div className="flex-1 px-5 py-6">
-                  <p className="text-sm text-ink-muted">
-                    ¿Eliminar{" "}
-                    <span className="font-semibold text-ink">"{deleteTarget.nombre}"</span>?
-                    Esta acción no se puede deshacer.
-                  </p>
-                </div>
-                <div className="flex gap-2 px-5 py-4 border-t border-border shrink-0">
-                  <button onClick={closePanel}
-                    className="flex-1 border border-border px-3 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink transition-colors cursor-pointer">
-                    Cancelar
-                  </button>
-                  <button onClick={handleDelete} disabled={saving}
-                    className="flex-1 bg-red-600 text-white px-3 py-2 rounded hover:bg-red-700 text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer">
-                    {saving ? "Eliminando..." : "Eliminar"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-                  <div>
-                    <label className={labelCls}>Nombre</label>
-                    <input className={inputCls} placeholder="Ej. Sesión individual" value={form.nombre}
-                      onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
-                  </div>
+      {/* Descripción */}
+      <div>
+        <label className={labelCls}>Descripción</label>
+        <textarea rows={2} className={`${inputCls} resize-none`} placeholder="Describe el servicio..."
+          value={form.descripcion} onChange={(e) => setF({ descripcion: e.target.value })} />
+      </div>
 
-                  <div>
-                    <label className={labelCls}>Descripción</label>
-                    <textarea rows={2} className={`${inputCls} resize-none`} placeholder="Describe el servicio..."
-                      value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
-                  </div>
+      {/* Fila 2: modalidad + precio + duración */}
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className={labelCls}>Modalidad</label>
+          <select className={inputCls} value={form.modalidad}
+            onChange={(e) => setF({ modalidad: e.target.value })}>
+            <option value="presencial">Presencial</option>
+            <option value="virtual">Virtual</option>
+            <option value="hibrido">Híbrido</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Precio ($)</label>
+          <input type="number" min={0} className={inputCls} placeholder="0"
+            value={form.precio} onChange={(e) => setF({ precio: e.target.value })} />
+        </div>
+        <div>
+          <label className={labelCls}>Duración (min)</label>
+          <input type="number" min={1} className={inputCls} placeholder="50"
+            value={form.duracion} onChange={(e) => setF({ duracion: e.target.value })} />
+        </div>
+      </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Modalidad</label>
-                      <select className={inputCls} value={form.modalidad}
-                        onChange={(e) => setForm({ ...form, modalidad: e.target.value })}>
-                        <option value="PRESENCIAL">Presencial</option>
-                        <option value="VIRTUAL">Virtual</option>
-                        <option value="HIBRIDO">Híbrido</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelCls}>Tipo</label>
-                      <input className={inputCls} placeholder="Consulta..." value={form.tipo}
-                        onChange={(e) => setForm({ ...form, tipo: e.target.value })} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Precio ($)</label>
-                      <input type="number" className={inputCls} placeholder="0" value={form.precio}
-                        onChange={(e) => setForm({ ...form, precio: e.target.value })} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Duración (min)</label>
-                      <input type="number" className={inputCls} placeholder="50" value={form.duracion}
-                        onChange={(e) => setForm({ ...form, duracion: e.target.value })} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Pausa (min)</label>
-                      <input type="number" className={inputCls} placeholder="10" value={form.pausa}
-                        onChange={(e) => setForm({ ...form, pausa: e.target.value })} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Cancelación (hrs)</label>
-                      <input type="number" className={inputCls} placeholder="24" value={form.min_cancelacion}
-                        onChange={(e) => setForm({ ...form, min_cancelacion: e.target.value })} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 px-5 py-4 border-t border-border shrink-0">
-                  <button onClick={closePanel}
-                    className="flex-1 border border-border px-3 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink transition-colors cursor-pointer">
-                    Cancelar
-                  </button>
-                  <button onClick={handleSave} disabled={saving}
-                    className="flex-1 bg-ink text-white px-3 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer">
-                    {saving ? "Guardando..." : panelMode === "create" ? "Crear" : "Guardar"}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </>
+      {/* Ubicación — solo para presencial / híbrido */}
+      {needsLocation && (
+        <div>
+          <label className={labelCls}>Dirección / Ubicación</label>
+          <input className={inputCls} placeholder="Ej. Av. Corrientes 1234, CABA"
+            value={form.ubicacion} onChange={(e) => setF({ ubicacion: e.target.value })} />
+          <p className="text-xs text-ink-muted mt-1">Visible para el cliente al confirmar la reserva</p>
+        </div>
       )}
+
+      {/* Fila 3: pausa + cancelación */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>Pausa entre turnos (min)</label>
+          <input type="number" min={0} className={inputCls} placeholder="10"
+            value={form.pausa} onChange={(e) => setF({ pausa: e.target.value })} />
+        </div>
+        <div>
+          <label className={labelCls}>Cancelación mínima (hs)</label>
+          <input type="number" min={0} className={inputCls} placeholder="24"
+            value={form.min_cancelacion} onChange={(e) => setF({ min_cancelacion: e.target.value })} />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex justify-end gap-2 pt-1">
+        <button onClick={onCancel}
+          className="border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink transition-colors cursor-pointer">
+          Cancelar
+        </button>
+        <button onClick={onSave} disabled={saving}
+          className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer">
+          {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear servicio"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -425,12 +502,13 @@ function EditIcon() {
   );
 }
 
-function DotsIcon() {
+function TrashIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <circle cx="5"  cy="12" r="1" fill="currentColor" />
-      <circle cx="12" cy="12" r="1" fill="currentColor" />
-      <circle cx="19" cy="12" r="1" fill="currentColor" />
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
     </svg>
   );
 }
@@ -440,6 +518,15 @@ function CloseIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
     </svg>
   );
 }

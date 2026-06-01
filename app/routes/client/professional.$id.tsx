@@ -192,14 +192,14 @@ function BookingModal({
       createOrder: async () => {
         setError(null);
         const res = await api.post<{ paypal_order_id: string }>(
-          `/pagos/reserva/${reservaId}/iniciar`, {}, token
+          `/pagos/reserva/${reservaId}/paypal`, {}, token
         );
         return res.paypal_order_id;
       },
       onApprove: async (_data: any, _actions: any) => {
         try {
           await api.post(
-            `/pagos/reserva/${reservaId}/capturar`,
+            `/pagos/reserva/${reservaId}/capturar-sdk`,
             { paypal_order_id: _data.orderID },
             token
           );

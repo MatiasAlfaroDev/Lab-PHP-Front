@@ -54,7 +54,7 @@ const ESTADO_LABEL: Record<string, string> = {
 };
 
 const MONTH_NAMES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const DOW_LABELS  = ["lun","mar","mié","jue","vie"]; // solo lun–vie
+const DOW_LABELS  = ["lun","mar","mié","jue","vie","sáb","dom"];
 
 const CLIENT_COLORS = [
   { avatar: "bg-violet-500", accent: "border-violet-300", block: "bg-violet-100 border-l-4 border-violet-500" },
@@ -64,9 +64,9 @@ const CLIENT_COLORS = [
   { avatar: "bg-amber-500",  accent: "border-amber-300",  block: "bg-amber-100  border-l-4 border-amber-500"  },
 ];
 
-// Devuelve lun–vie de la semana dada
+// Devuelve lun–dom de la semana dada
 function getWeekDates(monday: Date): Date[] {
-  return Array.from({ length: 5 }, (_, i) => {
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(d.getDate() + i);
     return d;
@@ -161,7 +161,7 @@ export default function ClientsAndAgenda() {
   }
 
   const weekLabel = (() => {
-    const from = weekDates[0], to = weekDates[4];
+    const from = weekDates[0], to = weekDates[6];
     if (from.getMonth() === to.getMonth())
       return `${from.getDate()}–${to.getDate()} ${MONTH_NAMES[from.getMonth()]} ${from.getFullYear()}`;
     return `${from.getDate()} ${MONTH_NAMES[from.getMonth()]} – ${to.getDate()} ${MONTH_NAMES[to.getMonth()]} ${to.getFullYear()}`;
@@ -267,15 +267,16 @@ export default function ClientsAndAgenda() {
             ) : (
               <div className="bg-surface border border-border rounded overflow-auto">
                 {/* Day headers — lun a vie */}
-                <div className="grid border-b border-border" style={{ gridTemplateColumns: "52px repeat(5, 1fr)" }}>
+                <div className="grid border-b border-border" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
                   <div className="border-r border-border" />
                   {weekDates.map((d, i) => {
-                    const str     = toDateStr(d);
-                    const isToday = str === todayStr;
+                    const str       = toDateStr(d);
+                    const isToday   = str === todayStr;
+                    const isWeekend = i >= 5;
                     return (
                       <div
                         key={str}
-                        className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[56px] ${isToday ? "bg-accent/10" : ""}`}
+                        className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[56px] ${isToday ? "bg-accent/10" : isWeekend ? "bg-border/10" : ""}`}
                       >
                         <p className="text-xs text-ink-muted uppercase tracking-wide font-semibold">
                           {DOW_LABELS[i]}
@@ -296,7 +297,7 @@ export default function ClientsAndAgenda() {
                 </div>
 
                 {/* Time grid */}
-                <div className="relative grid" style={{ gridTemplateColumns: "52px repeat(5, 1fr)" }}>
+                <div className="relative grid" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
                   {/* Hour labels */}
                   <div className="border-r border-border">
                     {HOURS.map((h) => (
@@ -311,14 +312,15 @@ export default function ClientsAndAgenda() {
                   </div>
 
                   {/* Day columns */}
-                  {weekDates.map((d) => {
-                    const str    = toDateStr(d);
-                    const isToday = str === todayStr;
-                    const dayRes = reservasByDay[str] ?? [];
+                  {weekDates.map((d, i) => {
+                    const str      = toDateStr(d);
+                    const isToday  = str === todayStr;
+                    const isWeekend = i >= 5;
+                    const dayRes   = reservasByDay[str] ?? [];
                     return (
                       <div
                         key={str}
-                        className={`relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : ""}`}
+                        className={`relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : isWeekend ? "bg-border/10" : ""}`}
                       >
                         {HOURS.map((_, hi) => (
                           <div key={hi} className="border-b border-border/20" style={{ height: CELL }} />

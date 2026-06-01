@@ -174,30 +174,6 @@ export default function Login() {
           >
             <GoogleIcon /> Google
           </button>
-            <button className="flex-1 flex items-center justify-center gap-2 border border-border rounded py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink">
-              Apple
-            </button>
-          </div>
-
-          {/* Demo */}
-          <div className="border border-dashed border-border rounded p-4 space-y-2">
-            <p className="text-xs text-ink-muted text-center font-semibold uppercase tracking-widest">
-              Acceso rápido (Demo)
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleDemo("client")}
-                className="flex-1 text-xs bg-primary-soft text-ink rounded py-2 font-semibold hover:bg-ink hover:text-white transition-colors"
-              >
-                Demo Cliente
-              </button>
-              <button
-                onClick={() => handleDemo("professional")}
-                className="flex-1 text-xs bg-accent text-ink rounded py-2 font-semibold hover:bg-ink hover:text-white transition-colors"
-              >
-                Demo Profesional
-              </button>
-            </div>
           </div>
 
           <p className="text-xs text-ink-muted text-center mt-6">
