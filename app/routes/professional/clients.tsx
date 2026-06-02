@@ -21,6 +21,11 @@ interface Reserva {
   estado: string;
   cliente_nombre: string;
   servicio: { nombre: string; duracion: number; modalidad: string };
+  pago?: {
+    pago_id?: number;
+    estado: "pendiente" | "aprobado" | "rechazado" | "fallido";
+    metodo?: "paypal" | "presencial";
+  };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -107,7 +112,7 @@ export default function ClientsAndAgenda() {
 
   // Control de acción en curso
   const [updatingId, setUpdatingId] = useState<number | null>(null);
-
+  const [actionMode, setActionMode] = useState<"none" | "attendance">("none");
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchAgenda = () => {
     if (!token) return;
@@ -505,12 +510,96 @@ export default function ClientsAndAgenda() {
                   <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-2">
                     Turno seleccionado
                   </p>
+
                   <ReservaCard
                     reserva={selectedReserva}
                     updatingId={updatingId}
                     onCambiarEstado={cambiarEstado}
                     highlight
                   />
+
+                  {/* SOLO SI ESTÁ EN CURSO O FINALIZADA */}
+                  {(selectedReserva.estado === "en_curso" ||
+                    selectedReserva.estado === "finalizada") && (
+                    <>
+                      {/* ───── ASISTENCIA ───── */}
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          className="flex-1 bg-green-600 text-white rounded py-1.5 text-xs font-semibold"
+                          onClick={() => setSelectedReserva(null)}
+                        >
+                          Asistió
+                        </button>
+
+                        <button
+                          className="flex-1 bg-red-600 text-white rounded py-1.5 text-xs font-semibold"
+                          onClick={async () => {
+                            const r = selectedReserva;
+
+                            await api.put(
+                              `/reservas/${r.reserva_id}/estado`,
+                              { estado: "no_asistida" },
+                              token
+                            );
+
+                            setReservas((prev) =>
+                              prev.map((x) =>
+                                x.reserva_id === r.reserva_id
+                                  ? { ...x, estado: "no_asistida" }
+                                  : x
+                              )
+                            );
+
+                            setSelectedReserva((prev) =>
+                              prev ? { ...prev, estado: "no_asistida" } : null
+                            );
+                          }}
+                        >
+                          No asistió
+                        </button>
+                      </div>
+
+                      {/* ───── PAGO ───── */}
+                      {selectedReserva.pago && (
+                        <div className="flex gap-2 mt-3">
+                          <button
+                          className={`flex-1 rounded py-1.5 text-xs font-semibold transition-colors ${
+                            selectedReserva.pago?.estado === "aprobado"
+                              ? "bg-green-600 text-white"
+                              : "bg-blue-600 text-white hover:bg-blue-700"
+                          }`}
+                          onClick={async () => {
+                            const r = selectedReserva;
+
+                            await api.post(
+                              `/reservas/${r.reserva_id}/pago-presencial`,
+                              {},
+                              token
+                            );
+
+                            setReservas((prev) =>
+                              prev.map((x) =>
+                                x.reserva_id === r.reserva_id
+                                  ? { ...x, pago: { ...x.pago!, estado: "aprobado" } }
+                                  : x
+                              )
+                            );
+
+                            setSelectedReserva((prev) =>
+                              prev
+                                ? { ...prev, pago: { ...prev.pago!, estado: "aprobado" } }
+                                : null
+                            );
+                          }}
+                        >
+                          {selectedReserva.pago?.estado === "aprobado"
+                            ? "Pagado"
+                            : "Pago"}
+                        </button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 
