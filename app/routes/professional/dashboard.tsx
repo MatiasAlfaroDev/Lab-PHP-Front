@@ -35,6 +35,19 @@ function startOfWeekStr() {
   return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
 }
 
+function puedeEntrar(reserva: Reserva) {
+  const ahora = new Date();
+
+  const inicio = new Date(`${reserva.fecha}T${reserva.hora}`);
+  const fin = new Date(inicio);
+  fin.setMinutes(fin.getMinutes() + (reserva.servicio?.duracion ?? 60));
+
+  const margenAntes = new Date(inicio);
+  margenAntes.setMinutes(margenAntes.getMinutes() - 1); // o 5 min si querés
+
+  return ahora >= margenAntes && ahora <= fin;
+}
+
 const statusMap: Record<string, { label: string; cls: string }> = {
   finalizada: { label: "FINALIZADA", cls: "text-xs text-ink-muted font-bold uppercase" },
   en_curso:   { label: "EN VIVO",    cls: "badge badge-en-vivo" },
@@ -281,10 +294,10 @@ export default function ProfessionalDashboard() {
                       {statusMap[estado] && (
                         <span className={statusMap[estado].cls}>{statusMap[estado].label}</span>
                       )}
-                      {estado === "en_curso" && (
+                      {item.servicio?.modalidad === "virtual" && puedeEntrar(item) && (
                         <button className="flex items-center gap-2 bg-ink text-white text-sm font-semibold px-4 py-2 rounded hover:bg-primary transition-colors">
                           <VideoIcon />
-                          Entrar
+                          Iniciar videollamada
                         </button>
                       )}
                     </div>

@@ -34,6 +34,7 @@ export default [
     route("users", "routes/admin/users.tsx"),
     route("payments", "routes/admin/payments.tsx"),
   ]),
+  route("videollamada", "routes/videollamada.tsx"),
 
   route("session/:id", "routes/session.$id.tsx"),
   route("session/:id/rating", "routes/session.$id.rating.tsx"),

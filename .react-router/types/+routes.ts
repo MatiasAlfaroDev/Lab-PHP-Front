@@ -90,6 +90,9 @@ type Pages = {
   "/admin/payments": {
     params: {};
   };
+  "/videollamada": {
+    params: {};
+  };
   "/session/:id": {
     params: {
       "id": string;
@@ -105,7 +108,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/client/reservas" | "/client/profile" | "/professional" | "/professional/dashboard" | "/professional/services" | "/professional/service-packages" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/professional/profile" | "/admin" | "/admin/users" | "/admin/payments" | "/session/:id" | "/session/:id/rating";
+    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/client/reservas" | "/client/profile" | "/professional" | "/professional/dashboard" | "/professional/services" | "/professional/service-packages" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/professional/profile" | "/admin" | "/admin/users" | "/admin/payments" | "/videollamada" | "/session/:id" | "/session/:id/rating";
   };
   "routes/home.tsx": {
     id: "routes/home";
@@ -219,6 +222,10 @@ type RouteFiles = {
     id: "routes/admin/payments";
     page: "/admin/payments";
   };
+  "routes/videollamada.tsx": {
+    id: "routes/videollamada";
+    page: "/videollamada";
+  };
   "routes/session.$id.tsx": {
     id: "routes/session.$id";
     page: "/session/:id";
@@ -259,6 +266,7 @@ type RouteModules = {
   "routes/admin/dashboard": typeof import("./app/routes/admin/dashboard.tsx");
   "routes/admin/users": typeof import("./app/routes/admin/users.tsx");
   "routes/admin/payments": typeof import("./app/routes/admin/payments.tsx");
+  "routes/videollamada": typeof import("./app/routes/videollamada.tsx");
   "routes/session.$id": typeof import("./app/routes/session.$id.tsx");
   "routes/session.$id.rating": typeof import("./app/routes/session.$id.rating.tsx");
 };
