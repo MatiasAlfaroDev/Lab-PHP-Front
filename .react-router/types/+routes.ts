@@ -90,8 +90,10 @@ type Pages = {
   "/admin/payments": {
     params: {};
   };
-  "/videollamada": {
-    params: {};
+  "/videollamada/:id": {
+    params: {
+      "id": string;
+    };
   };
   "/session/:id": {
     params: {
@@ -108,7 +110,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/client/reservas" | "/client/profile" | "/professional" | "/professional/dashboard" | "/professional/services" | "/professional/service-packages" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/professional/profile" | "/admin" | "/admin/users" | "/admin/payments" | "/videollamada" | "/session/:id" | "/session/:id/rating";
+    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/client/reservas" | "/client/profile" | "/professional" | "/professional/dashboard" | "/professional/services" | "/professional/service-packages" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/professional/profile" | "/admin" | "/admin/users" | "/admin/payments" | "/videollamada/:id" | "/session/:id" | "/session/:id/rating";
   };
   "routes/home.tsx": {
     id: "routes/home";
@@ -224,7 +226,7 @@ type RouteFiles = {
   };
   "routes/videollamada.tsx": {
     id: "routes/videollamada";
-    page: "/videollamada";
+    page: "/videollamada/:id";
   };
   "routes/session.$id.tsx": {
     id: "routes/session.$id";

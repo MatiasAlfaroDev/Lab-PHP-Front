@@ -1,38 +1,7 @@
 import { Link } from "react-router";
 import { useAuth } from "~/context/AuthContext";
-
-const upcomingBookings = [
-  {
-    id: 1,
-    date: "MAY",
-    day: "20",
-    initials: "MO",
-    name: "María Ortiz",
-    status: "Confirmada",
-    statusKey: "confirmada",
-    detail: "Sesión individual · 16:30 · 50 min · Virtual",
-  },
-  {
-    id: 2,
-    date: "MAY",
-    day: "24",
-    initials: "AC",
-    name: "Andrés Calleja",
-    status: "Pagada",
-    statusKey: "pagada",
-    detail: "Entrenamiento personalizado · Lun 09:00 · 60 min · Presencial",
-  },
-  {
-    id: 3,
-    date: "MAY",
-    day: "28",
-    initials: "LS",
-    name: "Liana Souza",
-    status: "Pendiente",
-    statusKey: "pendiente",
-    detail: "Asesoría nutricional · Vie 11:00 · 45 min · Virtual",
-  },
-];
+import { useState, useEffect, useMemo } from "react";
+import { api } from "~/lib/api";
 
 const badgeClass: Record<string, string> = {
   confirmada: "badge-confirmada",
@@ -45,18 +14,74 @@ const avatarColors: Record<string, string> = {
   AC: "bg-orange-400",
   LS: "bg-teal-500",
 };
-
+type Reserva = {
+  reserva_id: number;
+  fecha: string;
+  hora: string;
+  estado: string;
+  estado_videollamada: "pendiente" | "no_aplica" | "en_curso" | "finalizada";
+  modalidad: "virtual" | "presencial" | null;
+  servicio: {
+    nombre: string;
+    profesional_nombre: string;
+    duracion?: number;
+    precio?: string | number;
+  };
+  pago?: {
+    estado: string;
+  } | null;
+};
 export default function ClientDashboard() {
-  const { user } = useAuth();
-  const firstName = user?.name?.split(" ")[0] ?? "Lucía";
+  const {token, user } = useAuth();
+  const [bookings, setBookings] = useState<Reserva[]>([]);
+  const now = new Date();
+  
+  useEffect(() => {
+    const load = async () => {
+      if (!token) return;
 
+      const res = await api.get<{ success: boolean; data: Reserva[] }>("/mis-reservas", token);
+      setBookings(res.data);
+    };
+
+    load();
+  }, [token]);
+  const upcomingBookings = bookings
+  .filter((b) => {
+    const date = new Date(`${b.fecha}T${b.hora}`);
+
+    const cancelled =
+      b.estado === "cancelada" || b.estado === "no_asistida";
+
+    return date >= now && !cancelled;
+  })
+  .sort((a, b) => {
+    const dateA = new Date(`${a.fecha}T${a.hora}`);
+    const dateB = new Date(`${b.fecha}T${b.hora}`);
+    return dateA.getTime() - dateB.getTime();
+  });
+  const upcomingCount = upcomingBookings.length;
+  const todaySession = useMemo(() => {
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  return bookings
+    .filter((b) => {
+      return (
+        b.fecha === todayStr &&
+        b.modalidad === "virtual" &&
+        b.estado !== "cancelada"
+      );
+    })
+    .sort((a, b) => a.hora.localeCompare(b.hora))[0];
+}, [bookings]);
+  
   return (
     <div className="p-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="font-display italic text-3xl text-ink">Hola, {firstName}</h1>
-          <p className="text-ink-muted mt-1">Tenés 2 reservas próximas y 1 paquete activo.</p>
+          { <h1 className="font-display italic text-3xl text-ink">Hola, {user?.name}</h1> }
+          <p className="text-ink-muted mt-1">Tenés {upcomingCount} reserva{upcomingCount !== 1 ? "s" : ""} próximas</p>
         </div>
         <Link
           to="/client/discover"
@@ -66,38 +91,36 @@ export default function ClientDashboard() {
         </Link>
       </div>
 
-      {/* Upcoming session banner */}
-      <div className="bg-primary-soft rounded-2xl p-6 mb-8 flex items-start justify-between">
-        <div>
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary mb-2">
-            <span className="w-2 h-2 rounded-full bg-accent inline-block" />
-            Hoy · en 2h 14min
-          </span>
-          <h2 className="font-display italic text-2xl text-ink mb-2">
-            Sesión con María Ortiz
-          </h2>
-          <div className="flex items-center gap-4 text-sm text-ink-muted">
-            <span>16:30 — 17:20</span>
-            <span>Virtual</span>
-            <span>Paquete · sesión 5/8</span>
-          </div>
-          <div className="flex gap-3 mt-4">
-            <Link
-              to="/session/1"
-              className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
-            >
-              Entrar a la sesión
-            </Link>
-            <button className="text-sm font-medium text-ink border border-border bg-white hover:bg-bg px-4 py-2 rounded-xl transition-colors">
-              Reprogramar
-            </button>
+      {todaySession && (
+        <div className="bg-primary-soft rounded-2xl p-6 mb-8 flex items-start justify-between">
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary mb-2">
+              <span className="w-2 h-2 rounded-full bg-accent inline-block" />
+              Hoy · {todaySession.hora.slice(0, 5)}
+            </span>
+
+            <h2 className="font-display italic text-2xl text-ink mb-2">
+              Sesión con {todaySession.servicio.profesional_nombre}
+            </h2>
+
+            <div className="flex items-center gap-4 text-sm text-ink-muted">
+              <span>{todaySession.hora.slice(0, 5)}</span>
+              <span>Virtual</span>
+            </div>
+
+            <div className="flex gap-3 mt-4">
+              {todaySession.estado_videollamada === "en_curso" && (
+                <Link
+                  to={`/videollamada/${todaySession.reserva_id}`}
+                  className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+                >
+                  Entrar a la sesión
+                </Link>
+              )}
+            </div>
           </div>
         </div>
-        <div
-          className="w-40 h-28 rounded-xl opacity-60 shrink-0 hidden md:block"
-          style={{ background: "linear-gradient(135deg, #e07055, #c8ddd2)" }}
-        />
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Bookings */}
@@ -105,49 +128,59 @@ export default function ClientDashboard() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display italic text-xl text-ink">Próximas reservas</h3>
             <div className="flex gap-1">
-              {["Próximas", "Pasadas", "Canceladas"].map((tab) => (
-                <button
-                  key={tab}
-                  className={`text-sm px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                    tab === "Próximas"
-                      ? "bg-surface border border-border text-ink shadow-sm"
-                      : "text-ink-muted hover:text-ink"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
             </div>
           </div>
 
           <div className="space-y-3">
             {upcomingBookings.map((b) => (
               <div
-                key={b.id}
+                key={b.reserva_id}
                 className="bg-surface border border-border rounded-2xl p-4 flex items-center gap-4"
               >
+                {/* FECHA */}
                 <div className="text-center min-w-10">
-                  <p className="text-xs text-ink-muted uppercase font-medium">{b.date}</p>
-                  <p className="font-display italic text-2xl text-ink">{b.day}</p>
+                  <p className="text-xs text-ink-muted uppercase font-medium">
+                    {b.fecha}
+                  </p>
+                  <p className="font-display italic text-lg text-ink">
+                    {b.hora.slice(0, 5)}
+                  </p>
                 </div>
-                <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 ${
-                    avatarColors[b.initials] ?? "bg-primary"
-                  }`}
-                >
-                  {b.initials}
+
+                {/* AVATAR SIMPLE (sin initials por ahora) */}
+                <div className="w-9 h-9 rounded-full flex items-center justify-center bg-primary text-white text-xs font-semibold shrink-0">
+                  {b.servicio.profesional_nombre[0]}
                 </div>
+
+                {/* INFO */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-medium text-ink">{b.name}</span>
-                    <span className={`badge ${badgeClass[b.statusKey]}`}>{b.status}</span>
+                    <span className="text-sm font-medium text-ink">
+                      {b.servicio.profesional_nombre}
+                    </span>
+
+                    <span className="badge">
+                      {b.estado}
+                    </span>
                   </div>
-                  <p className="text-xs text-ink-muted truncate">{b.detail}</p>
+
+                  <p className="text-xs text-ink-muted truncate">
+                    {b.modalidad}
+                  </p>
                 </div>
+
+                {/* ACCIONES */}
                 <div className="flex items-center gap-2">
-                  <button className="text-sm text-primary font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-bg transition-colors">
-                    Ver
-                  </button>
+                  {b.modalidad === "virtual" &&
+                    b.estado_videollamada === "en_curso" && (
+                      <Link
+                        to={`/videollamada/${b.reserva_id}`}
+                        className="text-sm bg-accent text-white px-3 py-1.5 rounded-lg"
+                      >
+                        Entrar
+                      </Link>
+                    )}
+
                   <button className="text-ink-muted hover:text-ink">
                     <DotsIcon />
                   </button>

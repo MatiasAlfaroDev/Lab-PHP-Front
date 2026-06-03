@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Room, Track } from "livekit-client";
+import { api } from "~/lib/api";
+import { useAuth } from "~/context/AuthContext";
 
 export default function Videollamada() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const { token } = useAuth();
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -14,42 +18,78 @@ export default function Videollamada() {
   const [camOn, setCamOn] = useState(true);
   const [participants, setParticipants] = useState(1);
 
-  const RESERVA_ID = 1;
+  // SALIR
+  const salir = async () => {
+    try {
+      await api.post(
+        `/videollamada/${id}/estado`,
+        { estado: "finalizada" },
+        token
+      );
+
+      await roomRef.current?.disconnect();
+    } finally {
+      navigate("/");
+    }
+  };
+
+  // cierre brusco
+  useEffect(() => {
+    const handleUnload = () => {
+      navigator.sendBeacon(
+        `${import.meta.env.VITE_API_URL}/videollamada/${id}/estado`,
+        JSON.stringify({ estado: "finalizada" })
+      );
+    };
+
+    window.addEventListener("beforeunload", handleUnload);
+
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, [id]);
 
   useEffect(() => {
+    if (!id || !token) return;
+
     const room = new Room();
     roomRef.current = room;
 
+    const attachLocalVideo = () => {
+      room.localParticipant.videoTrackPublications.forEach((pub) => {
+        if (pub.track && localVideoRef.current) {
+          pub.track.attach(localVideoRef.current);
+        }
+      });
+    };
+
     const join = async () => {
       try {
-        const res = await fetch(
-          `http://localhost:8000/api/videollamada/token/${RESERVA_ID}`
+        // token livekit
+        const res = await api.get<{
+          success: boolean;
+          data: { token: string; url: string };
+        }>(`/videollamada/token/${id}`, token);
+
+        const { token: livekitToken, url } = res.data;
+
+        await room.connect(url, livekitToken);
+
+        // estado en curso
+        await api.post(
+          `/videollamada/${id}/estado`,
+          { estado: "en_curso" },
+          token
         );
 
-        const json = await res.json();
-        const { token, url } = json.data;
-
-        await room.connect(url, token);
-
-        // 🔵 activar cámara y mic
+        // 🔵 cámara y mic
         await room.localParticipant.setCameraEnabled(true);
         await room.localParticipant.setMicrophoneEnabled(true);
 
-        // 🟢 LOCAL VIDEO
-        const attachLocal = () => {
-          const pub =
-            room.localParticipant.videoTrackPublications.values().next().value;
+        // 🟢 LOCAL VIDEO (CORRECTO)
+        attachLocalVideo();
+        room.localParticipant.on("trackPublished", attachLocalVideo);
 
-          if (pub?.track && localVideoRef.current) {
-            pub.track.attach(localVideoRef.current);
-          }
-        };
-
-        room.localParticipant.on("trackPublished", attachLocal);
-        attachLocal();
-
-        // 🔴 REMOTO (1 a 1 correcto)
-        room.on("trackSubscribed", (track, publication, participant) => {
+        // 🔴 REMOTO
+        room.on("trackSubscribed", (track) => {
           if (track.kind === Track.Kind.Video && remoteVideoRef.current) {
             track.attach(remoteVideoRef.current);
           }
@@ -75,9 +115,9 @@ export default function Videollamada() {
     return () => {
       room.disconnect();
     };
-  }, []);
+  }, [id, token]);
 
-  // 🎤 MIC
+  // 🎤 mic
   const toggleMic = async () => {
     if (!roomRef.current) return;
 
@@ -87,19 +127,14 @@ export default function Videollamada() {
     await roomRef.current.localParticipant.setMicrophoneEnabled(enabled);
   };
 
-  // 📷 CAM
+  // 📷 cam
   const toggleCam = async () => {
     if (!roomRef.current) return;
 
     const enabled = !camOn;
     setCamOn(enabled);
 
-    const pub =
-      await roomRef.current.localParticipant.setCameraEnabled(enabled);
-
-    if (enabled && pub?.track && localVideoRef.current) {
-      pub.track.attach(localVideoRef.current);
-    }
+    await roomRef.current.localParticipant.setCameraEnabled(enabled);
   };
 
   return (
@@ -110,14 +145,14 @@ export default function Videollamada() {
         <div className="font-semibold">🎥 Videollamada</div>
 
         <div className="text-sm text-white/60 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-          👥 {participants} conectado{participants > 1 ? "s" : ""}
+          👥 {participants}
         </div>
       </div>
 
-      {/* VIDEO AREA */}
+      {/* VIDEO */}
       <div className="flex-1 relative">
 
-        {/* 🔴 REMOTO */}
+        {/* 🔴 remoto */}
         <video
           ref={remoteVideoRef}
           autoPlay
@@ -125,15 +160,8 @@ export default function Videollamada() {
           className="absolute w-full h-full object-cover bg-black"
         />
 
-        {/* overlay */}
-        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-          <div className="text-white/50 text-sm bg-black/40 px-4 py-2 rounded-xl border border-white/10 backdrop-blur">
-            Esperando otro usuario...
-          </div>
-        </div>
-
-        {/* 🟢 LOCAL */}
-        <div className="absolute bottom-5 right-5 w-48 h-32 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black">
+        {/* 🟢 local */}
+        <div className="absolute bottom-5 right-5 w-48 h-32 rounded-2xl overflow-hidden border border-white/20 bg-black">
           <video
             ref={localVideoRef}
             autoPlay
@@ -142,37 +170,32 @@ export default function Videollamada() {
             className="w-full h-full object-cover"
           />
         </div>
-
       </div>
 
       {/* CONTROLES */}
-      <div className="p-4 flex justify-center gap-4 bg-black/60 backdrop-blur border-t border-white/10">
+      <div className="p-4 flex justify-center gap-4 bg-black/60 border-t border-white/10">
 
         <button
           onClick={toggleMic}
-          className={`px-5 py-2 rounded-full transition font-medium ${
-            micOn
-              ? "bg-emerald-500/90 hover:bg-emerald-500"
-              : "bg-red-500/90 hover:bg-red-500"
+          className={`px-5 py-2 rounded-full ${
+            micOn ? "bg-green-500" : "bg-red-500"
           }`}
         >
-          🎤 {micOn ? "Mic ON" : "Mic OFF"}
+          🎤
         </button>
 
         <button
           onClick={toggleCam}
-          className={`px-5 py-2 rounded-full transition font-medium ${
-            camOn
-              ? "bg-emerald-500/90 hover:bg-emerald-500"
-              : "bg-red-500/90 hover:bg-red-500"
+          className={`px-5 py-2 rounded-full ${
+            camOn ? "bg-green-500" : "bg-red-500"
           }`}
         >
-          📷 {camOn ? "Cam ON" : "Cam OFF"}
+          📷
         </button>
 
         <button
-          onClick={() => navigate("/")}
-          className="px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/10"
+          onClick={salir}
+          className="px-5 py-2 rounded-full bg-white/10"
         >
           Salir
         </button>

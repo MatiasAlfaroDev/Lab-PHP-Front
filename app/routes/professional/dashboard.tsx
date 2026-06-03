@@ -12,6 +12,7 @@ interface Reserva {
   estado: string;
   servicio?: { nombre: string; modalidad?: string; duracion?: number };
   cliente_nombre?: string;
+  modalidad?: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -36,16 +37,18 @@ function startOfWeekStr() {
 }
 
 function puedeEntrar(reserva: Reserva) {
+  if (!reserva.servicio?.duracion) return false;
+
   const ahora = new Date();
 
   const inicio = new Date(`${reserva.fecha}T${reserva.hora}`);
   const fin = new Date(inicio);
-  fin.setMinutes(fin.getMinutes() + (reserva.servicio?.duracion ?? 60));
+  fin.setMinutes(fin.getMinutes() + reserva.servicio.duracion);
 
-  const margenAntes = new Date(inicio);
-  margenAntes.setMinutes(margenAntes.getMinutes() - 1); // o 5 min si querés
+  const desde = new Date(inicio);
+  desde.setMinutes(desde.getMinutes() - 10);
 
-  return ahora >= margenAntes && ahora <= fin;
+  return ahora >= desde && ahora <= fin;
 }
 
 const statusMap: Record<string, { label: string; cls: string }> = {
@@ -294,11 +297,13 @@ export default function ProfessionalDashboard() {
                       {statusMap[estado] && (
                         <span className={statusMap[estado].cls}>{statusMap[estado].label}</span>
                       )}
-                      {item.servicio?.modalidad === "virtual" && puedeEntrar(item) && (
-                        <button className="flex items-center gap-2 bg-ink text-white text-sm font-semibold px-4 py-2 rounded hover:bg-primary transition-colors">
-                          <VideoIcon />
-                          Iniciar videollamada
-                        </button>
+                      {item.modalidad === "virtual" && puedeEntrar(item) && (
+                        <Link to={`/videollamada/${item.reserva_id}`}>
+                          <button className="flex items-center gap-2 bg-ink text-white text-sm font-semibold px-4 py-2 rounded hover:bg-primary transition-colors">
+                            <VideoIcon />
+                            Iniciar videollamada
+                          </button>
+                        </Link>
                       )}
                     </div>
                   </div>
