@@ -31,39 +31,40 @@ export default function Videollamada() {
 
         await room.connect(url, token);
 
-        // 🎥 cámara + mic
-        const videoPub = await room.localParticipant.setCameraEnabled(true);
+        // 🔵 activar cámara y mic
+        await room.localParticipant.setCameraEnabled(true);
         await room.localParticipant.setMicrophoneEnabled(true);
 
-        if (videoPub?.track && localVideoRef.current) {
-          videoPub.track.attach(localVideoRef.current);
-        }
+        // 🟢 LOCAL VIDEO
+        const attachLocal = () => {
+          const pub =
+            room.localParticipant.videoTrackPublications.values().next().value;
 
-        // 👤 remoto
-        room.on("trackSubscribed", (track) => {
+          if (pub?.track && localVideoRef.current) {
+            pub.track.attach(localVideoRef.current);
+          }
+        };
+
+        room.localParticipant.on("trackPublished", attachLocal);
+        attachLocal();
+
+        // 🔴 REMOTO (1 a 1 correcto)
+        room.on("trackSubscribed", (track, publication, participant) => {
           if (track.kind === Track.Kind.Video && remoteVideoRef.current) {
             track.attach(remoteVideoRef.current);
           }
         });
 
         // 👥 participantes
-        const updateParticipants = () => {
-          const count = room.participants.size + 1; // +1 local
-          setParticipants(count);
+        setParticipants(room.numParticipants);
 
-          // 🔴 si queda solo uno → cerrar sala
-          if (count <= 1) {
-            room.disconnect();
-            navigate("/");
-          }
-        };
+        room.on("participantConnected", () => {
+          setParticipants(room.numParticipants);
+        });
 
-        room.on("participantConnected", updateParticipants);
-        room.on("participantDisconnected", updateParticipants);
-
-        // inicial
-        updateParticipants();
-
+        room.on("participantDisconnected", () => {
+          setParticipants(room.numParticipants);
+        });
       } catch (err) {
         console.error("LiveKit error:", err);
       }
@@ -71,27 +72,12 @@ export default function Videollamada() {
 
     join();
 
-    // 🧹 cleanup al desmontar componente
     return () => {
       room.disconnect();
-      roomRef.current = null;
     };
   }, []);
 
-  // 🚪 cerrar si se cierra la pestaña
-  useEffect(() => {
-    const handleUnload = () => {
-      roomRef.current?.disconnect();
-    };
-
-    window.addEventListener("beforeunload", handleUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleUnload);
-    };
-  }, []);
-
-  // 🎤 mic
+  // 🎤 MIC
   const toggleMic = async () => {
     if (!roomRef.current) return;
 
@@ -101,32 +87,37 @@ export default function Videollamada() {
     await roomRef.current.localParticipant.setMicrophoneEnabled(enabled);
   };
 
-  // 📷 cam
+  // 📷 CAM
   const toggleCam = async () => {
     if (!roomRef.current) return;
 
     const enabled = !camOn;
     setCamOn(enabled);
 
-    const videoPub =
+    const pub =
       await roomRef.current.localParticipant.setCameraEnabled(enabled);
 
-    if (enabled && videoPub?.track && localVideoRef.current) {
-      videoPub.track.attach(localVideoRef.current);
+    if (enabled && pub?.track && localVideoRef.current) {
+      pub.track.attach(localVideoRef.current);
     }
   };
 
   return (
-    <div className="h-screen flex flex-col bg-black text-white">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-zinc-950 via-black to-zinc-900 text-white">
 
-      <div className="p-3 border-b border-white/10 flex justify-between">
-        <span>🎥 Videollamada</span>
-        <span>👥 {participants}</span>
+      {/* HEADER */}
+      <div className="px-5 py-3 flex justify-between items-center border-b border-white/10 bg-black/40 backdrop-blur">
+        <div className="font-semibold">🎥 Videollamada</div>
+
+        <div className="text-sm text-white/60 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+          👥 {participants} conectado{participants > 1 ? "s" : ""}
+        </div>
       </div>
 
+      {/* VIDEO AREA */}
       <div className="flex-1 relative">
 
-        {/* REMOTO */}
+        {/* 🔴 REMOTO */}
         <video
           ref={remoteVideoRef}
           autoPlay
@@ -134,12 +125,15 @@ export default function Videollamada() {
           className="absolute w-full h-full object-cover bg-black"
         />
 
-        <div className="absolute inset-0 flex items-center justify-center text-white/40">
-          Esperando otro usuario...
+        {/* overlay */}
+        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+          <div className="text-white/50 text-sm bg-black/40 px-4 py-2 rounded-xl border border-white/10 backdrop-blur">
+            Esperando otro usuario...
+          </div>
         </div>
 
-        {/* LOCAL */}
-        <div className="absolute bottom-4 right-4 w-40 h-28 bg-black border border-white/20 rounded overflow-hidden">
+        {/* 🟢 LOCAL */}
+        <div className="absolute bottom-5 right-5 w-48 h-32 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black">
           <video
             ref={localVideoRef}
             autoPlay
@@ -151,22 +145,39 @@ export default function Videollamada() {
 
       </div>
 
-      <div className="p-3 flex gap-3 justify-center">
+      {/* CONTROLES */}
+      <div className="p-4 flex justify-center gap-4 bg-black/60 backdrop-blur border-t border-white/10">
 
-        <button onClick={toggleMic}>
-          🎤 Mic {micOn ? "ON" : "OFF"}
+        <button
+          onClick={toggleMic}
+          className={`px-5 py-2 rounded-full transition font-medium ${
+            micOn
+              ? "bg-emerald-500/90 hover:bg-emerald-500"
+              : "bg-red-500/90 hover:bg-red-500"
+          }`}
+        >
+          🎤 {micOn ? "Mic ON" : "Mic OFF"}
         </button>
 
-        <button onClick={toggleCam}>
-          📷 Cam {camOn ? "ON" : "OFF"}
+        <button
+          onClick={toggleCam}
+          className={`px-5 py-2 rounded-full transition font-medium ${
+            camOn
+              ? "bg-emerald-500/90 hover:bg-emerald-500"
+              : "bg-red-500/90 hover:bg-red-500"
+          }`}
+        >
+          📷 {camOn ? "Cam ON" : "Cam OFF"}
         </button>
 
-        <button onClick={() => navigate("/")}>
+        <button
+          onClick={() => navigate("/")}
+          className="px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/10"
+        >
           Salir
         </button>
 
       </div>
-
     </div>
   );
 }

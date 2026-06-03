@@ -159,97 +159,45 @@ const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID as string;
 function BookingModal({
   service, date, slot, onClose, token,
 }: {
-  service: Servicio; date: string; slot: string;
+  service: Servicio; date: string; slot: {
+  hora: string;
+  modalidad: string;
+};
   onClose: (success: boolean) => void; token: string | null;
 }) {
-  const [method, setMethod]         = useState<"sitio" | "paypal">("sitio");
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
   const [success, setSuccess]       = useState(false);
-  // PayPal SDK state
-  const [reservaId, setReservaId]   = useState<number | null>(null);
-  const [ppReady, setPpReady]       = useState(false);
-  const ppContainerRef              = useRef<HTMLDivElement>(null);
-  const ppRendered                  = useRef(false);
 
-  // Load PayPal SDK once
-  useEffect(() => {
-    if (document.getElementById("paypal-sdk")) { setPpReady(true); return; }
-    const script = document.createElement("script");
-    script.id  = "paypal-sdk";
-    script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD`;
-    script.onload = () => setPpReady(true);
-    document.body.appendChild(script);
-  }, []);
-
-  // Render PayPal button when we have a reserva_id and SDK is ready
-  useEffect(() => {
-    if (!ppReady || !reservaId || !ppContainerRef.current || ppRendered.current) return;
-    ppRendered.current = true;
-    const win = window as any;
-    win.paypal.Buttons({
-      style: { layout: "vertical", color: "gold", shape: "rect", label: "paypal" },
-      createOrder: async () => {
-        setError(null);
-        const res = await api.post<{ paypal_order_id: string }>(
-          `/pagos/reserva/${reservaId}/paypal`, {}, token
-        );
-        return res.paypal_order_id;
-      },
-      onApprove: async (_data: any, _actions: any) => {
-        try {
-          await api.post(
-            `/pagos/reserva/${reservaId}/capturar-sdk`,
-            { paypal_order_id: _data.orderID },
-            token
-          );
-          setSuccess(true);
-        } catch (e: any) {
-          setError(e.message ?? "Error al capturar el pago");
-        }
-      },
-      onError: (err: any) => {
-        setError("Error en el pago de PayPal. Intentá nuevamente.");
-        console.error(err);
-      },
-    }).render(ppContainerRef.current);
-  }, [ppReady, reservaId]);
-
+  
   // Step 1: create the reservation (only for "sitio"; PayPal does it in createOrder)
   const confirmSitio = async () => {
     setLoading(true);
     setError(null);
+
     try {
-      const res = await api.post<{ success: boolean; data: { reserva_id: number }; message?: string }>(
+      const res = await api.post<{
+        success: boolean;
+        data: { reserva_id: number };
+        message?: string;
+      }>(
         "/reservas",
-        { servicio_id: service.servicio_id, fecha: date, hora: slot },
+        {
+          servicio_id: service.servicio_id,
+          fecha: date,
+          hora: slot.hora,
+          modalidad: slot.modalidad,
+        },
         token
       );
-      if (!res.success) throw new Error(res.message ?? "Error al crear la reserva");
+
+      if (!res.success) {
+        throw new Error(res.message ?? "Error al crear la reserva");
+      }
+
       setSuccess(true);
     } catch (e: any) {
       setError(e.message ?? "Error al reservar");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // When switching to PayPal, pre-create the reservation so the button has an ID
-  const activatePaypal = async () => {
-    if (reservaId) { setMethod("paypal"); return; }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.post<{ success: boolean; data: { reserva_id: number }; message?: string }>(
-        "/reservas",
-        { servicio_id: service.servicio_id, fecha: date, hora: slot },
-        token
-      );
-      if (!res.success) throw new Error(res.message ?? "Error al crear la reserva");
-      setReservaId(res.data.reserva_id);
-      setMethod("paypal");
-    } catch (e: any) {
-      setError(e.message ?? "Error al preparar el pago");
     } finally {
       setLoading(false);
     }
@@ -269,7 +217,7 @@ function BookingModal({
             </div>
             <h3 className="font-display text-xl text-ink">¡Reserva confirmada!</h3>
             <p className="text-sm text-ink-muted">
-              {service.nombre} · {formatDateHuman(date)} · {slot}
+              {service.nombre} · {formatDateHuman(date)} · {slot.hora} · {normalizeModality(slot.modalidad)}
             </p>
             <div className="flex gap-2 mt-2 w-full">
               <button
@@ -309,61 +257,12 @@ function BookingModal({
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-ink-muted">
                   <ion-icon name="time-outline" style={{ fontSize: "13px" }} />
-                  {slot} · {service.duracion} min
+                  {slot.hora} · {service.duracion} min
                 </div>
                 <p className="text-base font-bold text-ink pt-1">$ {Number(service.precio).toFixed(0)}</p>
               </div>
 
-              {/* Payment method selector */}
-              <div>
-                <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">Forma de pago</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setMethod("sitio")}
-                    disabled={!!reservaId}
-                    className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-medium transition-colors ${
-                      method === "sitio"
-                        ? "border-primary bg-primary-soft/20 text-ink"
-                        : "border-border text-ink-muted hover:border-primary/40"
-                    }`}
-                  >
-                    <ion-icon name="cash-outline" style={{ fontSize: "16px" }} />
-                    En el sitio
-                  </button>
-                  <button
-                    onClick={activatePaypal}
-                    disabled={loading}
-                    className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border text-sm font-medium transition-colors ${
-                      method === "paypal"
-                        ? "border-[#0070ba] bg-[#0070ba]/5 text-[#003087]"
-                        : "border-border text-ink-muted hover:border-[#0070ba]/40"
-                    }`}
-                  >
-                    <img src="https://www.paypalobjects.com/webstatic/mktg/Logo/pp-logo-100px.png" alt="PayPal" className="h-4" />
-                    PayPal
-                  </button>
-                </div>
-              </div>
-
-              {/* PayPal button container */}
-              {method === "paypal" && (
-                <div>
-                  {!ppReady || !reservaId ? (
-                    <div className="flex justify-center py-3">
-                      <span className="w-5 h-5 border-2 border-[#0070ba] border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  ) : (
-                    <div ref={ppContainerRef} />
-                  )}
-                </div>
-              )}
-
-              {error && (
-                <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
-              )}
-
               {/* Confirm button — only for "sitio" */}
-              {method === "sitio" && (
                 <button
                   onClick={confirmSitio}
                   disabled={loading}
@@ -372,7 +271,6 @@ function BookingModal({
                   {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                   {loading ? "Procesando..." : "Confirmar reserva"}
                 </button>
-              )}
             </div>
           </>
         )}
@@ -408,9 +306,9 @@ export default function ProfessionalDetail() {
 
   // Slots
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [slots, setSlots] = useState<string[]>([]);
+  const [slots, setSlots] = useState<{ hora: string; modalidad: string }[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<{ hora: string; modalidad: string } | null>(null);
   const [slotsError, setSlotsError] = useState<string | null>(null);
 
   // Load profile
@@ -439,12 +337,12 @@ export default function ProfessionalDetail() {
     setSlots([]);
     setSelectedSlot(null);
     api
-      .get<{ success: boolean; data: string[] }>(
-        `/servicios/${selectedService.servicio_id}/dias-disponibles`
-      )
-      .then((res) => {
-        if (res.success) setAvailableDays(new Set(res.data));
-      })
+    .get<{ success: boolean; data: string[] }>(
+      `/servicios/${selectedService.servicio_id}/dias-disponibles`
+    )
+    .then((res: { success: boolean; data: string[] }) => {
+      if (res.success) setAvailableDays(new Set(res.data));
+    })
       .catch(() => setAvailableDays(new Set()))
       .finally(() => setLoadingDays(false));
   }, [selectedService]);
@@ -452,16 +350,22 @@ export default function ProfessionalDetail() {
   // Load slots when date changes
   useEffect(() => {
     if (!selectedDate || !selectedService) return;
+
     setLoadingSlots(true);
     setSlots([]);
     setSelectedSlot(null);
     setSlotsError(null);
+
     api
-      .get<{ success: boolean; data: string[] }>(
+      .get<{ success: boolean; data: { hora: string; modalidad: string }[] }>(
         `/servicios/${selectedService.servicio_id}/slots?fecha=${selectedDate}`
       )
-      .then((res) => { if (res.success) setSlots(res.data); })
-      .catch((e: any) => setSlotsError(e.message ?? "Error al cargar horarios"))
+      .then((res) => {
+        if (res.success) setSlots(res.data);
+      })
+      .catch((e: any) =>
+        setSlotsError(e.message ?? "Error al cargar horarios")
+      )
       .finally(() => setLoadingSlots(false));
   }, [selectedDate, selectedService]);
 
@@ -727,15 +631,25 @@ export default function ProfessionalDetail() {
                         <div className="grid grid-cols-3 gap-1.5">
                           {slots.map((slot) => (
                             <button
-                              key={slot}
-                              onClick={() => setSelectedSlot(slot === selectedSlot ? null : slot)}
-                              className={`text-sm py-2 rounded-xl border transition-colors ${
-                                selectedSlot === slot
+                              key={slot.hora}
+                              onClick={() =>
+                                setSelectedSlot(
+                                  selectedSlot?.hora === slot.hora ? null : slot
+                                )
+                              }
+                              className={`text-sm py-2 rounded-xl border transition-colors flex flex-col items-center ${
+                                selectedSlot?.hora === slot.hora
                                   ? "bg-primary text-white border-primary"
                                   : "border-border text-ink hover:bg-bg"
                               }`}
                             >
-                              {slot}
+                              <span>{slot.hora}</span>
+
+                              {selectedService.modalidad === "hibrido" && (
+                                <span className="text-[10px] opacity-70">
+                                  {normalizeModality(slot.modalidad)}
+                                </span>
+                              )}
                             </button>
                           ))}
                         </div>

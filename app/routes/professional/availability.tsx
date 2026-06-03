@@ -17,11 +17,13 @@ interface Servicio {
   tipo: string;
   duracion: number;
   pausa: number;
+  modalidad: "presencial" | "virtual" | "hibrido";
 }
 
 interface Block {
   start: number; // decimal hours e.g. 9.5 = 09:30
   end:   number;
+  modalidad?: "presencial" | "virtual";
 }
 
 interface DaySlot {
@@ -108,14 +110,14 @@ function generateDefaultBlocks(): Block[] {
 }
 
 function dispsToSlots(
-  data: { dia_semana: string; hora_inicio: string; hora_fin: string }[]
+  data: { dia_semana: string; hora_inicio: string; hora_fin: string; modalidad?: "presencial" | "virtual" }[]
 ): WeekSlots {
   const slots: WeekSlots = structuredClone(DEFAULT_SLOTS);
   for (const d of data) {
     const key = DIA_TO_KEY[d.dia_semana];
     if (!key) continue;
     slots[key].active = true;
-    slots[key].blocks.push({ start: timeToHour(d.hora_inicio), end: timeToHour(d.hora_fin) });
+    slots[key].blocks.push({ start: timeToHour(d.hora_inicio), end: timeToHour(d.hora_fin), modalidad: d.modalidad });
   }
   return slots;
 }
@@ -128,6 +130,7 @@ function slotsToDisps(slots: WeekSlots) {
         dia_semana:  KEY_TO_DIA[key],
         hora_inicio: hourToTime(b.start),
         hora_fin:    hourToTime(b.end),
+         modalidad: b.modalidad,
       }))
     );
 }
@@ -348,7 +351,10 @@ export default function Availability() {
     const newBi = daySlot.blocks.length;
     setSlots((prev) => ({
       ...prev,
-      [day]: { active: true, blocks: [...prev[day].blocks, { start: newStart, end: newEnd }] },
+      [day]: { active: true, blocks: [...prev[day].blocks, { start: newStart, end: newEnd, modalidad:
+      selectedServicio?.modalidad === "hibrido"
+        ? "presencial"
+        : undefined }] },
     }));
     setSelectedBlock({ day, bi: newBi });
   };
@@ -640,6 +646,7 @@ export default function Availability() {
             );
             const { day, bi } = selectedBlock;
             const block = slots[day]?.blocks[bi];
+            const esHibrido = selectedServicio?.modalidad === "hibrido";
             if (!block) return null;
             const turnos   = selectedServicio ? calcTurnos(block, selectedServicio.duracion, selectedServicio.pausa) : null;
             const interval = selectedServicio ? (selectedServicio.duracion + selectedServicio.pausa) / 60 : SNAP;
@@ -680,6 +687,35 @@ export default function Availability() {
                     className="flex-1 text-sm border border-border rounded-lg px-2 py-1.5 bg-bg text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
                   />
                 </div>
+
+                {selectedServicio?.modalidad === "hibrido" && (
+                  <div className="mb-5">
+                    <label className="block text-sm font-semibold text-ink mb-2">
+                      Modalidad
+                    </label>
+
+                    <select
+                      value={block.modalidad || "presencial"}
+                      onChange={(e) => {
+                        const modalidad = e.target.value as "presencial" | "virtual";
+
+                        setSlots((prev) => ({
+                          ...prev,
+                          [day]: {
+                            ...prev[day],
+                            blocks: prev[day].blocks.map((b, i) =>
+                              i === bi ? { ...b, modalidad } : b
+                            ),
+                          },
+                        }));
+                      }}
+                      className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-bg text-ink"
+                    >
+                      <option value="presencial">Presencial</option>
+                      <option value="virtual">Virtual</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* Turns */}
                 {turnos !== null && (
