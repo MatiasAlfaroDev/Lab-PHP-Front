@@ -115,6 +115,9 @@ export default function Discover() {
     searchParams.get("tab") === "packages"
       ? "paquetes"
       : "servicios";
+
+  const servicioId = searchParams.get("servicio");
+  const compraItemId = searchParams.get("compraItem");
  
   const serviceTypes = [...new Set(servicios.map((s) => s.tipo))].map((tipo) => ({
     label: tipo,

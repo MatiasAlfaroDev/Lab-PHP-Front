@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 
@@ -157,13 +157,13 @@ const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID as string;
 
 // ── Booking Modal ──────────────────────────────────────────────────────────
 function BookingModal({
-  service, date, slot, onClose, token,
+  service, date, slot, onClose, token, compraItemId,
 }: {
   service: Servicio; date: string; slot: {
   hora: string;
   modalidad: string;
 };
-  onClose: (success: boolean) => void; token: string | null;
+  onClose: (success: boolean) => void; token: string | null; compraItemId: string | null;
 }) {
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
@@ -187,6 +187,7 @@ function BookingModal({
           fecha: date,
           hora: slot.hora,
           modalidad: slot.modalidad,
+          compra_item_paquete_id: compraItemId ? Number(compraItemId) : null,
         },
         token
       );
@@ -249,6 +250,13 @@ function BookingModal({
 
             <div className="p-5 space-y-4">
               {/* Summary */}
+              {compraItemId && (
+                <div className="rounded-xl border border-green-200 bg-green-50 p-3">
+                  <p className="text-sm font-medium text-green-700">
+                    Esta reserva utilizará una sesión de tu paquete.
+                  </p>
+                </div>
+              )}
               <div className="bg-bg rounded-xl p-4 space-y-1.5">
                 <p className="text-sm font-semibold text-ink">{service.nombre}</p>
                 <div className="flex items-center gap-1.5 text-xs text-ink-muted">
@@ -283,6 +291,8 @@ function BookingModal({
 export default function ProfessionalDetail() {
   const { id } = useParams();
   const { token } = useAuth();
+  const [searchParams] = useSearchParams();
+  const compraItemId = searchParams.get("compraItem");
 
   // Booking modal
   const [showModal, setShowModal] = useState(false);
@@ -685,6 +695,7 @@ export default function ProfessionalDetail() {
           date={selectedDate}
           slot={selectedSlot}
           token={token}
+          compraItemId={compraItemId}
           onClose={(success) => {
             setShowModal(false);
             if (success) { setSelectedSlot(null); setSelectedDate(null); }

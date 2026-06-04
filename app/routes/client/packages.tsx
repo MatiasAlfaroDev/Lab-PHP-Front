@@ -151,6 +151,39 @@ export default function Packages() {
                     {restantes} de {total} sesiones restantes
                   </span>
 
+                  <div className="mt-4 space-y-2">
+                    {compra.items.map((item: any) => (
+                      <div
+                        key={item.compra_item_paquete_id}
+                        className="flex items-center justify-between border rounded-lg p-3"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {item.item_paquete.servicio.nombre}
+                          </p>
+
+                          <p className="text-sm text-ink-muted">
+                            {item.sesiones_restantes} sesiones restantes
+                          </p>
+                        </div>
+
+                        {estadoPago === "aprobado" &&
+                          item.sesiones_restantes > 0 && (
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/client/professional/${item.item_paquete.servicio.profesional_id}?compraItem=${item.compra_item_paquete_id}`
+                                )
+                              }
+                              className="bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-hover"
+                            >
+                              Reservar sesión
+                            </button>
+                          )}
+                      </div>
+                    ))}
+                  </div>
+
                   <span className="font-semibold text-ink">
                     ${Number(
                       compra.paquete.precio_total
