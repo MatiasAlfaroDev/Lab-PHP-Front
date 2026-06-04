@@ -3,6 +3,7 @@ import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router";
 
 interface Reserva {
   reserva_id: number;
@@ -48,8 +49,9 @@ function CashIcon() {
 
 export default function ClientPayments() {
   const { token } = useAuth();
-
+  const navigate = useNavigate();
   const [reservas, setReservas]   = useState<Reserva[]>([]);
+  const [comprasPaquetes, setComprasPaquetes] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [selected, setSelected]   = useState<Reserva | null>(null);
   const [method, setMethod]       = useState<"paypal" | "presencial">("presencial");
@@ -57,15 +59,25 @@ export default function ClientPayments() {
 
   useEffect(() => {
     if (!token) return;
-    api
-      .get<{ success: boolean; data: Reserva[] }>("/mis-reservas", token)
-      .then((res) => { if (res.success) setReservas(res.data); })
+    Promise.all([
+      api.get<{ success: boolean; data: Reserva[] }>("/mis-reservas", token),
+      api.get<any[]>("/mis-compras-paquetes", token),
+    ])
+      .then(([reservasRes, paquetesRes]) => {
+        if (reservasRes.success) {
+          setReservas(reservasRes.data);
+        }
+
+        setComprasPaquetes(paquetesRes);
+      })
       .finally(() => setLoading(false));
   }, [token]);
 
   const conPago   = reservas.filter((r) => r.pago);
   const pendientes = conPago.filter((r) => r.pago?.estado === "pendiente");
   const pagadas    = conPago.filter((r) => r.pago?.estado === "aprobado");
+  const paquetesPendientes = comprasPaquetes.filter((p) => p.pago?.estado === "pendiente");
+  const paquetesPagados = comprasPaquetes.filter((p) => p.pago?.estado === "aprobado");
 
   const iniciarPago = async () => {
     if (!selected) return;
@@ -104,6 +116,18 @@ export default function ClientPayments() {
     setMethod("presencial");
   };
 
+  const totalPendienteReservas =
+    pendientes.reduce(
+      (acc, r) => acc + Number(r.servicio.precio),
+      0
+    );
+
+  const totalPendientePaquetes =
+    paquetesPendientes.reduce(
+      (acc, p) => acc + Number(p.paquete.precio_total),
+      0
+    );
+
   if (loading) return <p className="p-8 text-ink-muted">Cargando...</p>;
 
   return (
@@ -119,17 +143,18 @@ export default function ClientPayments() {
           <div className="bg-surface border border-border rounded-2xl p-5">
             <p className="text-xs font-bold text-ink-muted uppercase mb-1">Pendiente</p>
             <p className="text-3xl font-bold text-ink">
-              ${pendientes.reduce((acc, r) => acc + Number(r.servicio.precio), 0)}
+              ${totalPendienteReservas + totalPendientePaquetes}
             </p>
           </div>
           <div className="bg-surface border border-border rounded-2xl p-5">
             <p className="text-xs font-bold text-ink-muted uppercase mb-1">Pagadas</p>
-            <p className="text-3xl font-bold text-ink">{pagadas.length}</p>
+            <p className="text-3xl font-bold text-ink">{pagadas.length+paquetesPagados.length}</p>
           </div>
         </div>
 
         {/* Pendientes */}
-        <h2 className="text-lg font-semibold text-ink mb-3">Pendientes de pago</h2>
+        <h2 className="text-lg font-semibold text-ink mb-3">Reservas pendientes de pago</h2>
+        
         <div className="space-y-3 mb-10">
           {pendientes.length === 0 ? (
             <p className="text-sm text-ink-muted">No hay pagos pendientes</p>
@@ -155,10 +180,42 @@ export default function ClientPayments() {
               </div>
             ))
           )}
+          <h2 className="text-lg font-semibold text-ink mb-3 mt-8">Paquetes pendientes de pago</h2>
+          {paquetesPendientes.map((compra) => (
+            <div
+              key={compra.compra_paquete_id}
+              className="flex justify-between items-center border border-border rounded-2xl p-4 bg-surface"
+            >
+              <div>
+                <p className="font-semibold text-ink">
+                  {compra.paquete.nombre}
+                </p>
+
+                <p className="text-xs text-ink-muted">
+                  Compra #{compra.compra_paquete_id}
+                </p>
+
+                <p className="text-sm font-bold text-ink mt-1">
+                  ${compra.paquete.precio_total}
+                </p>
+              </div>
+
+              <button
+                onClick={() =>
+                  navigate(
+                    `/client/compra-package/${compra.compra_paquete_id}/pay`
+                  )
+                }
+                className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors"
+              >
+                Completar pago
+              </button>
+            </div>
+          ))}
         </div>
 
         {/* Historial */}
-        <h2 className="text-lg font-semibold text-ink mb-3">Historial</h2>
+        <h2 className="text-lg font-semibold text-ink mb-3">Historial de reservas</h2>
         <div className="bg-surface border border-border rounded-2xl overflow-hidden">
           <div className="grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase">
             <div className="col-span-2">Fecha</div>
@@ -185,8 +242,55 @@ export default function ClientPayments() {
             ))
           )}
         </div>
-      </div>
+      
+      <h2 className="text-lg font-semibold text-ink mb-3 mt-8">Historial de paquetes</h2>
 
+      <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+        <div className="grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase">
+          <div className="col-span-3">Fecha</div>
+          <div className="col-span-5">Paquete</div>
+          <div className="col-span-2">Monto</div>
+          <div className="col-span-2">Estado</div>
+        </div>
+
+        {comprasPaquetes.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-ink-muted">
+            Sin registros
+          </p>
+        ) : (
+          comprasPaquetes.map((compra) => (
+            <div
+              key={compra.compra_paquete_id}
+              className="grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0"
+            >
+              <div className="col-span-3 text-sm text-ink-muted">
+                {compra.fecha_compra}
+              </div>
+
+              <div className="col-span-5 text-sm text-ink">
+                {compra.paquete.nombre}
+              </div>
+
+              <div className="col-span-2 font-bold text-ink">
+                ${compra.paquete.precio_total}
+              </div>
+
+              <div className="col-span-2">
+                <span
+                  className={
+                    badgeCls[
+                      compra.pago?.estado ?? "pendiente"
+                    ]
+                  }
+                >
+                  {(compra.pago?.estado ?? "pendiente").toUpperCase()}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
       {/* Modal */}
       {selected && (
         <div

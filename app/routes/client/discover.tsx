@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 
@@ -68,7 +68,6 @@ export default function Discover() {
   const navigate = useNavigate();
   const { token } = useAuth();
 
-  const [activeTab, setActiveTab]               = useState<"servicios" | "paquetes">("servicios");
   const [servicios, setServicios]               = useState<Servicio[]>([]);
   const [paquetes, setPaquetes]                 = useState<Paquete[]>([]);
   const [loadingSvc, setLoadingSvc]             = useState(true);
@@ -79,6 +78,9 @@ export default function Discover() {
   const [selectedModality, setSelectedModality] = useState("Todas");
   const [maxPrice, setMaxPrice]                 = useState(1000);
   const [priceRange, setPriceRange]             = useState(1000);
+  const [buyingPackageId, setBuyingPackageId] = useState<number | null>(null);
+  const [searchParams]                          = useSearchParams();
+
 
   // Fetch servicios + paquetes en paralelo al montar
   useEffect(() => {
@@ -108,7 +110,15 @@ export default function Discover() {
 
     return () => { void svcPromise; void pkgPromise; };
   }, [token]);
+ 
+  const activeTab =
+    searchParams.get("tab") === "packages"
+      ? "paquetes"
+      : "servicios";
 
+  const servicioId = searchParams.get("servicio");
+  const compraItemId = searchParams.get("compraItem");
+ 
   const serviceTypes = [...new Set(servicios.map((s) => s.tipo))].map((tipo) => ({
     label: tipo,
     count: servicios.filter((s) => s.tipo === tipo).length,
@@ -251,7 +261,7 @@ export default function Discover() {
           {(["servicios", "paquetes"] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => navigate(`/client/discover?tab=${tab === "paquetes"? "packages" : "services"}`)}
               className={`px-5 py-2.5 text-sm font-medium cursor-pointer transition-colors border-b-2 -mb-px ${
                 activeTab === tab ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
               }`}
@@ -401,48 +411,60 @@ export default function Discover() {
                 <p className="text-ink-muted">No hay paquetes disponibles.</p>
               </div>
             )}
-
             {!loadingPkg && !errorPkg && filteredPkg.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {filteredPkg.map((pkg) => {
-                  const totalSesiones = pkg.servicios?.reduce((acc, s) => acc + (s.pivot?.cantidad_sesiones ?? s.cantidad_sesiones ?? 1), 0) ?? 0;
-                  return (
-                    <div key={pkg.paquete_id} className="bg-surface border border-border rounded-2xl p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
-                      <div>
-                        <h3 className="font-display text-xl text-ink mb-1">{pkg.nombre}</h3>
-                        {pkg.descripcion && (
-                          <p className="text-xs text-ink-muted line-clamp-2">{pkg.descripcion}</p>
-                        )}
-                      </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredPkg.map((paquete) => (
+                  <div
+                    key={paquete.paquete_id}
+                    className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm"
+                  >
+                    <div className="h-32 bg-gradient-to-r from-orange-200 to-pink-200" />
 
-                      {pkg.servicios?.length > 0 && (
-                        <div className="space-y-2">
-                          {pkg.servicios.map((item) => (
-                            <div key={item.servicio_id} className="flex items-center justify-between text-xs text-ink-muted">
-                              <span className="flex items-center gap-1.5">
-                                <ion-icon name="checkmark-circle-outline" style={{ fontSize: "13px", color: "var(--color-primary)" }} />
-                                {item.nombre ?? `Servicio #${item.servicio_id}`}
-                              </span>
-                              <span className="font-medium text-ink">
-                                {item.pivot?.cantidad_sesiones ?? item.cantidad_sesiones ?? 1} ses.
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div className="p-5">
+                      <h3 className="font-display text-xl text-ink mb-2">
+                        {paquete.nombre}
+                      </h3>
 
-                      <div className="flex items-end justify-between border-t border-border pt-3 mt-auto">
-                        <div>
-                          <p className="text-xs text-ink-muted">{totalSesiones} sesiones totales</p>
-                          <p className="text-2xl font-bold text-ink">$ {Number(pkg.precio_total).toFixed(0)}</p>
-                        </div>
-                        <button className="bg-ink text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary transition-colors cursor-pointer">
-                          Contratar
+                      <p className="text-sm text-ink-muted line-clamp-3">
+                        {paquete.descripcion}
+                      </p>
+
+                      <div className="mt-4 flex items-center justify-between">
+                        <span className="font-bold text-2xl">
+                          ${paquete.precio_total}
+                        </span>
+
+                       <button
+                          disabled={buyingPackageId === paquete.paquete_id}
+                          className="
+                            bg-ink text-white px-4 py-2 rounded-lg
+                            hover:bg-primary
+                            transition-colors
+                            disabled:opacity-70
+                            disabled:cursor-not-allowed
+                          "
+                          onClick={async () => {
+                            try {
+                              setBuyingPackageId(paquete.paquete_id);
+
+                              navigate(
+                                `/client/package/${paquete.paquete_id}/pay`
+                              );
+                            } catch (error) {
+                              console.error(error);
+                            } finally {
+                              setBuyingPackageId(null);
+                            }
+                          }}
+                        >
+                          {buyingPackageId === paquete.paquete_id
+                            ? "Procesando..."
+                            : "Comprar"}
                         </button>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </>

@@ -34,14 +34,27 @@ type Reserva = {
 export default function ClientDashboard() {
   const {token, user } = useAuth();
   const [bookings, setBookings] = useState<Reserva[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
   const now = new Date();
   
   useEffect(() => {
     const load = async () => {
       if (!token) return;
 
-      const res = await api.get<{ success: boolean; data: Reserva[] }>("/mis-reservas", token);
-      setBookings(res.data);
+      const [reservasRes, paquetesRes] =
+        await Promise.all([
+          api.get<{ success: boolean; data: Reserva[] }>(
+            "/mis-reservas",
+            token
+          ),
+          api.get<any[]>(
+            "/mis-compras-paquetes",
+            token
+          ),
+        ]);
+
+      setBookings(reservasRes.data);
+      setPackages(paquetesRes);
     };
 
     load();
@@ -74,6 +87,32 @@ export default function ClientDashboard() {
     })
     .sort((a, b) => a.hora.localeCompare(b.hora))[0];
 }, [bookings]);
+
+  const paqueteDestacado =
+    packages.find((p) => p.pago?.estado === "aprobado") ??
+    packages.find((p) => p.pago?.estado === "pendiente") ??
+    null;
+
+    const totalSesiones = paqueteDestacado
+      ? paqueteDestacado.items.reduce(
+          (sum: number, item: any) =>
+            sum + item.item_paquete.cantidad_sesiones,
+          0
+        )
+      : 0;
+
+      const sesionesRestantes = paqueteDestacado
+      ? paqueteDestacado.items.reduce(
+          (sum: number, item: any) =>
+            sum + item.sesiones_restantes,
+          0
+        )
+      : 0;
+
+      const porcentaje =
+      totalSesiones > 0
+        ? (sesionesRestantes / totalSesiones) * 100
+        : 0;
   
   return (
     <div className="p-8 max-w-5xl mx-auto">
@@ -198,32 +237,62 @@ export default function ClientDashboard() {
               Ver todos
             </Link>
           </div>
+          
+          <div className="bg-surface border border-border rounded-2xl p-4">
+            {paqueteDestacado ? (
+              <>
+                <div className="flex items-center gap-1.5 text-xs text-primary font-medium mb-2">
+                  <PackageIcon />
+                  {paqueteDestacado.pago?.estado === "aprobado"
+                    ? "Activo"
+                    : "Pendiente"}
+                </div>
 
-          <div className="space-y-3">
-            {/* Active package */}
-            <div className="bg-surface border border-border rounded-2xl p-4">
-              <div className="flex items-center gap-1.5 text-xs text-primary font-medium mb-2">
-                <PackageIcon />
-                Activo
-              </div>
-              <p className="font-display italic text-lg text-ink mb-3">
-                Paquete 8 sesiones · M. Ortiz
-              </p>
-              <p className="text-ink-muted text-sm mb-2">
-                <span className="text-3xl font-bold text-ink">5</span> de 8 sesiones restantes
-              </p>
-              <div className="h-1.5 bg-border rounded-full mb-3">
-                <div className="h-full bg-primary rounded-full" style={{ width: "62.5%" }} />
-              </div>
-              <div className="flex items-center justify-between text-xs text-ink-muted">
-                <span>Vence 12 ago 2026</span>
-                <span>€320 · pagado</span>
-              </div>
-            </div>
+                <p className="font-display italic text-lg text-ink mb-3">
+                  {paqueteDestacado.paquete.nombre}
+                </p>
+
+                <p className="text-ink-muted text-sm mb-2">
+                  <span className="text-3xl font-bold text-ink">
+                    {sesionesRestantes}
+                  </span>{" "}
+                  de {totalSesiones} sesiones restantes
+                </p>
+
+                <div className="h-1.5 bg-border rounded-full mb-3">
+                  <div
+                    className="h-full bg-primary rounded-full"
+                    style={{ width: `${porcentaje}%` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-ink-muted">
+                  <span>
+                    Compra #{paqueteDestacado.compra_paquete_id}
+                  </span>
+
+                  <span>
+                    ${paqueteDestacado.paquete.precio_total}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5 text-xs text-ink-muted font-medium mb-2">
+                  <PackageIcon />
+                  Sin paquetes
+                </div>
+
+                <p className="text-sm text-ink-muted">
+                  Todavía no tienes paquetes comprados.
+                </p>
+              </>
+            )}
+          </div>
 
             {/* Buy package */}
             <Link
-              to="/client/packages"
+              to="/client/discover?tab=packages"
               className="flex items-center gap-3 bg-surface border border-dashed border-border rounded-2xl p-4 hover:bg-bg transition-colors"
             >
               <span className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-ink-muted text-lg">
@@ -237,7 +306,6 @@ export default function ClientDashboard() {
           </div>
         </div>
       </div>
-    </div>
   );
 }
 

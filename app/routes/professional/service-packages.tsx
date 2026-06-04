@@ -92,7 +92,7 @@ export default function ServicePackages() {
     try {
       const [svcRes, pkgRes]: any[] = await Promise.all([
         api.get("/mis-servicios", token),
-        api.get("/paquetes", token),
+        api.get("/mis-paquetes", token),
       ]);
       if (svcRes?.success) setServicios(svcRes.data);
       if (Array.isArray(pkgRes)) setPaquetes(pkgRes);
