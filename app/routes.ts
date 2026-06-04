@@ -10,6 +10,8 @@ export default [
     route("discover", "routes/client/discover.tsx"),
     route("professional/:id", "routes/client/professional.$id.tsx"),
     route("booking/:id/pay", "routes/client/booking.$id.pay.tsx"),
+    route("package/:id/pay", "routes/client/package.$id.pay.tsx"),
+    route("compra-paquete/:id/pay", "routes/client/compra-package.$id.pay.tsx"),
     route("packages", "routes/client/packages.tsx"),
     route("messages", "routes/client/messages.tsx"),
     route("payments", "routes/client/payments.tsx"),

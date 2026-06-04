@@ -4,6 +4,7 @@ import { useAuth } from "~/context/AuthContext";
 const navItems = [
   { to: "/client", label: "Resumen", icon: HomeIcon, end: true },
   { to: "/client/discover", label: "Descubrir", icon: SearchIcon },
+  { to: "/client/packages", label: "Paquetes", icon: PackageIcon },
   { to: "/client/reservas", label: "Reservas",  icon: CalendarIcon, end: true },
   { to: "/client/messages", label: "Mensajes",  icon: MessageIcon,  disabled: true },
   { to: "/client/payments", label: "Pagos",     icon: CardIcon },
@@ -166,4 +167,7 @@ function ChevronLeftIcon({ className }: { className?: string }) {
 }
 function ChevronRightIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="9 18 15 12 9 6"/></svg>;
+}
+function PackageIcon({ className }: { className?: string }) {
+  return (<svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 8V21H3V8" /><path d="M1 3H23V8H1V3Z" /><path d="M10 12H14" /></svg>);
 }
