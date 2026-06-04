@@ -1,4 +1,31 @@
-import { useState } from "react";
+import { useNotifications } from "../../lib/useNotifications";
+import { useAuth } from "~/context/AuthContext";
+
+
+
+
+export default function NotificationsPage() {
+ const { user, token } = useAuth();
+
+  console.log("USER", user);
+  console.log("USER ID", user?.id);
+
+  const notifications = useNotifications(user?.id,token?? undefined);
+
+  return (
+    <div>
+      <h1>Notificaciones</h1>
+
+      {notifications.map((n, i) => (
+        <div key={i}>
+          {n.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/*import { useState } from "react";
 
 const notifications = [
   {
@@ -103,7 +130,7 @@ export default function Notifications() {
         </div>
       </div>
 
-      {/* Category tabs */}
+      { Category tabs }
       <div className="flex gap-2 mb-6 border-b border-border pb-2 overflow-x-auto">
         {TABS.map((tab) => (
           <button
@@ -119,7 +146,7 @@ export default function Notifications() {
       </div>
 
       <div className="grid grid-cols-3 gap-8">
-        {/* Feed */}
+        {/* Feed }
         <div className="col-span-2 space-y-3">
           <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">HOY</p>
           {notifications.slice(0, 3).map((n) => (
@@ -171,7 +198,7 @@ export default function Notifications() {
           ))}
         </div>
 
-        {/* Channels + preview */}
+        {/* Channels + preview }
         <div className="space-y-5">
           <div className="bg-surface border border-border rounded p-5">
             <h3 className="text-sm font-semibold text-ink mb-1">Canales</h3>
@@ -201,7 +228,7 @@ export default function Notifications() {
             </div>
           </div>
 
-          {/* Dropdown preview */}
+          {/* Dropdown preview }
           <div className="bg-surface border border-border rounded p-4">
             <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-3">VISTA PREVIA · DROPDOWN</p>
             <div className="border border-border rounded overflow-hidden">
@@ -230,3 +257,4 @@ export default function Notifications() {
     </div>
   );
 }
+*/

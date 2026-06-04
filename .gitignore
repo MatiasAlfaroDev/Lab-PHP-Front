@@ -30,4 +30,9 @@ Homestead.json
 auth.json
 
 .react-router/types
-build/
+
+build
+dist
+node_modules
+.react-router
+.env
