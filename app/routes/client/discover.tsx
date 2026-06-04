@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 
@@ -68,7 +68,6 @@ export default function Discover() {
   const navigate = useNavigate();
   const { token } = useAuth();
 
-  const [activeTab, setActiveTab]               = useState<"servicios" | "paquetes">("servicios");
   const [servicios, setServicios]               = useState<Servicio[]>([]);
   const [paquetes, setPaquetes]                 = useState<Paquete[]>([]);
   const [loadingSvc, setLoadingSvc]             = useState(true);
@@ -80,6 +79,8 @@ export default function Discover() {
   const [maxPrice, setMaxPrice]                 = useState(1000);
   const [priceRange, setPriceRange]             = useState(1000);
   const [buyingPackageId, setBuyingPackageId] = useState<number | null>(null);
+  const [searchParams]                          = useSearchParams();
+
 
   // Fetch servicios + paquetes en paralelo al montar
   useEffect(() => {
@@ -109,7 +110,12 @@ export default function Discover() {
 
     return () => { void svcPromise; void pkgPromise; };
   }, [token]);
-
+ 
+  const activeTab =
+    searchParams.get("tab") === "packages"
+      ? "paquetes"
+      : "servicios";
+ 
   const serviceTypes = [...new Set(servicios.map((s) => s.tipo))].map((tipo) => ({
     label: tipo,
     count: servicios.filter((s) => s.tipo === tipo).length,
@@ -252,7 +258,7 @@ export default function Discover() {
           {(["servicios", "paquetes"] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => navigate(`/client/discover?tab=${tab === "paquetes"? "packages" : "services"}`)}
               className={`px-5 py-2.5 text-sm font-medium cursor-pointer transition-colors border-b-2 -mb-px ${
                 activeTab === tab ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
               }`}

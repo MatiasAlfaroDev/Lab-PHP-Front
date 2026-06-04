@@ -7,8 +7,8 @@ export default function Packages() {
   const { token } = useAuth();
   const navigate = useNavigate();
   const [packages, setPackages] = useState<any[]>([]);
-  const [availablePackages, setAvailablePackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState<number | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -31,6 +31,27 @@ export default function Packages() {
 
     loadPackages();
   }, [token]);
+
+  const cancelarCompra = async (id: number) => {
+    try {
+      setCancelling(id);
+
+      await api.delete(
+        `/compra-paquetes/${id}`,
+        token
+      );
+
+      setPackages((prev) =>
+        prev.filter(
+          (p) => p.compra_paquete_id !== id
+        )
+      );
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setCancelling(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -93,55 +114,97 @@ export default function Packages() {
           return (
             <div
               key={compra.compra_paquete_id}
-              className="bg-surface border border-border rounded p-6 mb-4"
+              className="bg-surface border border-border rounded-2xl p-4 flex items-start gap-4 mb-3"
             >
-             <div className="flex items-start justify-between mb-3">
-                <h2 className="font-display text-xl text-ink">
-                  {compra.paquete.nombre}
-                </h2>
-
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full border font-medium ${badge.cls}`}
-                >
-                  {badge.label}
-                </span>
+              {/* Icono lateral */}
+              <div className="shrink-0 w-14 h-14 flex items-center justify-center bg-bg border border-border rounded-xl">
+                <ion-icon
+                  name="cube-outline"
+                  style={{ fontSize: "26px" }}
+                />
               </div>
 
-              <p className="text-sm text-ink-muted">
-                Comprado el {compra.fecha_compra}
-              </p>
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <p className="text-sm font-semibold text-ink">
+                    {compra.paquete.nombre}
+                  </p>
 
-              <p className="mt-3 font-semibold">
-                {restantes} de {total} sesiones restantes
-              </p>
-
-              <div className="mt-4 flex gap-2">
-                {estadoPago === "pendiente" && (
-                  <button
-                    onClick={() =>
-                      navigate(
-                        `/client/compra-package/${compra.compra_paquete_id}/pay`
-                      )
-                    }
-                    className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors"
+                  <span
+                    className={`shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${badge.cls}`}
                   >
-                    Completar pago
-                  </button>
-                )}
+                    {badge.label}
+                  </span>
+                </div>
 
-                {(estadoPago === "rechazado" ||
-                  estadoPago === "fallido") && (
-                  <button
-                    onClick={() =>
-                      navigate(
-                        `/client/compra-package/${compra.compra_paquete_id}/pay`
-                      )
-                    }
-                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Reintentar pago
-                  </button>
-                )}
+                <p className="text-xs text-ink-muted">
+                  Compra #{compra.compra_paquete_id}
+                </p>
+
+                <p className="text-xs text-ink-muted mb-2">
+                  Comprado el {compra.fecha_compra}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-4 text-xs text-ink-muted">
+                  <span>
+                    {restantes} de {total} sesiones restantes
+                  </span>
+
+                  <span className="font-semibold text-ink">
+                    ${Number(
+                      compra.paquete.precio_total
+                    ).toFixed(0)}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex gap-2 flex-wrap">
+                  {estadoPago === "pendiente" && (
+                    <button
+                      onClick={() =>
+                        navigate(
+                          `/client/compra-package/${compra.compra_paquete_id}/pay`
+                        )
+                      }
+                      className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors"
+                    >
+                      Completar pago
+                    </button>
+                  )}
+
+                  {(estadoPago === "rechazado" ||
+                    estadoPago === "fallido") && (
+                    <button
+                      onClick={() =>
+                        navigate(
+                          `/client/compra-package/${compra.compra_paquete_id}/pay`
+                        )
+                      }
+                      className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors"
+                    >
+                      Reintentar pago
+                    </button>
+                  )}
+
+                  {estadoPago === "pendiente" && (
+                    <button
+                      onClick={() =>
+                        cancelarCompra(
+                          compra.compra_paquete_id
+                        )
+                      }
+                      disabled={
+                        cancelling ===
+                        compra.compra_paquete_id
+                      }
+                      className="px-4 py-2 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+                    >
+                      {cancelling === compra.compra_paquete_id
+                        ? "Cancelando..."
+                        : "Cancelar compra"}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
