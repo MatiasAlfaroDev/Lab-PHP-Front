@@ -1,5 +1,7 @@
 import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "~/context/AuthContext";
+import { useGlobalNotifications } from "~/context/NotificationContext";
+
 
 const navItems = [
   { to: "/client", label: "Resumen", icon: HomeIcon, end: true },
@@ -18,6 +20,8 @@ interface Props {
 export function ClientSidebar({ collapsed, onToggle }: Props) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const { unreadCount } = useGlobalNotifications();
 
   return (
     <aside
@@ -94,6 +98,16 @@ export function ClientSidebar({ collapsed, onToggle }: Props) {
             >
               <Icon className="w-4 h-4 shrink-0" />
               {!collapsed && <span className="flex-1">{label}</span>}
+
+              
+              {/* 🔴 BADGE NOTIFICACIONES */}
+              {to === "/professional/notifications" &&
+                unreadCount > 0 &&
+                !collapsed && (
+                  <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
             </NavLink>
           )
         ))}

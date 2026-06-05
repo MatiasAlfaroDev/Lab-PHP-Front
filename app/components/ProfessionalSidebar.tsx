@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "~/context/AuthContext";
+import { useGlobalNotifications } from "~/context/NotificationContext";
 
 const navItems = [
   { to: "/professional/dashboard", label: "Resumen", icon: HomeIcon },
@@ -9,7 +10,7 @@ const navItems = [
   { to: "/professional/availability", label: "Disponibilidad", icon: ClockIcon },
   { to: "/professional/payments", label: "Cobros", icon: CardIcon },
   { to: "/professional/messages", label: "Mensajes", icon: MessageIcon, disabled: true },
-  { to: "/professional/notifications", label: "Notificaciones", icon: MessageIcon },
+  { to: "/professional/notifications", label: "Notificaciones", icon: BellIcon },
 ];
 
 interface Props {
@@ -21,39 +22,48 @@ export function ProfessionalSidebar({ collapsed, onToggle }: Props) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const { unreadCount } = useGlobalNotifications();
+
   return (
     <aside
-      className={`${collapsed ? "w-14" : "w-56"} min-h-screen bg-sidebar flex flex-col transition-all duration-200 ease-in-out shrink-0`}
+      className={`${
+        collapsed ? "w-14" : "w-56"
+      } min-h-screen bg-sidebar flex flex-col transition-all duration-200 ease-in-out shrink-0`}
     >
       {/* Logo + toggle */}
       <div className="p-4 border-b border-white/10">
-        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
+        <div
+          className={`flex items-center ${
+            collapsed ? "justify-center" : "justify-between"
+          }`}
+        >
           <div className="flex items-center gap-2">
             <span className="w-5 h-5 rounded-sm bg-surface flex items-center justify-center shrink-0">
               <span className="text-ink font-bold text-xs">+</span>
             </span>
+
             {!collapsed && (
               <span className="font-display text-sidebar-text text-lg tracking-tight">
                 Cita.Pro
               </span>
             )}
           </div>
+
           {!collapsed && (
             <button
               onClick={onToggle}
-              title="Contraer menú"
-              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
+              className="text-sidebar-muted hover:text-sidebar-text p-1"
             >
               <ChevronLeftIcon className="w-4 h-4" />
             </button>
           )}
         </div>
+
         {collapsed && (
           <div className="flex justify-center mt-3">
             <button
               onClick={onToggle}
-              title="Expandir menú"
-              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
+              className="text-sidebar-muted hover:text-sidebar-text p-1"
             >
               <ChevronRightIcon className="w-4 h-4" />
             </button>
@@ -61,18 +71,18 @@ export function ProfessionalSidebar({ collapsed, onToggle }: Props) {
         )}
       </div>
 
-      {/* Nav */}
+      {/* NAV */}
       <nav className="flex-1 p-2 space-y-0.5">
-        {navItems.map(({ to, label, icon: Icon, end, disabled }) => (
+        {navItems.map(({ to, label, icon: Icon, end, disabled }) =>
           disabled ? (
             <div
               key={to}
               title={collapsed ? label : undefined}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 ${
                 collapsed ? "justify-center px-0" : ""
               }`}
             >
-              <Icon className="w-4 h-4 shrink-0" />
+              <Icon className="w-4 h-4" />
               {!collapsed && <span className="flex-1">{label}</span>}
               {!collapsed && (
                 <span className="text-[10px] text-sidebar-muted/60 font-normal">pronto</span>
@@ -96,19 +106,28 @@ export function ProfessionalSidebar({ collapsed, onToggle }: Props) {
             >
               <Icon className="w-4 h-4 shrink-0" />
               {!collapsed && <span className="flex-1">{label}</span>}
+
+              {/* 🔴 BADGE NOTIFICACIONES */}
+              {to === "/professional/notifications" &&
+                unreadCount > 0 &&
+                !collapsed && (
+                  <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
             </NavLink>
           )
-        ))}
+        )}
       </nav>
 
-      {/* User */}
+      {/* USER */}
       <div className="p-3 border-t border-white/10">
         {collapsed ? (
-          <div className="flex justify-center py-1">
+          <div className="flex justify-center">
             <button
               onClick={() => navigate("/professional/profile")}
-              title={user?.name ?? "Profesional"}
-              className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all"
+              title={user?.name ?? "Usuario"}
+              className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold"
             >
               {user?.initials ?? "MO"}
             </button>
@@ -118,21 +137,25 @@ export function ProfessionalSidebar({ collapsed, onToggle }: Props) {
             <button
               onClick={() => navigate("/professional/profile")}
               title="Editar perfil"
-              className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all"
+              className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold"
             >
               {user?.initials ?? "MO"}
             </button>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-text truncate">{user?.name ?? "Profesional"}</p>
+
+            <div className="flex-1">
+              <p className="text-sm text-sidebar-text truncate">
+                {user?.name ?? "Profesional"}
+              </p>
               <p className="text-xs text-sidebar-muted">Profesional</p>
             </div>
+
             <button
               onClick={async () => {
                 await logout();
                 navigate("/login");
               }}
               title="Cerrar sesión"
-              className="text-sidebar-muted hover:text-sidebar-text transition-colors"
+              className="text-sidebar-muted hover:text-sidebar-text"
             >
               <LogoutIcon className="w-4 h-4" />
             </button>

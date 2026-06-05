@@ -1,26 +1,22 @@
-import { useNotifications } from "../../lib/useNotifications";
-import { useAuth } from "~/context/AuthContext";
-
-
-
+import { useGlobalNotifications } from "~/context/NotificationContext";
+import { useEffect } from "react";
 
 export default function NotificationsPage() {
- const { user, token } = useAuth();
+  const { notifications, markAsRead } = useGlobalNotifications();
 
-  console.log("USER", user);
-  console.log("USER ID", user?.id);
-
-  const notifications = useNotifications(user?.id,token?? undefined);
-
+  
   return (
-    <div>
-      <h1>Notificaciones</h1>
+    <div className="p-4">
+      <h1 className="text-xl font-bold">Notificaciones</h1>
 
-      {notifications.map((n, i) => (
-        <div key={i}>
-          {n.message}
-        </div>
-      ))}
+
+      <div className="space-y-2 mt-4">
+        {notifications.map((n) => (
+          <div key={n.id} className="p-3 bg-white rounded shadow">
+            {n.message}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

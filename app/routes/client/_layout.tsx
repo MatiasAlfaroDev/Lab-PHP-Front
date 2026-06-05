@@ -2,9 +2,11 @@ import { Outlet, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { ClientSidebar } from "~/components/ClientSidebar";
+import { NotificationProvider } from "~/context/NotificationContext";
+
 
 export default function ClientLayout() {
-  const { user, isLoading } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -23,14 +25,19 @@ export default function ClientLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-bg">
-      <ClientSidebar
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed((v) => !v)}
-      />
-      <main className="flex-1 overflow-auto min-w-0">
-        <Outlet />
-      </main>
-    </div>
+    <NotificationProvider
+      userId={user?.id}
+      token={token ?? undefined}
+    >
+      <div className="flex min-h-screen bg-bg">
+        <ClientSidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((v) => !v)}
+        />
+        <main className="flex-1 overflow-auto min-w-0">
+          <Outlet />
+        </main>
+      </div>
+    </NotificationProvider>
   );
 }
