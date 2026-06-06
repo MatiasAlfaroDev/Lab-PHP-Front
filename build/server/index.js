@@ -5,9 +5,9 @@ import { isbot } from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { ToastContainer, toast } from "react-toastify";
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
+import { ToastContainer, toast } from "react-toastify";
 import { Room, Track } from "livekit-client";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
@@ -813,7 +813,7 @@ var navItems$2 = [
 	{
 		to: "/client/notifications",
 		label: "Notificaciones",
-		icon: BellIcon$1
+		icon: BellIcon$2
 	}
 ];
 function ClientSidebar({ collapsed, onToggle }) {
@@ -1055,7 +1055,7 @@ function ChevronRightIcon$2({ className }) {
 		children: /* @__PURE__ */ jsx("polyline", { points: "9 18 15 12 9 6" })
 	});
 }
-function BellIcon$1({ className }) {
+function BellIcon$2({ className }) {
 	return /* @__PURE__ */ jsx("svg", {
 		className,
 		fill: "none",
@@ -1066,10 +1066,72 @@ function BellIcon$1({ className }) {
 	});
 }
 //#endregion
+//#region app/lib/echo.ts
+var echo = null;
+function getEcho(token) {
+	if (typeof window === "undefined") return null;
+	if (!echo) {
+		window.Pusher = Pusher;
+		echo = new Echo({
+			broadcaster: "reverb",
+			key: "cgux9icc65a7v6i6ia0v",
+			wsHost: "127.0.0.1",
+			wsPort: 8080,
+			wssPort: 8080,
+			forceTLS: false,
+			enabledTransports: ["ws", "wss"],
+			authEndpoint: "http://localhost:8000/broadcasting/auth",
+			auth: { headers: {
+				Authorization: token ? `Bearer ${token}` : "",
+				Accept: "application/json"
+			} }
+		});
+	}
+	return echo;
+}
+//#endregion
+//#region app/context/NotificationContext.tsx
+var NotificationContext = createContext(null);
+function NotificationProvider({ children, userId, token }) {
+	const [notifications, setNotifications] = useState([]);
+	const [unreadCount, setUnreadCount] = useState(0);
+	useEffect(() => {
+		if (!userId || !token) return;
+		const echo = getEcho(token);
+		if (!echo) return;
+		const channelName = `user.${userId}`;
+		console.log("SUSCRIPCION GLOBAL:", channelName);
+		echo.private(channelName).notification((notification) => {
+			console.log("GLOBAL NOTIFICATION:", notification);
+			setNotifications((prev) => [notification, ...prev]);
+			setUnreadCount((prev) => prev + 1);
+		});
+		return () => {
+			echo.leave(channelName);
+		};
+	}, [userId, token]);
+	const markAsRead = () => {
+		setUnreadCount(0);
+	};
+	return /* @__PURE__ */ jsx(NotificationContext.Provider, {
+		value: {
+			notifications,
+			unreadCount,
+			markAsRead
+		},
+		children
+	});
+}
+function useGlobalNotifications() {
+	const context = useContext(NotificationContext);
+	if (!context) throw new Error("useGlobalNotifications debe usarse dentro de NotificationProvider");
+	return context;
+}
+//#endregion
 //#region app/routes/client/_layout.tsx
 var _layout_exports$2 = /* @__PURE__ */ __exportAll({ default: () => _layout_default$2 });
 var _layout_default$2 = UNSAFE_withComponentProps(function ClientLayout() {
-	const { user, isLoading } = useAuth();
+	const { user, token, isLoading } = useAuth();
 	const navigate = useNavigate();
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	useEffect(() => {
@@ -1084,15 +1146,19 @@ var _layout_default$2 = UNSAFE_withComponentProps(function ClientLayout() {
 		className: "min-h-screen flex items-center justify-center bg-bg",
 		children: /* @__PURE__ */ jsx("div", { className: "w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" })
 	});
-	return /* @__PURE__ */ jsxs("div", {
-		className: "flex min-h-screen bg-bg",
-		children: [/* @__PURE__ */ jsx(ClientSidebar, {
-			collapsed: sidebarCollapsed,
-			onToggle: () => setSidebarCollapsed((v) => !v)
-		}), /* @__PURE__ */ jsx("main", {
-			className: "flex-1 overflow-auto min-w-0",
-			children: /* @__PURE__ */ jsx(Outlet, {})
-		})]
+	return /* @__PURE__ */ jsx(NotificationProvider, {
+		userId: user?.id,
+		token: token ?? void 0,
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "flex min-h-screen bg-bg",
+			children: [/* @__PURE__ */ jsx(ClientSidebar, {
+				collapsed: sidebarCollapsed,
+				onToggle: () => setSidebarCollapsed((v) => !v)
+			}), /* @__PURE__ */ jsx("main", {
+				className: "flex-1 overflow-auto min-w-0",
+				children: /* @__PURE__ */ jsx(Outlet, {})
+			})]
+		})
 	});
 });
 //#endregion
@@ -3404,62 +3470,30 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 	] });
 });
 //#endregion
-//#region app/lib/echo.ts
-var echo = null;
-function getEcho(token) {
-	if (typeof window === "undefined") return null;
-	if (!echo) {
-		window.Pusher = Pusher;
-		echo = new Echo({
-			broadcaster: "reverb",
-			key: "cgux9icc65a7v6i6ia0v",
-			wsHost: "127.0.0.1",
-			wsPort: 8080,
-			wssPort: 8080,
-			forceTLS: false,
-			enabledTransports: ["ws", "wss"],
-			authEndpoint: "http://localhost:8000/broadcasting/auth",
-			auth: { headers: {
-				Authorization: token ? `Bearer ${token}` : "",
-				Accept: "application/json"
-			} }
-		});
-	}
-	return echo;
-}
-//#endregion
-//#region app/lib/useNotifications.ts
-function useNotifications(userId, token) {
-	const [notifications, setNotifications] = useState([]);
-	useEffect(() => {
-		if (!userId) return;
-		const echo = getEcho(token ?? void 0);
-		if (!echo) return;
-		const channelName = `user.${userId}`;
-		console.log("Suscribiendo a:", channelName);
-		const channel = echo.private(`user.${userId}`);
-		channel.listen(".Illuminate\\Notifications\\Events\\BroadcastNotificationCreated", (e) => {
-			console.log("RAW EVENT:", e);
-		});
-		channel.notification((notification) => {
-			console.log("NOTIFICACION RECIBIDA", notification);
-			setNotifications((prev) => [notification, ...prev]);
-		});
-		return () => {
-			echo.leave(channelName);
-		};
-	}, [userId, token]);
-	return notifications;
-}
-//#endregion
 //#region app/routes/client/notifications.tsx
 var notifications_exports$1 = /* @__PURE__ */ __exportAll({ default: () => notifications_default$1 });
 var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPage() {
-	const { user, token } = useAuth();
-	console.log("USER", user);
-	console.log("USER ID", user?.id);
-	const notifications = useNotifications(user?.id, token ?? void 0);
-	return /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", { children: "Notificaciones" }), notifications.map((n, i) => /* @__PURE__ */ jsx("div", { children: n.message }, i))] });
+	const { notifications, markAsRead } = useGlobalNotifications();
+	return /* @__PURE__ */ jsxs("div", {
+		className: "p-4",
+		children: [
+			/* @__PURE__ */ jsx("h1", {
+				className: "text-xl font-bold",
+				children: "Notificaciones"
+			}),
+			/* @__PURE__ */ jsx("button", {
+				onClick: markAsRead,
+				children: "Marcar como leídas"
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "space-y-2 mt-4",
+				children: notifications.map((n) => /* @__PURE__ */ jsx("div", {
+					className: "p-3 bg-white rounded shadow",
+					children: n.message
+				}, n.id))
+			})
+		]
+	});
 });
 //#endregion
 //#region app/routes/client/mis-reservas.tsx
@@ -4049,12 +4083,13 @@ var navItems$1 = [
 	{
 		to: "/professional/notifications",
 		label: "Notificaciones",
-		icon: MessageIcon
+		icon: BellIcon$1
 	}
 ];
 function ProfessionalSidebar({ collapsed, onToggle }) {
 	const { user, logout } = useAuth();
 	const navigate = useNavigate();
+	const { unreadCount } = useGlobalNotifications();
 	return /* @__PURE__ */ jsxs("aside", {
 		className: `${collapsed ? "w-14" : "w-56"} min-h-screen bg-sidebar flex flex-col transition-all duration-200 ease-in-out shrink-0`,
 		children: [
@@ -4076,16 +4111,14 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 						})]
 					}), !collapsed && /* @__PURE__ */ jsx("button", {
 						onClick: onToggle,
-						title: "Contraer menú",
-						className: "text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors",
+						className: "text-sidebar-muted hover:text-sidebar-text p-1",
 						children: /* @__PURE__ */ jsx(ChevronLeftIcon$1, { className: "w-4 h-4" })
 					})]
 				}), collapsed && /* @__PURE__ */ jsx("div", {
 					className: "flex justify-center mt-3",
 					children: /* @__PURE__ */ jsx("button", {
 						onClick: onToggle,
-						title: "Expandir menú",
-						className: "text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors",
+						className: "text-sidebar-muted hover:text-sidebar-text p-1",
 						children: /* @__PURE__ */ jsx(ChevronRightIcon$1, { className: "w-4 h-4" })
 					})
 				})]
@@ -4093,38 +4126,35 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 			/* @__PURE__ */ jsx("nav", {
 				className: "flex-1 p-2 space-y-0.5",
 				children: navItems$1.map(({ to, label, icon: Icon, end, disabled }) => disabled ? /* @__PURE__ */ jsxs("div", {
-					title: collapsed ? label : void 0,
-					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${collapsed ? "justify-center px-0" : ""}`,
+					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 ${collapsed ? "justify-center px-0" : ""}`,
+					children: [/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4" }), !collapsed && /* @__PURE__ */ jsx("span", {
+						className: "flex-1",
+						children: label
+					})]
+				}, to) : /* @__PURE__ */ jsxs(NavLink, {
+					to,
+					end,
+					className: ({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed ? "justify-center px-0" : ""} ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`,
 					children: [
 						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
 						!collapsed && /* @__PURE__ */ jsx("span", {
 							className: "flex-1",
 							children: label
 						}),
-						!collapsed && /* @__PURE__ */ jsx("span", {
-							className: "text-[10px] text-sidebar-muted/60 font-normal",
-							children: "pronto"
+						to === "/professional/notifications" && unreadCount > 0 && !collapsed && /* @__PURE__ */ jsx("span", {
+							className: "ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full",
+							children: unreadCount
 						})
 					]
-				}, to) : /* @__PURE__ */ jsxs(NavLink, {
-					to,
-					end,
-					title: collapsed ? label : void 0,
-					className: ({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed ? "justify-center px-0" : ""} ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`,
-					children: [/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }), !collapsed && /* @__PURE__ */ jsx("span", {
-						className: "flex-1",
-						children: label
-					})]
 				}, to))
 			}),
 			/* @__PURE__ */ jsx("div", {
 				className: "p-3 border-t border-white/10",
 				children: collapsed ? /* @__PURE__ */ jsx("div", {
-					className: "flex justify-center py-1",
+					className: "flex justify-center",
 					children: /* @__PURE__ */ jsx("button", {
 						onClick: () => navigate("/professional/profile"),
-						title: user?.name ?? "Profesional",
-						className: "w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all",
+						className: "w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold",
 						children: user?.initials ?? "MO"
 					})
 				}) : /* @__PURE__ */ jsxs("div", {
@@ -4132,14 +4162,13 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 					children: [
 						/* @__PURE__ */ jsx("button", {
 							onClick: () => navigate("/professional/profile"),
-							title: "Editar perfil",
-							className: "w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all",
+							className: "w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold",
 							children: user?.initials ?? "MO"
 						}),
 						/* @__PURE__ */ jsxs("div", {
-							className: "flex-1 min-w-0",
+							className: "flex-1",
 							children: [/* @__PURE__ */ jsx("p", {
-								className: "text-sm font-medium text-sidebar-text truncate",
+								className: "text-sm text-sidebar-text truncate",
 								children: user?.name ?? "Profesional"
 							}), /* @__PURE__ */ jsx("p", {
 								className: "text-xs text-sidebar-muted",
@@ -4151,8 +4180,7 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 								await logout();
 								navigate("/login");
 							},
-							title: "Cerrar sesión",
-							className: "text-sidebar-muted hover:text-sidebar-text transition-colors",
+							className: "text-sidebar-muted hover:text-sidebar-text",
 							children: /* @__PURE__ */ jsx(LogoutIcon, { className: "w-4 h-4" })
 						})
 					]
@@ -4354,11 +4382,21 @@ function ChevronRightIcon$1({ className }) {
 		children: /* @__PURE__ */ jsx("polyline", { points: "9 18 15 12 9 6" })
 	});
 }
+function BellIcon$1({ className }) {
+	return /* @__PURE__ */ jsx("svg", {
+		className,
+		fill: "none",
+		viewBox: "0 0 24 24",
+		stroke: "currentColor",
+		strokeWidth: 2,
+		children: /* @__PURE__ */ jsx("path", { d: "M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 1-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" })
+	});
+}
 //#endregion
 //#region app/routes/professional/_layout.tsx
 var _layout_exports$1 = /* @__PURE__ */ __exportAll({ default: () => _layout_default$1 });
 var _layout_default$1 = UNSAFE_withComponentProps(function ProfessionalLayout() {
-	const { user, isLoading } = useAuth();
+	const { user, token, isLoading } = useAuth();
 	const navigate = useNavigate();
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	useEffect(() => {
@@ -4373,15 +4411,19 @@ var _layout_default$1 = UNSAFE_withComponentProps(function ProfessionalLayout() 
 		className: "min-h-screen flex items-center justify-center bg-bg",
 		children: /* @__PURE__ */ jsx("div", { className: "w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" })
 	});
-	return /* @__PURE__ */ jsxs("div", {
-		className: "flex min-h-screen bg-bg",
-		children: [/* @__PURE__ */ jsx(ProfessionalSidebar, {
-			collapsed: sidebarCollapsed,
-			onToggle: () => setSidebarCollapsed((v) => !v)
-		}), /* @__PURE__ */ jsx("main", {
-			className: "flex-1 overflow-auto min-w-0",
-			children: /* @__PURE__ */ jsx(Outlet, {})
-		})]
+	return /* @__PURE__ */ jsx(NotificationProvider, {
+		userId: user?.id,
+		token: token ?? void 0,
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "flex min-h-screen bg-bg",
+			children: [/* @__PURE__ */ jsx(ProfessionalSidebar, {
+				collapsed: sidebarCollapsed,
+				onToggle: () => setSidebarCollapsed((v) => !v)
+			}), /* @__PURE__ */ jsx("main", {
+				className: "flex-1 overflow-auto min-w-0",
+				children: /* @__PURE__ */ jsx(Outlet, {})
+			})]
+		})
 	});
 });
 //#endregion
@@ -8343,11 +8385,27 @@ var profile_default = UNSAFE_withComponentProps(function ProfessionalProfile() {
 //#region app/routes/professional/notifications.tsx
 var notifications_exports = /* @__PURE__ */ __exportAll({ default: () => notifications_default });
 var notifications_default = UNSAFE_withComponentProps(function NotificationsPage() {
-	const { user, token } = useAuth();
-	console.log("USER", user);
-	console.log("USER ID", user?.id);
-	const notifications = useNotifications(user?.id, token ?? void 0);
-	return /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", { children: "Notificaciones" }), notifications.map((n, i) => /* @__PURE__ */ jsx("div", { children: n.message }, i))] });
+	const { notifications, markAsRead } = useGlobalNotifications();
+	return /* @__PURE__ */ jsxs("div", {
+		className: "p-4",
+		children: [
+			/* @__PURE__ */ jsx("h1", {
+				className: "text-xl font-bold",
+				children: "Notificaciones"
+			}),
+			/* @__PURE__ */ jsx("button", {
+				onClick: markAsRead,
+				children: "Marcar como leídas"
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "space-y-2 mt-4",
+				children: notifications.map((n) => /* @__PURE__ */ jsx("div", {
+					className: "p-3 bg-white rounded shadow",
+					children: n.message
+				}, n.id))
+			})
+		]
+	});
 });
 //#endregion
 //#region app/routes/admin/_layout.tsx
@@ -9715,8 +9773,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-BjkROS9O.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/_layout-m6g1nyAl.js",
+			"imports": [
+				"/assets/jsx-runtime-CUqasb2E.js",
+				"/assets/AuthContext-CJKML-Sv.js",
+				"/assets/NotificationContext-g4Z4hv85.js"
+			],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9862,11 +9924,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-CeHIW5gU.js",
+			"module": "/assets/payments-2gksqKyl.js",
 			"imports": [
 				"/assets/jsx-runtime-CUqasb2E.js",
 				"/assets/AuthContext-CJKML-Sv.js",
-				"/assets/ReactToastify-C75VHv53.js"
+				"/assets/ReactToastify-CuG7Odl8.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
 			"clientActionModule": void 0,
@@ -9887,12 +9949,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-BZKs3ymR.js",
-			"imports": [
-				"/assets/jsx-runtime-CUqasb2E.js",
-				"/assets/AuthContext-CJKML-Sv.js",
-				"/assets/useNotifications-CSn9BCo-.js"
-			],
+			"module": "/assets/notifications-D47-BJPU.js",
+			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/NotificationContext-g4Z4hv85.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9912,11 +9970,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/mis-reservas-cVAaTpLi.js",
+			"module": "/assets/mis-reservas-CnyZ8R0a.js",
 			"imports": [
 				"/assets/jsx-runtime-CUqasb2E.js",
 				"/assets/AuthContext-CJKML-Sv.js",
-				"/assets/ReactToastify-C75VHv53.js"
+				"/assets/ReactToastify-CuG7Odl8.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
 			"clientActionModule": void 0,
@@ -9958,8 +10016,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-HX-Evv3G.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/_layout-BbOuSx5o.js",
+			"imports": [
+				"/assets/jsx-runtime-CUqasb2E.js",
+				"/assets/AuthContext-CJKML-Sv.js",
+				"/assets/NotificationContext-g4Z4hv85.js"
+			],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10147,12 +10209,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-da6BDThH.js",
-			"imports": [
-				"/assets/jsx-runtime-CUqasb2E.js",
-				"/assets/AuthContext-CJKML-Sv.js",
-				"/assets/useNotifications-CSn9BCo-.js"
-			],
+			"module": "/assets/notifications-B8tLDLRh.js",
+			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/NotificationContext-g4Z4hv85.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10307,8 +10365,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-ad5d6149.js",
-	"version": "ad5d6149",
+	"url": "/assets/manifest-3867195c.js",
+	"version": "3867195c",
 	"sri": void 0
 };
 //#endregion
