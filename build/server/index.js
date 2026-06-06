@@ -1,6 +1,6 @@
 import { PassThrough } from "node:stream";
 import { createReadableStreamFromReadable } from "@react-router/node";
-import { Link, Links, Meta, NavLink, Outlet, Scripts, ScrollRestoration, ServerRouter, UNSAFE_withComponentProps, UNSAFE_withErrorBoundaryProps, isRouteErrorResponse, useNavigate, useParams } from "react-router";
+import { Link, Links, Meta, NavLink, Outlet, Scripts, ScrollRestoration, ServerRouter, UNSAFE_withComponentProps, UNSAFE_withErrorBoundaryProps, isRouteErrorResponse, useNavigate, useParams, useSearchParams } from "react-router";
 import { isbot } from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
@@ -780,6 +780,68 @@ var auth_google_callback_default = UNSAFE_withComponentProps(function GoogleCall
 	return /* @__PURE__ */ jsx("p", { children: "Iniciando sesión..." });
 });
 //#endregion
+//#region app/lib/echo.ts
+var echo = null;
+function getEcho(token) {
+	if (typeof window === "undefined") return null;
+	if (!echo) {
+		window.Pusher = Pusher;
+		echo = new Echo({
+			broadcaster: "reverb",
+			key: "cgux9icc65a7v6i6ia0v",
+			wsHost: "127.0.0.1",
+			wsPort: 8080,
+			wssPort: 8080,
+			forceTLS: false,
+			enabledTransports: ["ws", "wss"],
+			authEndpoint: "http://localhost:8000/broadcasting/auth",
+			auth: { headers: {
+				Authorization: token ? `Bearer ${token}` : "",
+				Accept: "application/json"
+			} }
+		});
+	}
+	return echo;
+}
+//#endregion
+//#region app/context/NotificationContext.tsx
+var NotificationContext = createContext(null);
+function NotificationProvider({ children, userId, token }) {
+	const [notifications, setNotifications] = useState([]);
+	const [unreadCount, setUnreadCount] = useState(0);
+	useEffect(() => {
+		if (!userId || !token) return;
+		const echo = getEcho(token);
+		if (!echo) return;
+		const channelName = `user.${userId}`;
+		console.log("SUSCRIPCION GLOBAL:", channelName);
+		echo.private(channelName).notification((notification) => {
+			console.log("GLOBAL NOTIFICATION:", notification);
+			setNotifications((prev) => [notification, ...prev]);
+			setUnreadCount((prev) => prev + 1);
+		});
+		return () => {
+			echo.leave(channelName);
+		};
+	}, [userId, token]);
+	const markAsRead = () => {
+		setUnreadCount(0);
+	};
+	return /* @__PURE__ */ jsx(NotificationContext.Provider, {
+		value: {
+			notifications,
+			unreadCount,
+			markAsRead
+		},
+		children
+	});
+}
+function useGlobalNotifications() {
+	const context = useContext(NotificationContext);
+	if (!context) throw new Error("useGlobalNotifications debe usarse dentro de NotificationProvider");
+	return context;
+}
+//#endregion
 //#region app/components/ClientSidebar.tsx
 var navItems$2 = [
 	{
@@ -792,6 +854,11 @@ var navItems$2 = [
 		to: "/client/discover",
 		label: "Descubrir",
 		icon: SearchIcon
+	},
+	{
+		to: "/client/packages",
+		label: "Paquetes",
+		icon: PackageIcon$2
 	},
 	{
 		to: "/client/reservas",
@@ -819,6 +886,7 @@ var navItems$2 = [
 function ClientSidebar({ collapsed, onToggle }) {
 	const { user, logout } = useAuth();
 	const navigate = useNavigate();
+	const { unreadCount } = useGlobalNotifications();
 	return /* @__PURE__ */ jsxs("aside", {
 		className: `${collapsed ? "w-14" : "w-56"} min-h-screen bg-sidebar flex flex-col transition-all duration-200 ease-in-out shrink-0`,
 		children: [
@@ -875,10 +943,17 @@ function ClientSidebar({ collapsed, onToggle }) {
 					end,
 					title: collapsed ? label : void 0,
 					className: ({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${collapsed ? "justify-center px-0" : ""} ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`,
-					children: [/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }), !collapsed && /* @__PURE__ */ jsx("span", {
-						className: "flex-1",
-						children: label
-					})]
+					children: [
+						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
+						!collapsed && /* @__PURE__ */ jsx("span", {
+							className: "flex-1",
+							children: label
+						}),
+						to === "/client/notifications" && unreadCount > 0 && !collapsed && /* @__PURE__ */ jsx("span", {
+							className: "ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full",
+							children: unreadCount
+						})
+					]
 				}, to))
 			}),
 			/* @__PURE__ */ jsx("div", {
@@ -1065,67 +1140,24 @@ function BellIcon$2({ className }) {
 		children: /* @__PURE__ */ jsx("path", { d: "M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 1-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" })
 	});
 }
-//#endregion
-//#region app/lib/echo.ts
-var echo = null;
-function getEcho(token) {
-	if (typeof window === "undefined") return null;
-	if (!echo) {
-		window.Pusher = Pusher;
-		echo = new Echo({
-			broadcaster: "reverb",
-			key: "cgux9icc65a7v6i6ia0v",
-			wsHost: "127.0.0.1",
-			wsPort: 8080,
-			wssPort: 8080,
-			forceTLS: false,
-			enabledTransports: ["ws", "wss"],
-			authEndpoint: "http://localhost:8000/broadcasting/auth",
-			auth: { headers: {
-				Authorization: token ? `Bearer ${token}` : "",
-				Accept: "application/json"
-			} }
-		});
-	}
-	return echo;
-}
-//#endregion
-//#region app/context/NotificationContext.tsx
-var NotificationContext = createContext(null);
-function NotificationProvider({ children, userId, token }) {
-	const [notifications, setNotifications] = useState([]);
-	const [unreadCount, setUnreadCount] = useState(0);
-	useEffect(() => {
-		if (!userId || !token) return;
-		const echo = getEcho(token);
-		if (!echo) return;
-		const channelName = `user.${userId}`;
-		console.log("SUSCRIPCION GLOBAL:", channelName);
-		echo.private(channelName).notification((notification) => {
-			console.log("GLOBAL NOTIFICATION:", notification);
-			setNotifications((prev) => [notification, ...prev]);
-			setUnreadCount((prev) => prev + 1);
-		});
-		return () => {
-			echo.leave(channelName);
-		};
-	}, [userId, token]);
-	const markAsRead = () => {
-		setUnreadCount(0);
-	};
-	return /* @__PURE__ */ jsx(NotificationContext.Provider, {
-		value: {
-			notifications,
-			unreadCount,
-			markAsRead
-		},
-		children
+function PackageIcon$2({ className }) {
+	return /* @__PURE__ */ jsxs("svg", {
+		className,
+		fill: "none",
+		viewBox: "0 0 24 24",
+		stroke: "currentColor",
+		strokeWidth: 2,
+		children: [
+			/* @__PURE__ */ jsx("path", { d: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" }),
+			/* @__PURE__ */ jsx("polyline", { points: "3.29 7 12 12 20.71 7" }),
+			/* @__PURE__ */ jsx("line", {
+				x1: "12",
+				y1: "22",
+				x2: "12",
+				y2: "12"
+			})
+		]
 	});
-}
-function useGlobalNotifications() {
-	const context = useContext(NotificationContext);
-	if (!context) throw new Error("useGlobalNotifications debe usarse dentro de NotificationProvider");
-	return context;
 }
 //#endregion
 //#region app/routes/client/_layout.tsx
@@ -1167,11 +1199,14 @@ var dashboard_exports$2 = /* @__PURE__ */ __exportAll({ default: () => dashboard
 var dashboard_default$2 = UNSAFE_withComponentProps(function ClientDashboard() {
 	const { token, user } = useAuth();
 	const [bookings, setBookings] = useState([]);
+	const [packages, setPackages] = useState([]);
 	const now = /* @__PURE__ */ new Date();
 	useEffect(() => {
 		const load = async () => {
 			if (!token) return;
-			setBookings((await api.get("/mis-reservas", token)).data);
+			const [reservasRes, paquetesRes] = await Promise.all([api.get("/mis-reservas", token), api.get("/mis-compras-paquetes", token)]);
+			setBookings(reservasRes.data);
+			setPackages(paquetesRes);
 		};
 		load();
 	}, [token]);
@@ -1191,6 +1226,10 @@ var dashboard_default$2 = UNSAFE_withComponentProps(function ClientDashboard() {
 			return b.fecha === todayStr && b.modalidad === "virtual" && b.estado !== "cancelada";
 		}).sort((a, b) => a.hora.localeCompare(b.hora))[0];
 	}, [bookings]);
+	const paqueteDestacado = packages.find((p) => p.pago?.estado === "aprobado") ?? packages.find((p) => p.pago?.estado === "pendiente") ?? null;
+	const totalSesiones = paqueteDestacado ? paqueteDestacado.items.reduce((sum, item) => sum + item.item_paquete.cantidad_sesiones, 0) : 0;
+	const sesionesRestantes = paqueteDestacado ? paqueteDestacado.items.reduce((sum, item) => sum + item.sesiones_restantes, 0) : 0;
+	const porcentaje = totalSesiones > 0 ? sesionesRestantes / totalSesiones * 100 : 0;
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-8 max-w-5xl mx-auto",
 		children: [
@@ -1302,50 +1341,63 @@ var dashboard_default$2 = UNSAFE_withComponentProps(function ClientDashboard() {
 							]
 						}, b.reserva_id))
 					})]
-				}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
-					className: "flex items-center justify-between mb-4",
-					children: [/* @__PURE__ */ jsx("h3", {
-						className: "font-display italic text-xl text-ink",
-						children: "Paquetes"
-					}), /* @__PURE__ */ jsx(Link, {
-						to: "/client/packages",
-						className: "text-sm text-primary underline",
-						children: "Ver todos"
-					})]
-				}), /* @__PURE__ */ jsxs("div", {
-					className: "space-y-3",
-					children: [/* @__PURE__ */ jsxs("div", {
+				}), /* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsxs("div", {
+						className: "flex items-center justify-between mb-4",
+						children: [/* @__PURE__ */ jsx("h3", {
+							className: "font-display italic text-xl text-ink",
+							children: "Paquetes"
+						}), /* @__PURE__ */ jsx(Link, {
+							to: "/client/packages",
+							className: "text-sm text-primary underline",
+							children: "Ver todos"
+						})]
+					}),
+					/* @__PURE__ */ jsx("div", {
 						className: "bg-surface border border-border rounded-2xl p-4",
-						children: [
+						children: paqueteDestacado ? /* @__PURE__ */ jsxs(Fragment, { children: [
 							/* @__PURE__ */ jsxs("div", {
 								className: "flex items-center gap-1.5 text-xs text-primary font-medium mb-2",
-								children: [/* @__PURE__ */ jsx(PackageIcon$1, {}), "Activo"]
+								children: [/* @__PURE__ */ jsx(PackageIcon$1, {}), paqueteDestacado.pago?.estado === "aprobado" ? "Activo" : "Pendiente"]
 							}),
 							/* @__PURE__ */ jsx("p", {
 								className: "font-display italic text-lg text-ink mb-3",
-								children: "Paquete 8 sesiones · M. Ortiz"
+								children: paqueteDestacado.paquete.nombre
 							}),
 							/* @__PURE__ */ jsxs("p", {
 								className: "text-ink-muted text-sm mb-2",
-								children: [/* @__PURE__ */ jsx("span", {
-									className: "text-3xl font-bold text-ink",
-									children: "5"
-								}), " de 8 sesiones restantes"]
+								children: [
+									/* @__PURE__ */ jsx("span", {
+										className: "text-3xl font-bold text-ink",
+										children: sesionesRestantes
+									}),
+									" ",
+									"de ",
+									totalSesiones,
+									" sesiones restantes"
+								]
 							}),
 							/* @__PURE__ */ jsx("div", {
 								className: "h-1.5 bg-border rounded-full mb-3",
 								children: /* @__PURE__ */ jsx("div", {
 									className: "h-full bg-primary rounded-full",
-									style: { width: "62.5%" }
+									style: { width: `${porcentaje}%` }
 								})
 							}),
 							/* @__PURE__ */ jsxs("div", {
 								className: "flex items-center justify-between text-xs text-ink-muted",
-								children: [/* @__PURE__ */ jsx("span", { children: "Vence 12 ago 2026" }), /* @__PURE__ */ jsx("span", { children: "€320 · pagado" })]
+								children: [/* @__PURE__ */ jsxs("span", { children: ["Compra #", paqueteDestacado.compra_paquete_id] }), /* @__PURE__ */ jsxs("span", { children: ["$", paqueteDestacado.paquete.precio_total] })]
 							})
-						]
-					}), /* @__PURE__ */ jsxs(Link, {
-						to: "/client/packages",
+						] }) : /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
+							className: "flex items-center gap-1.5 text-xs text-ink-muted font-medium mb-2",
+							children: [/* @__PURE__ */ jsx(PackageIcon$1, {}), "Sin paquetes"]
+						}), /* @__PURE__ */ jsx("p", {
+							className: "text-sm text-ink-muted",
+							children: "Todavía no tienes paquetes comprados."
+						})] })
+					}),
+					/* @__PURE__ */ jsxs(Link, {
+						to: "/client/discover?tab=packages",
 						className: "flex items-center gap-3 bg-surface border border-dashed border-border rounded-2xl p-4 hover:bg-bg transition-colors",
 						children: [/* @__PURE__ */ jsx("span", {
 							className: "w-7 h-7 rounded-full border border-border flex items-center justify-center text-ink-muted text-lg",
@@ -1357,8 +1409,8 @@ var dashboard_default$2 = UNSAFE_withComponentProps(function ClientDashboard() {
 							className: "text-xs text-ink-muted",
 							children: "Hasta 20% off en sesiones múltiples"
 						})] })]
-					})]
-				})] })]
+					})
+				] })]
 			})
 		]
 	});
@@ -1460,7 +1512,6 @@ function normalizeModality$1(m) {
 var discover_default = UNSAFE_withComponentProps(function Discover() {
 	const navigate = useNavigate();
 	const { token } = useAuth();
-	const [activeTab, setActiveTab] = useState("servicios");
 	const [servicios, setServicios] = useState([]);
 	const [paquetes, setPaquetes] = useState([]);
 	const [loadingSvc, setLoadingSvc] = useState(true);
@@ -1471,6 +1522,8 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 	const [selectedModality, setSelectedModality] = useState("Todas");
 	const [maxPrice, setMaxPrice] = useState(1e3);
 	const [priceRange, setPriceRange] = useState(1e3);
+	const [buyingPackageId, setBuyingPackageId] = useState(null);
+	const [searchParams] = useSearchParams();
 	useEffect(() => {
 		api.get("/servicios").then((res) => {
 			if (res.success) {
@@ -1487,6 +1540,9 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 		}).catch((e) => setErrorPkg(e.message ?? "Error al cargar paquetes")).finally(() => setLoadingPkg(false));
 		return () => {};
 	}, [token]);
+	const activeTab = searchParams.get("tab") === "packages" ? "paquetes" : "servicios";
+	searchParams.get("servicio");
+	searchParams.get("compraItem");
 	const serviceTypes = [...new Set(servicios.map((s) => s.tipo))].map((tipo) => ({
 		label: tipo,
 		count: servicios.filter((s) => s.tipo === tipo).length,
@@ -1622,7 +1678,7 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 				/* @__PURE__ */ jsx("div", {
 					className: "flex gap-1 border-b border-border mb-6",
 					children: ["servicios", "paquetes"].map((tab) => /* @__PURE__ */ jsx("button", {
-						onClick: () => setActiveTab(tab),
+						onClick: () => navigate(`/client/discover?tab=${tab === "paquetes" ? "packages" : "services"}`),
 						className: `px-5 py-2.5 text-sm font-medium cursor-pointer transition-colors border-b-2 -mb-px ${activeTab === tab ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"}`,
 						children: tab.charAt(0).toUpperCase() + tab.slice(1)
 					}, tab))
@@ -1846,54 +1902,44 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 						})]
 					}),
 					!loadingPkg && !errorPkg && filteredPkg.length > 0 && /* @__PURE__ */ jsx("div", {
-						className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5",
-						children: filteredPkg.map((pkg) => {
-							const totalSesiones = pkg.servicios?.reduce((acc, s) => acc + (s.pivot?.cantidad_sesiones ?? s.cantidad_sesiones ?? 1), 0) ?? 0;
-							return /* @__PURE__ */ jsxs("div", {
-								className: "bg-surface border border-border rounded-2xl p-5 flex flex-col gap-4 hover:shadow-md transition-shadow",
+						className: "grid md:grid-cols-2 lg:grid-cols-3 gap-6",
+						children: filteredPkg.map((paquete) => /* @__PURE__ */ jsxs("div", {
+							className: "bg-surface border border-border rounded-xl overflow-hidden shadow-sm",
+							children: [/* @__PURE__ */ jsx("div", { className: "h-32 bg-gradient-to-r from-orange-200 to-pink-200" }), /* @__PURE__ */ jsxs("div", {
+								className: "p-5",
 								children: [
-									/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h3", {
-										className: "font-display text-xl text-ink mb-1",
-										children: pkg.nombre
-									}), pkg.descripcion && /* @__PURE__ */ jsx("p", {
-										className: "text-xs text-ink-muted line-clamp-2",
-										children: pkg.descripcion
-									})] }),
-									pkg.servicios?.length > 0 && /* @__PURE__ */ jsx("div", {
-										className: "space-y-2",
-										children: pkg.servicios.map((item) => /* @__PURE__ */ jsxs("div", {
-											className: "flex items-center justify-between text-xs text-ink-muted",
-											children: [/* @__PURE__ */ jsxs("span", {
-												className: "flex items-center gap-1.5",
-												children: [/* @__PURE__ */ jsx("ion-icon", {
-													name: "checkmark-circle-outline",
-													style: {
-														fontSize: "13px",
-														color: "var(--color-primary)"
-													}
-												}), item.nombre ?? `Servicio #${item.servicio_id}`]
-											}), /* @__PURE__ */ jsxs("span", {
-												className: "font-medium text-ink",
-												children: [item.pivot?.cantidad_sesiones ?? item.cantidad_sesiones ?? 1, " ses."]
-											})]
-										}, item.servicio_id))
+									/* @__PURE__ */ jsx("h3", {
+										className: "font-display text-xl text-ink mb-2",
+										children: paquete.nombre
+									}),
+									/* @__PURE__ */ jsx("p", {
+										className: "text-sm text-ink-muted line-clamp-3",
+										children: paquete.descripcion
 									}),
 									/* @__PURE__ */ jsxs("div", {
-										className: "flex items-end justify-between border-t border-border pt-3 mt-auto",
-										children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("p", {
-											className: "text-xs text-ink-muted",
-											children: [totalSesiones, " sesiones totales"]
-										}), /* @__PURE__ */ jsxs("p", {
-											className: "text-2xl font-bold text-ink",
-											children: ["$ ", Number(pkg.precio_total).toFixed(0)]
-										})] }), /* @__PURE__ */ jsx("button", {
-											className: "bg-ink text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary transition-colors cursor-pointer",
-											children: "Contratar"
+										className: "mt-4 flex items-center justify-between",
+										children: [/* @__PURE__ */ jsxs("span", {
+											className: "font-bold text-2xl",
+											children: ["$", paquete.precio_total]
+										}), /* @__PURE__ */ jsx("button", {
+											disabled: buyingPackageId === paquete.paquete_id,
+											className: "\r\n                            bg-ink text-white px-4 py-2 rounded-lg\r\n                            hover:bg-primary\r\n                            transition-colors\r\n                            disabled:opacity-70\r\n                            disabled:cursor-not-allowed\r\n                          ",
+											onClick: async () => {
+												try {
+													setBuyingPackageId(paquete.paquete_id);
+													navigate(`/client/package/${paquete.paquete_id}/pay`);
+												} catch (error) {
+													console.error(error);
+												} finally {
+													setBuyingPackageId(null);
+												}
+											},
+											children: buyingPackageId === paquete.paquete_id ? "Procesando..." : "Comprar"
 										})]
 									})
 								]
-							}, pkg.paquete_id);
-						})
+							})]
+						}, paquete.paquete_id))
 					})
 				] })
 			]
@@ -2044,7 +2090,7 @@ function formatDateHuman(dateStr) {
 	const dow = DOW_FULL[new Date(y, m - 1, d).getDay()];
 	return `${dow.charAt(0).toUpperCase() + dow.slice(1)} ${d} ${MONTH_NAMES_SHORT[m - 1]}`;
 }
-function BookingModal({ service, date, slot, onClose, token }) {
+function BookingModal({ service, date, slot, onClose, token, compraItemId }) {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(false);
@@ -2056,7 +2102,8 @@ function BookingModal({ service, date, slot, onClose, token }) {
 				servicio_id: service.servicio_id,
 				fecha: date,
 				hora: slot.hora,
-				modalidad: slot.modalidad
+				modalidad: slot.modalidad,
+				compra_item_paquete_id: compraItemId ? Number(compraItemId) : null
 			}, token);
 			if (!res.success) throw new Error(res.message ?? "Error al crear la reserva");
 			setSuccess(true);
@@ -2131,44 +2178,54 @@ function BookingModal({ service, date, slot, onClose, token }) {
 				})]
 			}), /* @__PURE__ */ jsxs("div", {
 				className: "p-5 space-y-4",
-				children: [/* @__PURE__ */ jsxs("div", {
-					className: "bg-bg rounded-xl p-4 space-y-1.5",
-					children: [
-						/* @__PURE__ */ jsx("p", {
-							className: "text-sm font-semibold text-ink",
-							children: service.nombre
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "flex items-center gap-1.5 text-xs text-ink-muted",
-							children: [/* @__PURE__ */ jsx("ion-icon", {
-								name: "calendar-outline",
-								style: { fontSize: "13px" }
-							}), formatDateHuman(date)]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "flex items-center gap-1.5 text-xs text-ink-muted",
-							children: [
-								/* @__PURE__ */ jsx("ion-icon", {
-									name: "time-outline",
-									style: { fontSize: "13px" }
-								}),
-								slot.hora,
-								" · ",
-								service.duracion,
-								" min"
-							]
-						}),
-						/* @__PURE__ */ jsxs("p", {
-							className: "text-base font-bold text-ink pt-1",
-							children: ["$ ", Number(service.precio).toFixed(0)]
+				children: [
+					compraItemId && /* @__PURE__ */ jsx("div", {
+						className: "rounded-xl border border-green-200 bg-green-50 p-3",
+						children: /* @__PURE__ */ jsx("p", {
+							className: "text-sm font-medium text-green-700",
+							children: "Esta reserva utilizará una sesión de tu paquete."
 						})
-					]
-				}), /* @__PURE__ */ jsxs("button", {
-					onClick: confirmSitio,
-					disabled: loading,
-					className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-primary disabled:opacity-60 transition-colors",
-					children: [loading && /* @__PURE__ */ jsx("span", { className: "w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" }), loading ? "Procesando..." : "Confirmar reserva"]
-				})]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bg-bg rounded-xl p-4 space-y-1.5",
+						children: [
+							/* @__PURE__ */ jsx("p", {
+								className: "text-sm font-semibold text-ink",
+								children: service.nombre
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex items-center gap-1.5 text-xs text-ink-muted",
+								children: [/* @__PURE__ */ jsx("ion-icon", {
+									name: "calendar-outline",
+									style: { fontSize: "13px" }
+								}), formatDateHuman(date)]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex items-center gap-1.5 text-xs text-ink-muted",
+								children: [
+									/* @__PURE__ */ jsx("ion-icon", {
+										name: "time-outline",
+										style: { fontSize: "13px" }
+									}),
+									slot.hora,
+									" · ",
+									service.duracion,
+									" min"
+								]
+							}),
+							/* @__PURE__ */ jsxs("p", {
+								className: "text-base font-bold text-ink pt-1",
+								children: ["$ ", Number(service.precio).toFixed(0)]
+							})
+						]
+					}),
+					/* @__PURE__ */ jsxs("button", {
+						onClick: confirmSitio,
+						disabled: loading,
+						className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-primary disabled:opacity-60 transition-colors",
+						children: [loading && /* @__PURE__ */ jsx("span", { className: "w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" }), loading ? "Procesando..." : "Confirmar reserva"]
+					})
+				]
 			})] })
 		})
 	});
@@ -2176,6 +2233,8 @@ function BookingModal({ service, date, slot, onClose, token }) {
 var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDetail() {
 	const { id } = useParams();
 	const { token } = useAuth();
+	const [searchParams] = useSearchParams();
+	const compraItemId = searchParams.get("compraItem");
 	const [showModal, setShowModal] = useState(false);
 	const [profile, setProfile] = useState(null);
 	const [loadingProfile, setLoadingProfile] = useState(true);
@@ -2528,6 +2587,7 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 				date: selectedDate,
 				slot: selectedSlot,
 				token,
+				compraItemId,
 				onClose: (success) => {
 					setShowModal(false);
 					if (success) {
@@ -2542,7 +2602,7 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 //#endregion
 //#region app/routes/client/booking.$id.pay.tsx
 var booking_$id_pay_exports = /* @__PURE__ */ __exportAll({ default: () => booking_$id_pay_default });
-var STEPS = [
+var STEPS$2 = [
 	"Servicio",
 	"Fecha y hora",
 	"Modalidad",
@@ -2587,7 +2647,7 @@ var booking_$id_pay_default = UNSAFE_withComponentProps(function BookingPay() {
 			}),
 			/* @__PURE__ */ jsx("div", {
 				className: "flex items-center gap-3 mb-8 overflow-x-auto pb-2",
-				children: STEPS.map((step, i) => /* @__PURE__ */ jsxs("div", {
+				children: STEPS$2.map((step, i) => /* @__PURE__ */ jsxs("div", {
 					className: "flex items-center gap-3 shrink-0",
 					children: [/* @__PURE__ */ jsxs("div", {
 						className: "flex items-center gap-2",
@@ -2598,7 +2658,7 @@ var booking_$id_pay_default = UNSAFE_withComponentProps(function BookingPay() {
 							className: `text-sm font-medium ${i === 3 ? "text-ink" : i < 3 ? "text-primary" : "text-ink-muted"}`,
 							children: step
 						})]
-					}), i < STEPS.length - 1 && /* @__PURE__ */ jsx("div", { className: `h-px w-8 ${i < 3 ? "bg-primary" : "bg-border"}` })]
+					}), i < STEPS$2.length - 1 && /* @__PURE__ */ jsx("div", { className: `h-px w-8 ${i < 3 ? "bg-primary" : "bg-border"}` })]
 				}, step))
 			}),
 			/* @__PURE__ */ jsxs("div", {
@@ -2858,159 +2918,765 @@ var booking_$id_pay_default = UNSAFE_withComponentProps(function BookingPay() {
 	});
 });
 //#endregion
+//#region app/routes/client/package.$id.pay.tsx
+var package_$id_pay_exports = /* @__PURE__ */ __exportAll({ default: () => package_$id_pay_default });
+var STEPS$1 = [
+	"Paquete",
+	"Pago",
+	"Confirmación"
+];
+var package_$id_pay_default = UNSAFE_withComponentProps(function PackagePay() {
+	const { id } = useParams();
+	const { token } = useAuth();
+	const [paquete, setPaquete] = useState(null);
+	const [loadingPaquete, setLoadingPaquete] = useState(true);
+	useNavigate();
+	const [method, setMethod] = useState("card");
+	const [loading, setLoading] = useState(false);
+	const handleConfirm = async () => {
+		try {
+			setLoading(true);
+			const compra = await api.post("/compra-paquetes", { paquete_id: Number(id) }, token);
+			const pago = await api.post(`/pagos/paquete/${compra.compra_paquete_id}/paypal`, {}, token);
+			if (pago.approval_url) {
+				window.location.href = pago.approval_url;
+				return;
+			}
+		} catch (error) {
+			console.error(error);
+		} finally {
+			setLoading(false);
+		}
+	};
+	useEffect(() => {
+		if (!token || !id) return;
+		api.get(`/paquetes/${id}`, token).then((res) => {
+			console.log("PAQUETE:", res);
+			setPaquete(res);
+		}).catch((err) => {
+			console.error("ERROR PAQUETE:", err);
+		}).finally(() => {
+			setLoadingPaquete(false);
+		});
+	}, [id, token]);
+	if (loadingPaquete) return /* @__PURE__ */ jsx("p", {
+		className: "p-8",
+		children: "Cargando..."
+	});
+	if (!paquete) return /* @__PURE__ */ jsx("p", {
+		className: "p-8",
+		children: "Paquete no encontrado"
+	});
+	return /* @__PURE__ */ jsxs("div", {
+		className: "p-8 max-w-5xl mx-auto",
+		children: [
+			/* @__PURE__ */ jsxs("nav", {
+				className: "text-sm text-ink-muted mb-6 flex items-center gap-2",
+				children: [
+					/* @__PURE__ */ jsx(Link, {
+						to: "/client/discover",
+						className: "hover:text-ink",
+						children: "Descubrir"
+					}),
+					/* @__PURE__ */ jsx("span", { children: "·" }),
+					/* @__PURE__ */ jsx("span", { children: "Paquetes" }),
+					/* @__PURE__ */ jsx("span", { children: "·" }),
+					/* @__PURE__ */ jsx("span", { children: "Compra" })
+				]
+			}),
+			/* @__PURE__ */ jsx("h1", {
+				className: "font-display italic text-3xl text-ink mb-6",
+				children: "Confirmá tu compra"
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "flex items-center gap-3 mb-8 overflow-x-auto pb-2",
+				children: STEPS$1.map((step, i) => /* @__PURE__ */ jsxs("div", {
+					className: "flex items-center gap-3 shrink-0",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "flex items-center gap-2",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: `w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border-2 transition-colors ${i < 3 ? "bg-primary border-primary text-white" : i === 3 ? "border-primary text-primary bg-surface" : "border-border text-ink-muted bg-surface"}`,
+							children: i < 3 ? "✓" : i + 1
+						}), /* @__PURE__ */ jsx("span", {
+							className: `text-sm font-medium ${i === 3 ? "text-ink" : i < 3 ? "text-primary" : "text-ink-muted"}`,
+							children: step
+						})]
+					}), i < STEPS$1.length - 1 && /* @__PURE__ */ jsx("div", { className: `h-px w-8 ${i < 3 ? "bg-primary" : "bg-border"}` })]
+				}, step))
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "grid grid-cols-1 lg:grid-cols-5 gap-6",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "lg:col-span-3 space-y-4",
+					children: [
+						/* @__PURE__ */ jsx("h2", {
+							className: "text-lg font-semibold text-ink",
+							children: "Método de pago"
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "text-sm text-ink-muted",
+							children: "Elegí cómo abonar tu paquete. El cobro se realiza al confirmar."
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "space-y-3",
+							children: [
+								/* @__PURE__ */ jsxs("label", {
+									className: `flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-colors ${method === "card" ? "border-primary bg-primary-soft/20" : "border-border bg-surface hover:bg-bg"}`,
+									children: [
+										/* @__PURE__ */ jsx("input", {
+											type: "radio",
+											name: "method",
+											value: "card",
+											checked: method === "card",
+											onChange: () => setMethod("card"),
+											className: "accent-primary"
+										}),
+										/* @__PURE__ */ jsx("span", {
+											className: "text-lg",
+											children: "💳"
+										}),
+										/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+											className: "text-sm font-medium text-ink",
+											children: "Tarjeta de crédito o débito"
+										}), /* @__PURE__ */ jsx("p", {
+											className: "text-xs text-ink-muted",
+											children: "Visa, Mastercard, Amex"
+										})] })
+									]
+								}),
+								/* @__PURE__ */ jsxs("label", {
+									className: `flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-colors ${method === "mercadopago" ? "border-primary bg-primary-soft/20" : "border-border bg-surface hover:bg-bg"}`,
+									children: [
+										/* @__PURE__ */ jsx("input", {
+											type: "radio",
+											name: "method",
+											value: "mercadopago",
+											checked: method === "mercadopago",
+											onChange: () => setMethod("mercadopago"),
+											className: "accent-primary"
+										}),
+										/* @__PURE__ */ jsx("span", {
+											className: "text-lg",
+											children: "$"
+										}),
+										/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+											className: "text-sm font-medium text-ink",
+											children: "Mercado Pago"
+										}), /* @__PURE__ */ jsx("p", {
+											className: "text-xs text-ink-muted",
+											children: "Saldo, tarjetas y transferencia"
+										})] })
+									]
+								}),
+								method === "card" && /* @__PURE__ */ jsxs("div", {
+									className: "bg-surface border border-border rounded-2xl p-5 space-y-4",
+									children: [
+										/* @__PURE__ */ jsx("h3", {
+											className: "text-sm font-semibold text-ink",
+											children: "Datos de la tarjeta"
+										}),
+										/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+											className: "block text-xs text-ink-muted mb-1",
+											children: "Número"
+										}), /* @__PURE__ */ jsx("input", {
+											defaultValue: "4242 4242 4242 4242",
+											className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+										})] }),
+										/* @__PURE__ */ jsxs("div", {
+											className: "grid grid-cols-3 gap-3",
+											children: [
+												/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+													className: "block text-xs text-ink-muted mb-1",
+													children: "Vencimiento"
+												}), /* @__PURE__ */ jsx("input", {
+													defaultValue: "08/27",
+													className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+												})] }),
+												/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+													className: "block text-xs text-ink-muted mb-1",
+													children: "CVV"
+												}), /* @__PURE__ */ jsx("input", {
+													defaultValue: "•••",
+													className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+												})] }),
+												/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+													className: "block text-xs text-ink-muted mb-1",
+													children: "Titular"
+												}), /* @__PURE__ */ jsx("input", {
+													defaultValue: "Lucía Pérez",
+													className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+												})] })
+											]
+										})
+									]
+								})
+							]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex items-center gap-4 pt-2",
+							children: [/* @__PURE__ */ jsx(Link, {
+								to: "/client/discover",
+								className: "flex items-center gap-2 border border-border px-5 py-3 rounded-xl text-sm font-medium text-ink hover:bg-bg transition-colors",
+								children: "← Volver"
+							}), /* @__PURE__ */ jsx("button", {
+								onClick: handleConfirm,
+								disabled: loading,
+								className: "flex-1 bg-primary hover:bg-primary-hover text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-60",
+								children: loading ? "Procesando..." : "Confirmar compra →"
+							})]
+						})
+					]
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "lg:col-span-2 space-y-4",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded-2xl p-5",
+						children: [
+							/* @__PURE__ */ jsx("h3", {
+								className: "text-xs font-semibold text-ink-muted uppercase tracking-wide mb-4",
+								children: "Resumen"
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex items-center gap-3 mb-4",
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "w-10 h-10 rounded-full bg-violet-400 flex items-center justify-center text-white text-sm font-semibold",
+									children: "MO"
+								}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+									className: "text-sm font-semibold text-ink",
+									children: paquete?.nombre
+								}), /* @__PURE__ */ jsx("p", {
+									className: "text-xs text-ink-muted",
+									children: paquete?.descripcion
+								})] })]
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "space-y-2 text-sm border-t border-border pt-4",
+								children: [["Paquete", paquete?.nombre]].map(([label, value]) => /* @__PURE__ */ jsxs("div", {
+									className: "flex justify-between",
+									children: [/* @__PURE__ */ jsx("span", {
+										className: "text-ink-muted",
+										children: label
+									}), /* @__PURE__ */ jsx("span", {
+										className: "text-ink font-medium",
+										children: value
+									})]
+								}, label))
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "border-t border-border mt-4 pt-4 space-y-1 text-sm",
+								children: [
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex justify-between",
+										children: [/* @__PURE__ */ jsx("span", {
+											className: "text-ink-muted",
+											children: "Subtotal"
+										}), /* @__PURE__ */ jsxs("span", {
+											className: "text-ink",
+											children: ["$", Number(paquete?.subtotal).toFixed(2)]
+										})]
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex justify-between",
+										children: [/* @__PURE__ */ jsx("span", {
+											className: "text-ink-muted",
+											children: "Comisión plataforma"
+										}), /* @__PURE__ */ jsx("span", {
+											className: "text-ink",
+											children: "incluida"
+										})]
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex justify-between text-base font-semibold mt-2",
+										children: [/* @__PURE__ */ jsx("span", {
+											className: "text-ink",
+											children: "Total"
+										}), /* @__PURE__ */ jsx("span", {
+											className: "font-display italic text-2xl text-ink",
+											children: Number(paquete?.precio_total).toFixed(2)
+										})]
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex items-center gap-2 mt-4 text-xs text-ink-muted",
+								children: [/* @__PURE__ */ jsx("span", { children: "○" }), /* @__PURE__ */ jsx("span", { children: "Pago seguro · cifrado SSL" })]
+							})
+						]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "bg-surface border border-border rounded-2xl p-4",
+						children: /* @__PURE__ */ jsxs("div", {
+							className: "flex items-start gap-3",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "text-base mt-0.5",
+								children: "🔔"
+							}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+								className: "text-sm font-medium text-ink",
+								children: "Recordatorios automáticos"
+							}), /* @__PURE__ */ jsx("p", {
+								className: "text-xs text-ink-muted leading-relaxed",
+								children: "Te enviaremos un mail 24h y 1h antes con el enlace."
+							})] })]
+						})
+					})]
+				})]
+			})
+		]
+	});
+});
+//#endregion
+//#region app/routes/client/compra-package.$id.pay.tsx
+var compra_package_$id_pay_exports = /* @__PURE__ */ __exportAll({ default: () => compra_package_$id_pay_default });
+var STEPS = [
+	"Paquete",
+	"Pago",
+	"Confirmación"
+];
+var compra_package_$id_pay_default = UNSAFE_withComponentProps(function CompraPackagePay() {
+	const { id } = useParams();
+	const { token } = useAuth();
+	const [compra, setCompra] = useState(null);
+	const [loadingPaquete, setLoadingPaquete] = useState(true);
+	useNavigate();
+	const [method, setMethod] = useState("card");
+	const [loading, setLoading] = useState(false);
+	const handleConfirm = async () => {
+		try {
+			setLoading(true);
+			const pago = await api.post(`/pagos/paquete/${id}/paypal`, {}, token);
+			if (pago.approval_url) {
+				window.location.href = pago.approval_url;
+				return;
+			}
+		} catch (error) {
+			console.error(error);
+		} finally {
+			setLoading(false);
+		}
+	};
+	useEffect(() => {
+		if (!token || !id) return;
+		api.get(`/compra-paquetes/${id}`, token).then((res) => {
+			console.log("COMPRA:", res);
+			setCompra(res);
+		}).catch((err) => {
+			console.error("ERROR COMPRA:", err);
+		}).finally(() => {
+			setLoadingPaquete(false);
+		});
+	}, [id, token]);
+	if (loadingPaquete) return /* @__PURE__ */ jsx("p", {
+		className: "p-8",
+		children: "Cargando..."
+	});
+	if (!compra) return /* @__PURE__ */ jsx("p", {
+		className: "p-8",
+		children: "Compra no encontrada"
+	});
+	return /* @__PURE__ */ jsxs("div", {
+		className: "p-8 max-w-5xl mx-auto",
+		children: [
+			/* @__PURE__ */ jsxs("nav", {
+				className: "text-sm text-ink-muted mb-6 flex items-center gap-2",
+				children: [
+					/* @__PURE__ */ jsx(Link, {
+						to: "/client/discover",
+						className: "hover:text-ink",
+						children: "Descubrir"
+					}),
+					/* @__PURE__ */ jsx("span", { children: "·" }),
+					/* @__PURE__ */ jsx("span", { children: "Paquetes" }),
+					/* @__PURE__ */ jsx("span", { children: "·" }),
+					/* @__PURE__ */ jsx("span", { children: "Compra" })
+				]
+			}),
+			/* @__PURE__ */ jsx("h1", {
+				className: "font-display italic text-3xl text-ink mb-6",
+				children: "Confirmá tu compra"
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "flex items-center gap-3 mb-8 overflow-x-auto pb-2",
+				children: STEPS.map((step, i) => /* @__PURE__ */ jsxs("div", {
+					className: "flex items-center gap-3 shrink-0",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "flex items-center gap-2",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: `w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border-2 transition-colors ${i < 3 ? "bg-primary border-primary text-white" : i === 3 ? "border-primary text-primary bg-surface" : "border-border text-ink-muted bg-surface"}`,
+							children: i < 3 ? "✓" : i + 1
+						}), /* @__PURE__ */ jsx("span", {
+							className: `text-sm font-medium ${i === 3 ? "text-ink" : i < 3 ? "text-primary" : "text-ink-muted"}`,
+							children: step
+						})]
+					}), i < STEPS.length - 1 && /* @__PURE__ */ jsx("div", { className: `h-px w-8 ${i < 3 ? "bg-primary" : "bg-border"}` })]
+				}, step))
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "grid grid-cols-1 lg:grid-cols-5 gap-6",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "lg:col-span-3 space-y-4",
+					children: [
+						/* @__PURE__ */ jsx("h2", {
+							className: "text-lg font-semibold text-ink",
+							children: "Método de pago"
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "text-sm text-ink-muted",
+							children: "Elegí cómo abonar tu paquete. El cobro se realiza al confirmar."
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "space-y-3",
+							children: [
+								/* @__PURE__ */ jsxs("label", {
+									className: `flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-colors ${method === "card" ? "border-primary bg-primary-soft/20" : "border-border bg-surface hover:bg-bg"}`,
+									children: [
+										/* @__PURE__ */ jsx("input", {
+											type: "radio",
+											name: "method",
+											value: "card",
+											checked: method === "card",
+											onChange: () => setMethod("card"),
+											className: "accent-primary"
+										}),
+										/* @__PURE__ */ jsx("span", {
+											className: "text-lg",
+											children: "💳"
+										}),
+										/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+											className: "text-sm font-medium text-ink",
+											children: "Tarjeta de crédito o débito"
+										}), /* @__PURE__ */ jsx("p", {
+											className: "text-xs text-ink-muted",
+											children: "Visa, Mastercard, Amex"
+										})] })
+									]
+								}),
+								/* @__PURE__ */ jsxs("label", {
+									className: `flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-colors ${method === "mercadopago" ? "border-primary bg-primary-soft/20" : "border-border bg-surface hover:bg-bg"}`,
+									children: [
+										/* @__PURE__ */ jsx("input", {
+											type: "radio",
+											name: "method",
+											value: "mercadopago",
+											checked: method === "mercadopago",
+											onChange: () => setMethod("mercadopago"),
+											className: "accent-primary"
+										}),
+										/* @__PURE__ */ jsx("span", {
+											className: "text-lg",
+											children: "$"
+										}),
+										/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+											className: "text-sm font-medium text-ink",
+											children: "Mercado Pago"
+										}), /* @__PURE__ */ jsx("p", {
+											className: "text-xs text-ink-muted",
+											children: "Saldo, tarjetas y transferencia"
+										})] })
+									]
+								}),
+								method === "card" && /* @__PURE__ */ jsxs("div", {
+									className: "bg-surface border border-border rounded-2xl p-5 space-y-4",
+									children: [
+										/* @__PURE__ */ jsx("h3", {
+											className: "text-sm font-semibold text-ink",
+											children: "Datos de la tarjeta"
+										}),
+										/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+											className: "block text-xs text-ink-muted mb-1",
+											children: "Número"
+										}), /* @__PURE__ */ jsx("input", {
+											defaultValue: "4242 4242 4242 4242",
+											className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+										})] }),
+										/* @__PURE__ */ jsxs("div", {
+											className: "grid grid-cols-3 gap-3",
+											children: [
+												/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+													className: "block text-xs text-ink-muted mb-1",
+													children: "Vencimiento"
+												}), /* @__PURE__ */ jsx("input", {
+													defaultValue: "08/27",
+													className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+												})] }),
+												/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+													className: "block text-xs text-ink-muted mb-1",
+													children: "CVV"
+												}), /* @__PURE__ */ jsx("input", {
+													defaultValue: "•••",
+													className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+												})] }),
+												/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+													className: "block text-xs text-ink-muted mb-1",
+													children: "Titular"
+												}), /* @__PURE__ */ jsx("input", {
+													defaultValue: "Lucía Pérez",
+													className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+												})] })
+											]
+										})
+									]
+								})
+							]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex items-center gap-4 pt-2",
+							children: [/* @__PURE__ */ jsx(Link, {
+								to: "/client/discover",
+								className: "flex items-center gap-2 border border-border px-5 py-3 rounded-xl text-sm font-medium text-ink hover:bg-bg transition-colors",
+								children: "← Volver"
+							}), /* @__PURE__ */ jsx("button", {
+								onClick: handleConfirm,
+								disabled: loading,
+								className: "flex-1 bg-primary hover:bg-primary-hover text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-60",
+								children: loading ? "Procesando..." : "Confirmar compra →"
+							})]
+						})
+					]
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "lg:col-span-2 space-y-4",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded-2xl p-5",
+						children: [
+							/* @__PURE__ */ jsx("h3", {
+								className: "text-xs font-semibold text-ink-muted uppercase tracking-wide mb-4",
+								children: "Resumen"
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex items-center gap-3 mb-4",
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "w-10 h-10 rounded-full bg-violet-400 flex items-center justify-center text-white text-sm font-semibold",
+									children: "MO"
+								}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+									className: "text-sm font-semibold text-ink",
+									children: compra?.paquete?.nombre
+								}), /* @__PURE__ */ jsx("p", {
+									className: "text-xs text-ink-muted",
+									children: compra?.paquete?.descripcion
+								})] })]
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "space-y-2 text-sm border-t border-border pt-4",
+								children: [["Paquete", compra?.paquete?.nombre]].map(([label, value]) => /* @__PURE__ */ jsxs("div", {
+									className: "flex justify-between",
+									children: [/* @__PURE__ */ jsx("span", {
+										className: "text-ink-muted",
+										children: label
+									}), /* @__PURE__ */ jsx("span", {
+										className: "text-ink font-medium",
+										children: value
+									})]
+								}, label))
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "border-t border-border mt-4 pt-4 space-y-1 text-sm",
+								children: [
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex justify-between",
+										children: [/* @__PURE__ */ jsx("span", {
+											className: "text-ink-muted",
+											children: "Subtotal"
+										}), /* @__PURE__ */ jsxs("span", {
+											className: "text-ink",
+											children: ["$", Number(compra?.paquete?.subtotal).toFixed(2)]
+										})]
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex justify-between",
+										children: [/* @__PURE__ */ jsx("span", {
+											className: "text-ink-muted",
+											children: "Comisión plataforma"
+										}), /* @__PURE__ */ jsx("span", {
+											className: "text-ink",
+											children: "incluida"
+										})]
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex justify-between text-base font-semibold mt-2",
+										children: [/* @__PURE__ */ jsx("span", {
+											className: "text-ink",
+											children: "Total"
+										}), /* @__PURE__ */ jsx("span", {
+											className: "font-display italic text-2xl text-ink",
+											children: Number(compra?.paquete?.precio_total).toFixed(2)
+										})]
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex items-center gap-2 mt-4 text-xs text-ink-muted",
+								children: [/* @__PURE__ */ jsx("span", { children: "○" }), /* @__PURE__ */ jsx("span", { children: "Pago seguro · cifrado SSL" })]
+							})
+						]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "bg-surface border border-border rounded-2xl p-4",
+						children: /* @__PURE__ */ jsxs("div", {
+							className: "flex items-start gap-3",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "text-base mt-0.5",
+								children: "🔔"
+							}), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+								className: "text-sm font-medium text-ink",
+								children: "Recordatorios automáticos"
+							}), /* @__PURE__ */ jsx("p", {
+								className: "text-xs text-ink-muted leading-relaxed",
+								children: "Te enviaremos un mail 24h y 1h antes con el enlace."
+							})] })]
+						})
+					})]
+				})]
+			})
+		]
+	});
+});
+//#endregion
 //#region app/routes/client/packages.tsx
 var packages_exports = /* @__PURE__ */ __exportAll({ default: () => packages_default });
-var activePackages = [{
-	id: 1,
-	initials: "MO",
-	name: "María Ortiz",
-	title: "Paquete 8 sesiones",
-	used: 5,
-	total: 8,
-	expires: "12 ago 2026",
-	paid: 320,
-	color: "bg-violet-500"
-}];
-var availablePackages = [
-	{
-		sessions: 4,
-		discount: 5,
-		price: 180,
-		perSession: 45
-	},
-	{
-		sessions: 8,
-		discount: 12,
-		price: 320,
-		perSession: 40,
-		popular: true
-	},
-	{
-		sessions: 12,
-		discount: 20,
-		price: 460,
-		perSession: 38
-	}
-];
 var packages_default = UNSAFE_withComponentProps(function Packages() {
+	const { token } = useAuth();
+	const navigate = useNavigate();
+	const [packages, setPackages] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [cancelling, setCancelling] = useState(null);
+	useEffect(() => {
+		if (!token) return;
+		const loadPackages = async () => {
+			try {
+				setPackages(await api.get("/mis-compras-paquetes", token));
+			} catch (error) {
+				console.error(error);
+			} finally {
+				setLoading(false);
+			}
+		};
+		loadPackages();
+	}, [token]);
+	const cancelarCompra = async (id) => {
+		try {
+			setCancelling(id);
+			await api.delete(`/compra-paquetes/${id}`, token);
+			setPackages((prev) => prev.filter((p) => p.compra_paquete_id !== id));
+		} catch (error) {
+			console.error(error);
+		} finally {
+			setCancelling(null);
+		}
+	};
+	if (loading) return /* @__PURE__ */ jsx("div", {
+		className: "p-8",
+		children: "Cargando paquetes..."
+	});
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-8 max-w-4xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsx("h1", {
 				className: "font-display text-3xl text-ink mb-6",
-				children: "Mis paquetes"
+				children: "Paquetes"
 			}),
-			/* @__PURE__ */ jsxs("section", {
-				className: "mb-10",
-				children: [/* @__PURE__ */ jsx("h2", {
-					className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-4",
-					children: "ACTIVOS"
-				}), activePackages.map((p) => /* @__PURE__ */ jsxs("div", {
-					className: "bg-surface border border-border rounded p-6 flex items-center gap-6",
-					children: [
-						/* @__PURE__ */ jsx("div", {
-							className: `w-14 h-14 rounded-lg ${p.color} flex items-center justify-center text-white font-bold text-lg`,
-							children: p.initials
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "flex-1",
-							children: [
-								/* @__PURE__ */ jsxs("h3", {
-									className: "font-display text-xl text-ink mb-1",
-									children: [
-										p.title,
-										" · ",
-										p.name
-									]
-								}),
-								/* @__PURE__ */ jsxs("div", {
-									className: "flex items-center gap-4 text-sm text-ink-muted mb-3",
-									children: [/* @__PURE__ */ jsxs("span", { children: ["Vence ", p.expires] }), /* @__PURE__ */ jsxs("span", { children: [
-										"€",
-										p.paid,
-										" · pagado"
-									] })]
-								}),
-								/* @__PURE__ */ jsxs("div", {
-									className: "flex items-center gap-3",
-									children: [/* @__PURE__ */ jsx("div", {
-										className: "flex-1 h-2 bg-border rounded-full",
-										children: /* @__PURE__ */ jsx("div", {
-											className: "h-full bg-ink rounded-full",
-											style: { width: `${(p.total - p.used) / p.total * 100}%` }
-										})
-									}), /* @__PURE__ */ jsxs("span", {
-										className: "text-sm font-semibold text-ink whitespace-nowrap",
-										children: [
-											p.total - p.used,
-											" de ",
-											p.total,
-											" sesiones restantes"
-										]
-									})]
-								})
-							]
-						}),
-						/* @__PURE__ */ jsx("span", {
-							className: "badge badge-confirmada",
-							children: "ACTIVO"
-						})
-					]
-				}, p.id))]
+			/* @__PURE__ */ jsx("h2", {
+				className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-4",
+				children: "MIS PAQUETES"
 			}),
-			/* @__PURE__ */ jsxs("section", { children: [/* @__PURE__ */ jsxs("div", {
-				className: "flex items-center justify-between mb-4",
-				children: [/* @__PURE__ */ jsx("h2", {
-					className: "text-xs font-bold text-ink-muted uppercase tracking-widest",
-					children: "COMPRAR PAQUETE"
-				}), /* @__PURE__ */ jsx("span", {
-					className: "text-xs text-ink-muted",
-					children: "Hasta 20% off en sesiones múltiples"
-				})]
-			}), /* @__PURE__ */ jsx("div", {
-				className: "grid grid-cols-3 gap-5",
-				children: availablePackages.map((p) => /* @__PURE__ */ jsxs("div", {
-					className: `rounded border p-5 ${p.popular ? "border-ink bg-surface shadow-md" : "border-border bg-surface"}`,
-					children: [
-						p.popular && /* @__PURE__ */ jsx("span", {
-							className: "text-xs font-bold bg-ink text-white px-2 py-0.5 rounded mb-3 inline-block",
-							children: "MÁS POPULAR"
-						}),
-						/* @__PURE__ */ jsxs("span", {
-							className: "text-xs font-bold bg-accent text-ink px-2 py-0.5 rounded mb-2 inline-block",
-							children: [
-								"−",
-								p.discount,
-								"%"
-							]
-						}),
-						/* @__PURE__ */ jsxs("h3", {
-							className: "font-display text-3xl text-ink mb-1",
-							children: [p.sessions, " sesiones"]
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "text-xs text-ink-muted mb-3",
-							children: "Sesión individual"
-						}),
-						/* @__PURE__ */ jsxs("p", {
-							className: "font-display text-4xl text-ink font-bold mb-1",
-							children: ["€", p.price]
-						}),
-						/* @__PURE__ */ jsxs("p", {
-							className: "text-xs text-ink-muted mb-4",
-							children: [
-								"€",
-								p.perSession,
-								" por sesión"
-							]
-						}),
-						/* @__PURE__ */ jsx("button", {
-							className: "w-full bg-ink text-white py-2.5 rounded hover:bg-primary font-semibold text-sm transition-colors",
-							children: "Comprar →"
+			packages.length === 0 ? /* @__PURE__ */ jsx("p", { children: "No tienes paquetes comprados." }) : packages.map((compra) => {
+				const total = compra.items.reduce((sum, item) => sum + item.item_paquete.cantidad_sesiones, 0);
+				const restantes = compra.items.reduce((sum, item) => sum + item.sesiones_restantes, 0);
+				const estadoPago = compra.pago?.estado;
+				const badge = !estadoPago ? {
+					label: "Sin pago",
+					cls: "bg-slate-50 text-slate-700 border-slate-200"
+				} : estadoPago === "aprobado" ? {
+					label: "Activo",
+					cls: "bg-green-50 text-green-700 border-green-200"
+				} : estadoPago === "pendiente" ? {
+					label: "Pendiente de pago",
+					cls: "bg-amber-50 text-amber-700 border-amber-200"
+				} : {
+					label: "Pago rechazado",
+					cls: "bg-red-50 text-red-700 border-red-200"
+				};
+				return /* @__PURE__ */ jsxs("div", {
+					className: "bg-surface border border-border rounded-2xl p-4 flex items-start gap-4 mb-3",
+					children: [/* @__PURE__ */ jsx("div", {
+						className: "shrink-0 w-14 h-14 flex items-center justify-center bg-bg border border-border rounded-xl",
+						children: /* @__PURE__ */ jsx("ion-icon", {
+							name: "cube-outline",
+							style: { fontSize: "26px" }
 						})
-					]
-				}, p.sessions))
-			})] })
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "flex-1 min-w-0",
+						children: [
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex items-start justify-between gap-2 mb-1",
+								children: [/* @__PURE__ */ jsx("p", {
+									className: "text-sm font-semibold text-ink",
+									children: compra.paquete.nombre
+								}), /* @__PURE__ */ jsx("span", {
+									className: `shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${badge.cls}`,
+									children: badge.label
+								})]
+							}),
+							/* @__PURE__ */ jsxs("p", {
+								className: "text-xs text-ink-muted",
+								children: ["Compra #", compra.compra_paquete_id]
+							}),
+							/* @__PURE__ */ jsxs("p", {
+								className: "text-xs text-ink-muted mb-2",
+								children: ["Comprado el ", compra.fecha_compra]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex flex-wrap items-center gap-4 text-xs text-ink-muted",
+								children: [
+									/* @__PURE__ */ jsxs("span", { children: [
+										restantes,
+										" de ",
+										total,
+										" sesiones restantes"
+									] }),
+									/* @__PURE__ */ jsx("div", {
+										className: "mt-4 space-y-2",
+										children: compra.items.map((item) => /* @__PURE__ */ jsxs("div", {
+											className: "flex items-center justify-between border rounded-lg p-3",
+											children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+												className: "font-medium",
+												children: item.item_paquete.servicio.nombre
+											}), /* @__PURE__ */ jsxs("p", {
+												className: "text-sm text-ink-muted",
+												children: [item.sesiones_restantes, " sesiones restantes"]
+											})] }), estadoPago === "aprobado" && item.sesiones_restantes > 0 && /* @__PURE__ */ jsx("button", {
+												onClick: () => navigate(`/client/professional/${item.item_paquete.servicio.profesional_id}?compraItem=${item.compra_item_paquete_id}`),
+												className: "bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-hover",
+												children: "Reservar sesión"
+											})]
+										}, item.compra_item_paquete_id))
+									}),
+									/* @__PURE__ */ jsxs("span", {
+										className: "font-semibold text-ink",
+										children: ["$", Number(compra.paquete.precio_total).toFixed(0)]
+									})
+								]
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "mt-3 flex gap-2 flex-wrap",
+								children: [
+									estadoPago === "pendiente" && /* @__PURE__ */ jsx("button", {
+										onClick: () => navigate(`/client/compra-package/${compra.compra_paquete_id}/pay`),
+										className: "px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors",
+										children: "Completar pago"
+									}),
+									(estadoPago === "rechazado" || estadoPago === "fallido") && /* @__PURE__ */ jsx("button", {
+										onClick: () => navigate(`/client/compra-package/${compra.compra_paquete_id}/pay`),
+										className: "px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors",
+										children: "Reintentar pago"
+									}),
+									estadoPago === "pendiente" && /* @__PURE__ */ jsx("button", {
+										onClick: () => cancelarCompra(compra.compra_paquete_id),
+										disabled: cancelling === compra.compra_paquete_id,
+										className: "px-4 py-2 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50",
+										children: cancelling === compra.compra_paquete_id ? "Cancelando..." : "Cancelar compra"
+									})
+								]
+							})
+						]
+					})]
+				}, compra.compra_paquete_id);
+			})
 		]
 	});
 });
@@ -3203,20 +3869,25 @@ function CashIcon() {
 }
 var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 	const { token } = useAuth();
+	const navigate = useNavigate();
 	const [reservas, setReservas] = useState([]);
+	const [comprasPaquetes, setComprasPaquetes] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [selected, setSelected] = useState(null);
 	const [method, setMethod] = useState("presencial");
 	const [loadingPay, setLoadingPay] = useState(false);
 	useEffect(() => {
 		if (!token) return;
-		api.get("/mis-reservas", token).then((res) => {
-			if (res.success) setReservas(res.data);
+		Promise.all([api.get("/mis-reservas", token), api.get("/mis-compras-paquetes", token)]).then(([reservasRes, paquetesRes]) => {
+			if (reservasRes.success) setReservas(reservasRes.data);
+			setComprasPaquetes(paquetesRes);
 		}).finally(() => setLoading(false));
 	}, [token]);
 	const conPago = reservas.filter((r) => r.pago);
 	const pendientes = conPago.filter((r) => r.pago?.estado === "pendiente");
 	const pagadas = conPago.filter((r) => r.pago?.estado === "aprobado");
+	const paquetesPendientes = comprasPaquetes.filter((p) => p.pago?.estado === "pendiente");
+	const paquetesPagados = comprasPaquetes.filter((p) => p.pago?.estado === "aprobado");
 	const iniciarPago = async () => {
 		if (!selected) return;
 		setLoadingPay(true);
@@ -3246,6 +3917,8 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 		setSelected(r);
 		setMethod("presencial");
 	};
+	const totalPendienteReservas = pendientes.reduce((acc, r) => acc + Number(r.servicio.precio), 0);
+	const totalPendientePaquetes = paquetesPendientes.reduce((acc, p) => acc + Number(p.paquete.precio_total), 0);
 	if (loading) return /* @__PURE__ */ jsx("p", {
 		className: "p-8 text-ink-muted",
 		children: "Cargando..."
@@ -3278,7 +3951,7 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 							children: "Pendiente"
 						}), /* @__PURE__ */ jsxs("p", {
 							className: "text-3xl font-bold text-ink",
-							children: ["$", pendientes.reduce((acc, r) => acc + Number(r.servicio.precio), 0)]
+							children: ["$", totalPendienteReservas + totalPendientePaquetes]
 						})]
 					}), /* @__PURE__ */ jsxs("div", {
 						className: "bg-surface border border-border rounded-2xl p-5",
@@ -3287,50 +3960,77 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 							children: "Pagadas"
 						}), /* @__PURE__ */ jsx("p", {
 							className: "text-3xl font-bold text-ink",
-							children: pagadas.length
+							children: pagadas.length + paquetesPagados.length
 						})]
 					})]
 				}),
 				/* @__PURE__ */ jsx("h2", {
 					className: "text-lg font-semibold text-ink mb-3",
-					children: "Pendientes de pago"
+					children: "Reservas pendientes de pago"
 				}),
-				/* @__PURE__ */ jsx("div", {
+				/* @__PURE__ */ jsxs("div", {
 					className: "space-y-3 mb-10",
-					children: pendientes.length === 0 ? /* @__PURE__ */ jsx("p", {
-						className: "text-sm text-ink-muted",
-						children: "No hay pagos pendientes"
-					}) : pendientes.map((r) => /* @__PURE__ */ jsxs("div", {
-						className: "flex justify-between items-center border border-border rounded-2xl p-4 bg-surface",
-						children: [/* @__PURE__ */ jsxs("div", { children: [
-							/* @__PURE__ */ jsx("p", {
-								className: "font-semibold text-ink",
-								children: r.servicio.nombre
-							}),
-							/* @__PURE__ */ jsxs("p", {
-								className: "text-xs text-ink-muted",
-								children: [
-									r.servicio.profesional_nombre,
-									" · ",
-									r.fecha,
-									" ",
-									r.hora.slice(0, 5)
-								]
-							}),
-							/* @__PURE__ */ jsxs("p", {
-								className: "text-sm font-bold text-ink mt-1",
-								children: ["$", r.servicio.precio]
-							})
-						] }), /* @__PURE__ */ jsx("button", {
-							onClick: () => openModal(r),
-							className: "bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors cursor-pointer text-sm font-medium",
-							children: "Pagar"
-						})]
-					}, r.reserva_id))
+					children: [
+						pendientes.length === 0 ? /* @__PURE__ */ jsx("p", {
+							className: "text-sm text-ink-muted",
+							children: "No hay pagos pendientes"
+						}) : pendientes.map((r) => /* @__PURE__ */ jsxs("div", {
+							className: "flex justify-between items-center border border-border rounded-2xl p-4 bg-surface",
+							children: [/* @__PURE__ */ jsxs("div", { children: [
+								/* @__PURE__ */ jsx("p", {
+									className: "font-semibold text-ink",
+									children: r.servicio.nombre
+								}),
+								/* @__PURE__ */ jsxs("p", {
+									className: "text-xs text-ink-muted",
+									children: [
+										r.servicio.profesional_nombre,
+										" · ",
+										r.fecha,
+										" ",
+										r.hora.slice(0, 5)
+									]
+								}),
+								/* @__PURE__ */ jsxs("p", {
+									className: "text-sm font-bold text-ink mt-1",
+									children: ["$", r.servicio.precio]
+								})
+							] }), /* @__PURE__ */ jsx("button", {
+								onClick: () => openModal(r),
+								className: "bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors cursor-pointer text-sm font-medium",
+								children: "Pagar"
+							})]
+						}, r.reserva_id)),
+						/* @__PURE__ */ jsx("h2", {
+							className: "text-lg font-semibold text-ink mb-3 mt-8",
+							children: "Paquetes pendientes de pago"
+						}),
+						paquetesPendientes.map((compra) => /* @__PURE__ */ jsxs("div", {
+							className: "flex justify-between items-center border border-border rounded-2xl p-4 bg-surface",
+							children: [/* @__PURE__ */ jsxs("div", { children: [
+								/* @__PURE__ */ jsx("p", {
+									className: "font-semibold text-ink",
+									children: compra.paquete.nombre
+								}),
+								/* @__PURE__ */ jsxs("p", {
+									className: "text-xs text-ink-muted",
+									children: ["Compra #", compra.compra_paquete_id]
+								}),
+								/* @__PURE__ */ jsxs("p", {
+									className: "text-sm font-bold text-ink mt-1",
+									children: ["$", compra.paquete.precio_total]
+								})
+							] }), /* @__PURE__ */ jsx("button", {
+								onClick: () => navigate(`/client/compra-package/${compra.compra_paquete_id}/pay`),
+								className: "bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors",
+								children: "Completar pago"
+							})]
+						}, compra.compra_paquete_id))
+					]
 				}),
 				/* @__PURE__ */ jsx("h2", {
 					className: "text-lg font-semibold text-ink mb-3",
-					children: "Historial"
+					children: "Historial de reservas"
 				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "bg-surface border border-border rounded-2xl overflow-hidden",
@@ -3389,6 +4089,60 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 							})
 						]
 					}, r.reserva_id))]
+				}),
+				/* @__PURE__ */ jsx("h2", {
+					className: "text-lg font-semibold text-ink mb-3 mt-8",
+					children: "Historial de paquetes"
+				}),
+				/* @__PURE__ */ jsxs("div", {
+					className: "bg-surface border border-border rounded-2xl overflow-hidden",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase",
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-3",
+								children: "Fecha"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-5",
+								children: "Paquete"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-2",
+								children: "Monto"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-2",
+								children: "Estado"
+							})
+						]
+					}), comprasPaquetes.length === 0 ? /* @__PURE__ */ jsx("p", {
+						className: "px-5 py-6 text-sm text-ink-muted",
+						children: "Sin registros"
+					}) : comprasPaquetes.map((compra) => /* @__PURE__ */ jsxs("div", {
+						className: "grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0",
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-3 text-sm text-ink-muted",
+								children: compra.fecha_compra
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-5 text-sm text-ink",
+								children: compra.paquete.nombre
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "col-span-2 font-bold text-ink",
+								children: ["$", compra.paquete.precio_total]
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-2",
+								children: /* @__PURE__ */ jsx("span", {
+									className: badgeCls$3[compra.pago?.estado ?? "pendiente"],
+									children: (compra.pago?.estado ?? "pendiente").toUpperCase()
+								})
+							})
+						]
+					}, compra.compra_paquete_id))]
 				})
 			]
 		}),
@@ -3476,23 +4230,16 @@ var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPa
 	const { notifications, markAsRead } = useGlobalNotifications();
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4",
-		children: [
-			/* @__PURE__ */ jsx("h1", {
-				className: "text-xl font-bold",
-				children: "Notificaciones"
-			}),
-			/* @__PURE__ */ jsx("button", {
-				onClick: markAsRead,
-				children: "Marcar como leídas"
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "space-y-2 mt-4",
-				children: notifications.map((n) => /* @__PURE__ */ jsx("div", {
-					className: "p-3 bg-white rounded shadow",
-					children: n.message
-				}, n.id))
-			})
-		]
+		children: [/* @__PURE__ */ jsx("h1", {
+			className: "text-xl font-bold",
+			children: "Notificaciones"
+		}), /* @__PURE__ */ jsx("div", {
+			className: "space-y-2 mt-4",
+			children: notifications.map((n) => /* @__PURE__ */ jsx("div", {
+				className: "p-3 bg-white rounded shadow",
+				children: n.message
+			}, n.id))
+		})]
 	});
 });
 //#endregion
@@ -4126,14 +4873,23 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 			/* @__PURE__ */ jsx("nav", {
 				className: "flex-1 p-2 space-y-0.5",
 				children: navItems$1.map(({ to, label, icon: Icon, end, disabled }) => disabled ? /* @__PURE__ */ jsxs("div", {
-					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 ${collapsed ? "justify-center px-0" : ""}`,
-					children: [/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4" }), !collapsed && /* @__PURE__ */ jsx("span", {
-						className: "flex-1",
-						children: label
-					})]
+					title: collapsed ? label : void 0,
+					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${collapsed ? "justify-center px-0" : ""}`,
+					children: [
+						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4" }),
+						!collapsed && /* @__PURE__ */ jsx("span", {
+							className: "flex-1",
+							children: label
+						}),
+						!collapsed && /* @__PURE__ */ jsx("span", {
+							className: "text-[10px] text-sidebar-muted/60 font-normal",
+							children: "pronto"
+						})
+					]
 				}, to) : /* @__PURE__ */ jsxs(NavLink, {
 					to,
 					end,
+					title: collapsed ? label : void 0,
 					className: ({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed ? "justify-center px-0" : ""} ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`,
 					children: [
 						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
@@ -4154,6 +4910,7 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 					className: "flex justify-center",
 					children: /* @__PURE__ */ jsx("button", {
 						onClick: () => navigate("/professional/profile"),
+						title: user?.name ?? "Usuario",
 						className: "w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold",
 						children: user?.initials ?? "MO"
 					})
@@ -4162,6 +4919,7 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 					children: [
 						/* @__PURE__ */ jsx("button", {
 							onClick: () => navigate("/professional/profile"),
+							title: "Editar perfil",
 							className: "w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold",
 							children: user?.initials ?? "MO"
 						}),
@@ -4180,6 +4938,7 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 								await logout();
 								navigate("/login");
 							},
+							title: "Cerrar sesión",
 							className: "text-sidebar-muted hover:text-sidebar-text",
 							children: /* @__PURE__ */ jsx(LogoutIcon, { className: "w-4 h-4" })
 						})
@@ -6393,7 +7152,7 @@ var service_packages_default = UNSAFE_withComponentProps(function ServicePackage
 	const fetchAll = async () => {
 		setLoading(true);
 		try {
-			const [svcRes, pkgRes] = await Promise.all([api.get("/mis-servicios", token), api.get("/paquetes", token)]);
+			const [svcRes, pkgRes] = await Promise.all([api.get("/mis-servicios", token), api.get("/mis-paquetes", token)]);
 			if (svcRes?.success) setServicios(svcRes.data);
 			if (Array.isArray(pkgRes)) setPaquetes(pkgRes);
 			else if (pkgRes?.success) setPaquetes(pkgRes.data);
@@ -8388,23 +9147,16 @@ var notifications_default = UNSAFE_withComponentProps(function NotificationsPage
 	const { notifications, markAsRead } = useGlobalNotifications();
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4",
-		children: [
-			/* @__PURE__ */ jsx("h1", {
-				className: "text-xl font-bold",
-				children: "Notificaciones"
-			}),
-			/* @__PURE__ */ jsx("button", {
-				onClick: markAsRead,
-				children: "Marcar como leídas"
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "space-y-2 mt-4",
-				children: notifications.map((n) => /* @__PURE__ */ jsx("div", {
-					className: "p-3 bg-white rounded shadow",
-					children: n.message
-				}, n.id))
-			})
-		]
+		children: [/* @__PURE__ */ jsx("h1", {
+			className: "text-xl font-bold",
+			children: "Notificaciones"
+		}), /* @__PURE__ */ jsx("div", {
+			className: "space-y-2 mt-4",
+			children: notifications.map((n) => /* @__PURE__ */ jsx("div", {
+				className: "p-3 bg-white rounded shadow",
+				children: n.message
+			}, n.id))
+		})]
 	});
 });
 //#endregion
@@ -9217,14 +9969,28 @@ var videollamada_default = UNSAFE_withComponentProps(function Videollamada() {
 		const join = async () => {
 			try {
 				const { token: livekitToken, url } = (await api.get(`/videollamada/token/${id}`, token)).data;
+				room.on("trackSubscribed", (track) => {
+					console.log("SUBSCRIBED", track.kind);
+					if (track.kind === Track.Kind.Video && remoteVideoRef.current) track.attach(remoteVideoRef.current);
+					if (track.kind === Track.Kind.Audio) track.attach();
+				});
 				await room.connect(url, livekitToken);
 				await api.post(`/videollamada/${id}/estado`, { estado: "en_curso" }, token);
 				await room.localParticipant.setCameraEnabled(true);
 				await room.localParticipant.setMicrophoneEnabled(true);
 				attachLocalVideo();
 				room.localParticipant.on("trackPublished", attachLocalVideo);
-				room.on("trackSubscribed", (track) => {
-					if (track.kind === Track.Kind.Video && remoteVideoRef.current) track.attach(remoteVideoRef.current);
+				room.remoteParticipants.forEach((participant) => {
+					participant.trackPublications.forEach((pub) => {
+						if (pub.track && pub.track.kind === Track.Kind.Video && remoteVideoRef.current) {
+							console.log("VIDEO EXISTENTE");
+							pub.track.attach(remoteVideoRef.current);
+						}
+						if (pub.track && pub.track.kind === Track.Kind.Audio) {
+							console.log("AUDIO EXISTENTE");
+							pub.track.attach();
+						}
+					});
 				});
 				setParticipants(room.numParticipants);
 				room.on("participantConnected", () => {
@@ -9650,8 +10416,8 @@ var session_$id_rating_default = UNSAFE_withComponentProps(function Rating() {
 //#region \0virtual:react-router/server-manifest
 var server_manifest_default = {
 	"entry": {
-		"module": "/assets/entry.client-OkkorUL8.js",
-		"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+		"module": "/assets/entry.client-D6-dwf4X.js",
+		"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 		"css": []
 	},
 	"routes": {
@@ -9668,9 +10434,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-_okbSAXn.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
-			"css": ["/assets/root-DrVuGy3b.css"],
+			"module": "/assets/root-CYqk7Jpi.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"css": ["/assets/root-B_9PMocp.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -9689,8 +10455,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/home-CJGsUNUy.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/home-9mke8Zm0.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9710,8 +10476,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/login-DdxreSaQ.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/login-DVItVFRt.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9731,8 +10497,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/register-CgDXgg56.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/register-CuGZr4gQ.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9752,8 +10518,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/auth.google.callback-B48s77VO.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/auth.google.callback-CrgL6Eyt.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9773,11 +10539,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-m6g1nyAl.js",
+			"module": "/assets/_layout--v87ctnG.js",
 			"imports": [
-				"/assets/jsx-runtime-CUqasb2E.js",
-				"/assets/AuthContext-CJKML-Sv.js",
-				"/assets/NotificationContext-g4Z4hv85.js"
+				"/assets/jsx-runtime-B75Xqy3m.js",
+				"/assets/AuthContext-DzGty-Aa.js",
+				"/assets/NotificationContext-D2weYWB6.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -9798,8 +10564,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-CVvPXUXS.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/dashboard-IY-y9_2h.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9819,8 +10585,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/discover-B-Op0TDj.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/discover-DumwXBiE.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9840,8 +10606,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/professional._id-CUEj-QG9.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/professional._id-Chx5wsUV.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9861,8 +10627,50 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/booking._id.pay-DxeScb7o.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+			"module": "/assets/booking._id.pay-DIMFXA4e.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
+			"css": [],
+			"clientActionModule": void 0,
+			"clientLoaderModule": void 0,
+			"clientMiddlewareModule": void 0,
+			"hydrateFallbackModule": void 0
+		},
+		"routes/client/package.$id.pay": {
+			"id": "routes/client/package.$id.pay",
+			"parentId": "routes/client/_layout",
+			"path": "package/:id/pay",
+			"index": void 0,
+			"caseSensitive": void 0,
+			"hasAction": false,
+			"hasLoader": false,
+			"hasClientAction": false,
+			"hasClientLoader": false,
+			"hasClientMiddleware": false,
+			"hasDefaultExport": true,
+			"hasErrorBoundary": false,
+			"module": "/assets/package._id.pay-KEO3hbTB.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"css": [],
+			"clientActionModule": void 0,
+			"clientLoaderModule": void 0,
+			"clientMiddlewareModule": void 0,
+			"hydrateFallbackModule": void 0
+		},
+		"routes/client/compra-package.$id.pay": {
+			"id": "routes/client/compra-package.$id.pay",
+			"parentId": "routes/client/_layout",
+			"path": "compra-package/:id/pay",
+			"index": void 0,
+			"caseSensitive": void 0,
+			"hasAction": false,
+			"hasLoader": false,
+			"hasClientAction": false,
+			"hasClientLoader": false,
+			"hasClientMiddleware": false,
+			"hasDefaultExport": true,
+			"hasErrorBoundary": false,
+			"module": "/assets/compra-package._id.pay-BJfgoWwx.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9882,8 +10690,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/packages-BGRkoWgj.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+			"module": "/assets/packages-CJRQCRG5.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9903,8 +10711,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/messages-CZ2imrvz.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+			"module": "/assets/messages-CG6NMEM_.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9924,11 +10732,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-2gksqKyl.js",
+			"module": "/assets/payments-D9ngC89F.js",
 			"imports": [
-				"/assets/jsx-runtime-CUqasb2E.js",
-				"/assets/AuthContext-CJKML-Sv.js",
-				"/assets/ReactToastify-CuG7Odl8.js"
+				"/assets/jsx-runtime-B75Xqy3m.js",
+				"/assets/AuthContext-DzGty-Aa.js",
+				"/assets/ReactToastify-CH_hjN7z.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
 			"clientActionModule": void 0,
@@ -9949,8 +10757,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-D47-BJPU.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/NotificationContext-g4Z4hv85.js"],
+			"module": "/assets/notifications-JdoFMvyH.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/NotificationContext-D2weYWB6.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -9970,11 +10778,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/mis-reservas-CnyZ8R0a.js",
+			"module": "/assets/mis-reservas-CkzJlEa5.js",
 			"imports": [
-				"/assets/jsx-runtime-CUqasb2E.js",
-				"/assets/AuthContext-CJKML-Sv.js",
-				"/assets/ReactToastify-CuG7Odl8.js"
+				"/assets/jsx-runtime-B75Xqy3m.js",
+				"/assets/AuthContext-DzGty-Aa.js",
+				"/assets/ReactToastify-CH_hjN7z.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
 			"clientActionModule": void 0,
@@ -9995,8 +10803,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-BUv52iOY.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/profile-DxMNlhOK.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10016,11 +10824,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-BbOuSx5o.js",
+			"module": "/assets/_layout-DTaSvEZp.js",
 			"imports": [
-				"/assets/jsx-runtime-CUqasb2E.js",
-				"/assets/AuthContext-CJKML-Sv.js",
-				"/assets/NotificationContext-g4Z4hv85.js"
+				"/assets/jsx-runtime-B75Xqy3m.js",
+				"/assets/AuthContext-DzGty-Aa.js",
+				"/assets/NotificationContext-D2weYWB6.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -10041,8 +10849,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/clients-C114RgeY.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/clients-BiksgHMt.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10062,8 +10870,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-Cx8it1Xk.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/dashboard-B6AibfmS.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10083,8 +10891,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/services-4YfPZLkm.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/services-CVhdUeK4.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10104,8 +10912,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/service-packages-B1TfO8H9.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/service-packages-CsUNYvTm.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10125,8 +10933,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-DErMM7fA.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/availability-DnPD6p9x.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10146,8 +10954,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-tMjlEoou.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+			"module": "/assets/payments-D_TadIxc.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10167,8 +10975,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/messages-DibtDQNM.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+			"module": "/assets/messages-IiHBkZIg.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10188,8 +10996,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-BCNAx2oL.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/profile-qLUtHvXe.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10209,8 +11017,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-B8tLDLRh.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/NotificationContext-g4Z4hv85.js"],
+			"module": "/assets/notifications-Df0nw-oN.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/NotificationContext-D2weYWB6.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10230,8 +11038,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-DpYZXR78.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/_layout-BH1--bm7.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10251,8 +11059,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-DV-hplKb.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+			"module": "/assets/dashboard-DlKszhvr.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10272,8 +11080,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/users-hRnZkHH6.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+			"module": "/assets/users-CC3DfTVO.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10293,8 +11101,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-DbQqB6Y1.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+			"module": "/assets/payments-DuJU4nS6.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10314,8 +11122,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/videollamada-DxlrNfnp.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js", "/assets/AuthContext-CJKML-Sv.js"],
+			"module": "/assets/videollamada-Dquwgr-6.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10335,8 +11143,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/session._id-Du3thN3k.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+			"module": "/assets/session._id-B0kEyAGw.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10356,8 +11164,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/session._id.rating-4Py90jZr.js",
-			"imports": ["/assets/jsx-runtime-CUqasb2E.js"],
+			"module": "/assets/session._id.rating-BYfQyzIF.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10365,8 +11173,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-3867195c.js",
-	"version": "3867195c",
+	"url": "/assets/manifest-442d9345.js",
+	"version": "442d9345",
 	"sri": void 0
 };
 //#endregion
@@ -10471,6 +11279,22 @@ var routes = {
 		index: void 0,
 		caseSensitive: void 0,
 		module: booking_$id_pay_exports
+	},
+	"routes/client/package.$id.pay": {
+		id: "routes/client/package.$id.pay",
+		parentId: "routes/client/_layout",
+		path: "package/:id/pay",
+		index: void 0,
+		caseSensitive: void 0,
+		module: package_$id_pay_exports
+	},
+	"routes/client/compra-package.$id.pay": {
+		id: "routes/client/compra-package.$id.pay",
+		parentId: "routes/client/_layout",
+		path: "compra-package/:id/pay",
+		index: void 0,
+		caseSensitive: void 0,
+		module: compra_package_$id_pay_exports
 	},
 	"routes/client/packages": {
 		id: "routes/client/packages",

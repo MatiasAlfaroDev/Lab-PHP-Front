@@ -39,6 +39,16 @@ type Pages = {
       "id": string;
     };
   };
+  "/client/package/:id/pay": {
+    params: {
+      "id": string;
+    };
+  };
+  "/client/compra-package/:id/pay": {
+    params: {
+      "id": string;
+    };
+  };
   "/client/packages": {
     params: {};
   };
@@ -113,7 +123,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/client/reservas" | "/client/profile" | "/professional" | "/professional/dashboard" | "/professional/services" | "/professional/service-packages" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/professional/profile" | "/professional/notifications" | "/admin" | "/admin/users" | "/admin/payments" | "/videollamada/:id" | "/session/:id" | "/session/:id/rating";
+    page: "/" | "/login" | "/register" | "/auth/google/callback" | "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/package/:id/pay" | "/client/compra-package/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/client/reservas" | "/client/profile" | "/professional" | "/professional/dashboard" | "/professional/services" | "/professional/service-packages" | "/professional/availability" | "/professional/payments" | "/professional/messages" | "/professional/profile" | "/professional/notifications" | "/admin" | "/admin/users" | "/admin/payments" | "/videollamada/:id" | "/session/:id" | "/session/:id/rating";
   };
   "routes/home.tsx": {
     id: "routes/home";
@@ -133,7 +143,7 @@ type RouteFiles = {
   };
   "routes/client/_layout.tsx": {
     id: "routes/client/_layout";
-    page: "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/client/reservas" | "/client/profile";
+    page: "/client" | "/client/discover" | "/client/professional/:id" | "/client/booking/:id/pay" | "/client/package/:id/pay" | "/client/compra-package/:id/pay" | "/client/packages" | "/client/messages" | "/client/payments" | "/client/notifications" | "/client/reservas" | "/client/profile";
   };
   "routes/client/dashboard.tsx": {
     id: "routes/client/dashboard";
@@ -150,6 +160,14 @@ type RouteFiles = {
   "routes/client/booking.$id.pay.tsx": {
     id: "routes/client/booking.$id.pay";
     page: "/client/booking/:id/pay";
+  };
+  "routes/client/package.$id.pay.tsx": {
+    id: "routes/client/package.$id.pay";
+    page: "/client/package/:id/pay";
+  };
+  "routes/client/compra-package.$id.pay.tsx": {
+    id: "routes/client/compra-package.$id.pay";
+    page: "/client/compra-package/:id/pay";
   };
   "routes/client/packages.tsx": {
     id: "routes/client/packages";
@@ -256,6 +274,8 @@ type RouteModules = {
   "routes/client/discover": typeof import("./app/routes/client/discover.tsx");
   "routes/client/professional.$id": typeof import("./app/routes/client/professional.$id.tsx");
   "routes/client/booking.$id.pay": typeof import("./app/routes/client/booking.$id.pay.tsx");
+  "routes/client/package.$id.pay": typeof import("./app/routes/client/package.$id.pay.tsx");
+  "routes/client/compra-package.$id.pay": typeof import("./app/routes/client/compra-package.$id.pay.tsx");
   "routes/client/packages": typeof import("./app/routes/client/packages.tsx");
   "routes/client/messages": typeof import("./app/routes/client/messages.tsx");
   "routes/client/payments": typeof import("./app/routes/client/payments.tsx");

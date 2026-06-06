@@ -78,8 +78,8 @@ export function ProfessionalSidebar({ collapsed, onToggle }: Props) {
             <div
               key={to}
               title={collapsed ? label : undefined}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 ${
-                collapsed ? "justify-center px-0" : ""
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${
+              collapsed ? "justify-center px-0" : ""
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -107,7 +107,7 @@ export function ProfessionalSidebar({ collapsed, onToggle }: Props) {
               <Icon className="w-4 h-4 shrink-0" />
               {!collapsed && <span className="flex-1">{label}</span>}
 
-              {/* 🔴 BADGE NOTIFICACIONES */}
+              {/* BADGE NOTIFICACIONES */}
               {to === "/professional/notifications" &&
                 unreadCount > 0 &&
                 !collapsed && (
