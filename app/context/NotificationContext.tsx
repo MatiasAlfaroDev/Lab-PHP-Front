@@ -1,80 +1,103 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-
+import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-
 import { getEcho } from "~/lib/echo";
+import { api } from "~/lib/api";
+import { useAuth } from "~/context/AuthContext";
 
 type NotificationType = {
   id: string;
-  message: string;
-  reserva_id?: number;
-  type?: string;
+  data: {
+    message: string;
+    reserva_id?: number;
+    type?: string;
+  };
+  read_at: string | null;
 };
 
 type NotificationContextType = {
   notifications: NotificationType[];
   unreadCount: number;
-  markAsRead: () => void;
+  loadNotifications: () => Promise<void>;
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
 };
 
-const NotificationContext =
-  createContext<NotificationContextType | null>(null);
-
-type Props = {
-  children: ReactNode;
-  userId?: number;
-  token?: string;
+type NotificationsResponse = {
+  data: NotificationType[];
 };
 
-export function NotificationProvider({
-  children,
-  userId,
-  token,
-}: Props) {
+const NotificationContext = createContext<NotificationContextType | null>(null);
+
+export function NotificationProvider({ children, userId }: { children: ReactNode; userId?: number }) {
+  const { token } = useAuth();
+
   const [notifications, setNotifications] = useState<NotificationType[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
 
+  // 🔵 LOAD (BACKEND REAL)
+  const loadNotifications = async () => {
+    try {
+      const res = await api.get<NotificationsResponse>(
+  "/notificaciones",
+  token
+);
+
+      if (res?.data) {
+        setNotifications(res.data);
+      }
+    } catch (err) {
+      console.error("Error cargando notificaciones", err);
+      setNotifications([]);
+    }
+  };
+
+  const unreadCount = notifications.filter((n) => n.read_at === null).length;
+
+  // 🔵 MARK AS READ
+  const markAsRead = async (id: string) => {
+    await api.post(`/notificaciones/${id}/leer`, {}, token);
+
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.id === id ? { ...n, read_at: new Date().toISOString() } : n
+      )
+    );
+  };
+
+  // 🔵 MARK ALL
+  const markAllAsRead = async () => {
+    await api.post("/notificaciones/leer-todas", {}, token);
+
+    setNotifications((prev) =>
+      prev.map((n) => ({ ...n, read_at: new Date().toISOString() }))
+    );
+  };
+
+  // 🔵 WEBSOCKET
   useEffect(() => {
     if (!userId || !token) return;
 
     const echo = getEcho(token);
-
     if (!echo) return;
 
-    const channelName = `user.${userId}`;
-
-    console.log("SUSCRIPCION GLOBAL:", channelName);
-
-    const channel = echo.private(channelName);
+    const channel = echo.private(`user.${userId}`);
 
     channel.notification((notification: NotificationType) => {
-      console.log("GLOBAL NOTIFICATION:", notification);
-
       setNotifications((prev) => [notification, ...prev]);
-
-      setUnreadCount((prev) => prev + 1);
     });
 
     return () => {
-      echo.leave(channelName);
+      echo.leave(`user.${userId}`);
     };
   }, [userId, token]);
-
-  const markAsRead = () => {
-    setUnreadCount(0);
-  };
 
   return (
     <NotificationContext.Provider
       value={{
         notifications,
         unreadCount,
+        loadNotifications,
         markAsRead,
+        markAllAsRead,
       }}
     >
       {children}
@@ -83,13 +106,11 @@ export function NotificationProvider({
 }
 
 export function useGlobalNotifications() {
-  const context = useContext(NotificationContext);
+  const ctx = useContext(NotificationContext);
 
-  if (!context) {
-    throw new Error(
-      "useGlobalNotifications debe usarse dentro de NotificationProvider"
-    );
+  if (!ctx) {
+    throw new Error("useGlobalNotifications debe usarse dentro del Provider");
   }
 
-  return context;
+  return ctx;
 }

@@ -1,12 +1,24 @@
+import { useEffect } from "react";
 import { useGlobalNotifications } from "~/context/NotificationContext";
 
 export default function NotificationsPage() {
-  const { notifications, unreadCount, markAsRead } =
-    useGlobalNotifications();
+  const {
+    notifications,
+    unreadCount,
+    loadNotifications,
+    markAsRead,
+    markAllAsRead,
+  } = useGlobalNotifications();
+
+  // 📌 cargar desde backend al entrar
+  useEffect(() => {
+    loadNotifications();
+  }, []);
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      {/* Header */}
+
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-3xl text-ink">
@@ -19,18 +31,19 @@ export default function NotificationsPage() {
         </div>
 
         <button
-          onClick={markAsRead}
-          className="flex items-center gap-2 text-sm font-semibold text-ink border border-border px-4 py-2 rounded bg-surface hover:bg-bg transition-colors"
+          onClick={markAllAsRead}
+          className="text-sm font-semibold border px-4 py-2 rounded bg-surface hover:bg-bg transition"
         >
-          ✓ Marcar todo como leído
+          ✓ Marcar todas como leídas
         </button>
       </div>
 
       <div className="grid grid-cols-3 gap-8">
+
         {/* FEED */}
         <div className="col-span-2 space-y-3">
           {notifications.length === 0 ? (
-            <div className="bg-surface border border-border rounded p-6 text-center">
+            <div className="border rounded p-6 text-center">
               <p className="text-ink-muted">
                 No hay notificaciones todavía
               </p>
@@ -39,29 +52,50 @@ export default function NotificationsPage() {
             notifications.map((n) => (
               <div
                 key={n.id}
-                className="bg-surface border border-border rounded p-4"
+                className={`border rounded p-4 transition ${
+                  n.read_at ? "opacity-60" : "bg-surface"
+                }`}
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
+                <div className="flex gap-3">
+
+                  <div className="w-10 h-10 rounded bg-accent/20 flex items-center justify-center">
                     🔔
                   </div>
 
                   <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-semibold text-ink">
-                        Nueva notificación
+
+                    <div className="flex justify-between">
+                      <p className="font-semibold text-sm">
+                        {n.data?.type || "Notificación"}
                       </p>
+
+                      {/* marcar individual */}
+                      {!n.read_at && (
+                        <button
+                          onClick={() => markAsRead(n.id)}
+                          className="text-xs text-blue-500"
+                        >
+                          Marcar leída
+                        </button>
+                      )}
                     </div>
 
-                    <p className="text-sm text-ink-muted">
-                      {n.message}
+                    <p className="text-sm text-ink-muted mt-1">
+                      {n.data?.message}
                     </p>
 
-                    {n.reserva_id && (
+                    {n.data?.reserva_id && (
                       <p className="text-xs text-ink-muted mt-2">
-                        Reserva #{n.reserva_id}
+                        Reserva #{n.data.reserva_id}
                       </p>
                     )}
+
+                    {n.read_at && (
+                      <p className="text-xs text-green-600 mt-2">
+                        Leída
+                      </p>
+                    )}
+
                   </div>
                 </div>
               </div>
@@ -69,65 +103,39 @@ export default function NotificationsPage() {
           )}
         </div>
 
-        {/* PANEL LATERAL */}
+        {/* SIDEBAR */}
         <div className="space-y-5">
-          <div className="bg-surface border border-border rounded p-5">
-            <h3 className="text-sm font-semibold text-ink mb-2">
+
+          <div className="border rounded p-5">
+            <h3 className="text-sm font-semibold mb-2">
               Resumen
             </h3>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-ink">
-                  Total
-                </span>
+            <div className="flex justify-between">
+              <span>Total</span>
+              <span>{notifications.length}</span>
+            </div>
 
-                <span className="font-semibold">
-                  {notifications.length}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-ink">
-                  Sin leer
-                </span>
-
-                <span className="font-semibold text-red-500">
-                  {unreadCount}
-                </span>
-              </div>
+            <div className="flex justify-between text-red-500">
+              <span>Sin leer</span>
+              <span>{unreadCount}</span>
             </div>
           </div>
 
-          {/* Vista previa */}
-          <div className="bg-surface border border-border rounded p-4">
-            <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-3">
-              ÚLTIMAS NOTIFICACIONES
+          <div className="border rounded p-4">
+            <p className="text-xs uppercase mb-3">
+              Últimas
             </p>
 
-            <div className="border border-border rounded overflow-hidden">
-              {notifications.slice(0, 5).map((n) => (
-                <div
-                  key={n.id}
-                  className="flex items-start gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-bg"
-                >
-                  <span className="w-6 h-6 rounded bg-accent/30 flex items-center justify-center text-xs shrink-0">
-                    🔔
-                  </span>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-ink truncate">
-                      Notificación
-                    </p>
-
-                    <p className="text-xs text-ink-muted truncate">
-                      {n.message}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {notifications.slice(0, 5).map((n) => (
+              <div key={n.id} className="py-2 border-b last:border-0">
+                <p className="text-xs font-semibold truncate">
+                  {n.data?.message}
+                </p>
+              </div>
+            ))}
           </div>
+
         </div>
       </div>
     </div>

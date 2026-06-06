@@ -808,30 +808,50 @@ function getEcho(token) {
 var NotificationContext = createContext(null);
 function NotificationProvider({ children, userId, token }) {
 	const [notifications, setNotifications] = useState([]);
-	const [unreadCount, setUnreadCount] = useState(0);
+	const loadNotifications = async () => {
+		const json = await (await fetch("/api/notificaciones", { headers: { Authorization: `Bearer ${token}` } })).json();
+		setNotifications(json.data);
+		setNotifications(json.data);
+	};
+	const unreadCount = notifications.filter((n) => n.read_at === null).length;
 	useEffect(() => {
 		if (!userId || !token) return;
 		const echo = getEcho(token);
 		if (!echo) return;
-		const channelName = `user.${userId}`;
-		console.log("SUSCRIPCION GLOBAL:", channelName);
-		echo.private(channelName).notification((notification) => {
-			console.log("GLOBAL NOTIFICATION:", notification);
+		echo.private(`user.${userId}`).notification((notification) => {
 			setNotifications((prev) => [notification, ...prev]);
-			setUnreadCount((prev) => prev + 1);
 		});
 		return () => {
-			echo.leave(channelName);
+			echo.leave(`user.${userId}`);
 		};
 	}, [userId, token]);
-	const markAsRead = () => {
-		setUnreadCount(0);
+	const markAsRead = async (id) => {
+		await fetch(`/api/notificaciones/${id}/leer`, {
+			method: "POST",
+			headers: { Authorization: `Bearer ${token}` }
+		});
+		setNotifications((prev) => prev.map((n) => n.id === id ? {
+			...n,
+			read_at: (/* @__PURE__ */ new Date()).toISOString()
+		} : n));
+	};
+	const markAllAsRead = async () => {
+		await fetch(`/api/notificaciones/leer-todas`, {
+			method: "POST",
+			headers: { Authorization: `Bearer ${token}` }
+		});
+		setNotifications((prev) => prev.map((n) => ({
+			...n,
+			read_at: (/* @__PURE__ */ new Date()).toISOString()
+		})));
 	};
 	return /* @__PURE__ */ jsx(NotificationContext.Provider, {
 		value: {
 			notifications,
 			unreadCount,
-			markAsRead
+			loadNotifications,
+			markAsRead,
+			markAllAsRead
 		},
 		children
 	});
@@ -4227,18 +4247,109 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 //#region app/routes/client/notifications.tsx
 var notifications_exports$1 = /* @__PURE__ */ __exportAll({ default: () => notifications_default$1 });
 var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPage() {
-	const { notifications, markAsRead } = useGlobalNotifications();
+	const { notifications, unreadCount, loadNotifications, markAsRead, markAllAsRead } = useGlobalNotifications();
+	useEffect(() => {
+		loadNotifications();
+	}, []);
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-4",
-		children: [/* @__PURE__ */ jsx("h1", {
-			className: "text-xl font-bold",
-			children: "Notificaciones"
-		}), /* @__PURE__ */ jsx("div", {
-			className: "space-y-2 mt-4",
-			children: notifications.map((n) => /* @__PURE__ */ jsx("div", {
-				className: "p-3 bg-white rounded shadow",
-				children: n.message
-			}, n.id))
+		className: "p-8 max-w-6xl mx-auto",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "flex items-center justify-between mb-6",
+			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
+				className: "font-display text-3xl text-ink",
+				children: "Notificaciones"
+			}), /* @__PURE__ */ jsxs("p", {
+				className: "text-ink-muted mt-1",
+				children: [
+					notifications.length,
+					" notificaciones · ",
+					unreadCount,
+					" sin leer"
+				]
+			})] }), /* @__PURE__ */ jsx("button", {
+				onClick: markAllAsRead,
+				className: "text-sm font-semibold border px-4 py-2 rounded bg-surface hover:bg-bg transition",
+				children: "✓ Marcar todas como leídas"
+			})]
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "grid grid-cols-3 gap-8",
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "col-span-2 space-y-3",
+				children: notifications.length === 0 ? /* @__PURE__ */ jsx("div", {
+					className: "border rounded p-6 text-center",
+					children: /* @__PURE__ */ jsx("p", {
+						className: "text-ink-muted",
+						children: "No hay notificaciones todavía"
+					})
+				}) : notifications.map((n) => /* @__PURE__ */ jsx("div", {
+					className: `border rounded p-4 transition ${n.read_at ? "opacity-60" : "bg-surface"}`,
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "flex gap-3",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: "w-10 h-10 rounded bg-accent/20 flex items-center justify-center",
+							children: "🔔"
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "flex-1",
+							children: [
+								/* @__PURE__ */ jsxs("div", {
+									className: "flex justify-between",
+									children: [/* @__PURE__ */ jsx("p", {
+										className: "font-semibold text-sm",
+										children: n.data?.type || "Notificación"
+									}), !n.read_at && /* @__PURE__ */ jsx("button", {
+										onClick: () => markAsRead(n.id),
+										className: "text-xs text-blue-500",
+										children: "Marcar leída"
+									})]
+								}),
+								/* @__PURE__ */ jsx("p", {
+									className: "text-sm text-ink-muted mt-1",
+									children: n.data?.message
+								}),
+								n.data?.reserva_id && /* @__PURE__ */ jsxs("p", {
+									className: "text-xs text-ink-muted mt-2",
+									children: ["Reserva #", n.data.reserva_id]
+								}),
+								n.read_at && /* @__PURE__ */ jsx("p", {
+									className: "text-xs text-green-600 mt-2",
+									children: "Leída"
+								})
+							]
+						})]
+					})
+				}, n.id))
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "space-y-5",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "border rounded p-5",
+					children: [
+						/* @__PURE__ */ jsx("h3", {
+							className: "text-sm font-semibold mb-2",
+							children: "Resumen"
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex justify-between",
+							children: [/* @__PURE__ */ jsx("span", { children: "Total" }), /* @__PURE__ */ jsx("span", { children: notifications.length })]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex justify-between text-red-500",
+							children: [/* @__PURE__ */ jsx("span", { children: "Sin leer" }), /* @__PURE__ */ jsx("span", { children: unreadCount })]
+						})
+					]
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "border rounded p-4",
+					children: [/* @__PURE__ */ jsx("p", {
+						className: "text-xs uppercase mb-3",
+						children: "Últimas"
+					}), notifications.slice(0, 5).map((n) => /* @__PURE__ */ jsx("div", {
+						className: "py-2 border-b last:border-0",
+						children: /* @__PURE__ */ jsx("p", {
+							className: "text-xs font-semibold truncate",
+							children: n.data?.message
+						})
+					}, n.id))]
+				})]
+			})]
 		})]
 	});
 });
@@ -9144,18 +9255,109 @@ var profile_default = UNSAFE_withComponentProps(function ProfessionalProfile() {
 //#region app/routes/professional/notifications.tsx
 var notifications_exports = /* @__PURE__ */ __exportAll({ default: () => notifications_default });
 var notifications_default = UNSAFE_withComponentProps(function NotificationsPage() {
-	const { notifications, markAsRead } = useGlobalNotifications();
+	const { notifications, unreadCount, loadNotifications, markAsRead, markAllAsRead } = useGlobalNotifications();
+	useEffect(() => {
+		loadNotifications();
+	}, []);
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-4",
-		children: [/* @__PURE__ */ jsx("h1", {
-			className: "text-xl font-bold",
-			children: "Notificaciones"
-		}), /* @__PURE__ */ jsx("div", {
-			className: "space-y-2 mt-4",
-			children: notifications.map((n) => /* @__PURE__ */ jsx("div", {
-				className: "p-3 bg-white rounded shadow",
-				children: n.message
-			}, n.id))
+		className: "p-8 max-w-6xl mx-auto",
+		children: [/* @__PURE__ */ jsxs("div", {
+			className: "flex items-center justify-between mb-6",
+			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
+				className: "font-display text-3xl text-ink",
+				children: "Notificaciones"
+			}), /* @__PURE__ */ jsxs("p", {
+				className: "text-ink-muted mt-1",
+				children: [
+					notifications.length,
+					" notificaciones · ",
+					unreadCount,
+					" sin leer"
+				]
+			})] }), /* @__PURE__ */ jsx("button", {
+				onClick: markAllAsRead,
+				className: "text-sm font-semibold border px-4 py-2 rounded bg-surface hover:bg-bg transition",
+				children: "✓ Marcar todas como leídas"
+			})]
+		}), /* @__PURE__ */ jsxs("div", {
+			className: "grid grid-cols-3 gap-8",
+			children: [/* @__PURE__ */ jsx("div", {
+				className: "col-span-2 space-y-3",
+				children: notifications.length === 0 ? /* @__PURE__ */ jsx("div", {
+					className: "border rounded p-6 text-center",
+					children: /* @__PURE__ */ jsx("p", {
+						className: "text-ink-muted",
+						children: "No hay notificaciones todavía"
+					})
+				}) : notifications.map((n) => /* @__PURE__ */ jsx("div", {
+					className: `border rounded p-4 transition ${n.read_at ? "opacity-60" : "bg-surface"}`,
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "flex gap-3",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: "w-10 h-10 rounded bg-accent/20 flex items-center justify-center",
+							children: "🔔"
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "flex-1",
+							children: [
+								/* @__PURE__ */ jsxs("div", {
+									className: "flex justify-between",
+									children: [/* @__PURE__ */ jsx("p", {
+										className: "font-semibold text-sm",
+										children: n.data?.type || "Notificación"
+									}), !n.read_at && /* @__PURE__ */ jsx("button", {
+										onClick: () => markAsRead(n.id),
+										className: "text-xs text-blue-500",
+										children: "Marcar leída"
+									})]
+								}),
+								/* @__PURE__ */ jsx("p", {
+									className: "text-sm text-ink-muted mt-1",
+									children: n.data?.message
+								}),
+								n.data?.reserva_id && /* @__PURE__ */ jsxs("p", {
+									className: "text-xs text-ink-muted mt-2",
+									children: ["Reserva #", n.data.reserva_id]
+								}),
+								n.read_at && /* @__PURE__ */ jsx("p", {
+									className: "text-xs text-green-600 mt-2",
+									children: "Leída"
+								})
+							]
+						})]
+					})
+				}, n.id))
+			}), /* @__PURE__ */ jsxs("div", {
+				className: "space-y-5",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "border rounded p-5",
+					children: [
+						/* @__PURE__ */ jsx("h3", {
+							className: "text-sm font-semibold mb-2",
+							children: "Resumen"
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex justify-between",
+							children: [/* @__PURE__ */ jsx("span", { children: "Total" }), /* @__PURE__ */ jsx("span", { children: notifications.length })]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex justify-between text-red-500",
+							children: [/* @__PURE__ */ jsx("span", { children: "Sin leer" }), /* @__PURE__ */ jsx("span", { children: unreadCount })]
+						})
+					]
+				}), /* @__PURE__ */ jsxs("div", {
+					className: "border rounded p-4",
+					children: [/* @__PURE__ */ jsx("p", {
+						className: "text-xs uppercase mb-3",
+						children: "Últimas"
+					}), notifications.slice(0, 5).map((n) => /* @__PURE__ */ jsx("div", {
+						className: "py-2 border-b last:border-0",
+						children: /* @__PURE__ */ jsx("p", {
+							className: "text-xs font-semibold truncate",
+							children: n.data?.message
+						})
+					}, n.id))]
+				})]
+			})]
 		})]
 	});
 });
@@ -10434,9 +10636,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-CYqk7Jpi.js",
+			"module": "/assets/root-C7tkjFxA.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
-			"css": ["/assets/root-B_9PMocp.css"],
+			"css": ["/assets/root-zhZdpGJU.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -10539,11 +10741,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout--v87ctnG.js",
+			"module": "/assets/_layout-Bl4jSorg.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-D2weYWB6.js"
+				"/assets/NotificationContext-abZXu-Zm.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -10757,8 +10959,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-JdoFMvyH.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/NotificationContext-D2weYWB6.js"],
+			"module": "/assets/notifications-75XoWBB5.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/NotificationContext-abZXu-Zm.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -10824,11 +11026,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-DTaSvEZp.js",
+			"module": "/assets/_layout-OU6jg0vj.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-D2weYWB6.js"
+				"/assets/NotificationContext-abZXu-Zm.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11017,8 +11219,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-Df0nw-oN.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/NotificationContext-D2weYWB6.js"],
+			"module": "/assets/notifications-HC0od33a.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/NotificationContext-abZXu-Zm.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11173,8 +11375,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-442d9345.js",
-	"version": "442d9345",
+	"url": "/assets/manifest-383d3090.js",
+	"version": "383d3090",
 	"sri": void 0
 };
 //#endregion
