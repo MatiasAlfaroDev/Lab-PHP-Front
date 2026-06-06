@@ -71,6 +71,19 @@ export default function Videollamada() {
 
         const { token: livekitToken, url } = res.data;
 
+        // 🔴 REMOTO (poner ANTES del connect)
+        room.on("trackSubscribed", (track) => {
+          console.log("SUBSCRIBED", track.kind);
+
+          if (track.kind === Track.Kind.Video && remoteVideoRef.current) {
+            track.attach(remoteVideoRef.current);
+          }
+
+          if (track.kind === Track.Kind.Audio) {
+            track.attach();
+          }
+        });
+
         await room.connect(url, livekitToken);
 
         // estado en curso
@@ -84,15 +97,30 @@ export default function Videollamada() {
         await room.localParticipant.setCameraEnabled(true);
         await room.localParticipant.setMicrophoneEnabled(true);
 
-        // 🟢 LOCAL VIDEO (CORRECTO)
+        // 🟢 LOCAL VIDEO
         attachLocalVideo();
         room.localParticipant.on("trackPublished", attachLocalVideo);
 
-        // 🔴 REMOTO
-        room.on("trackSubscribed", (track) => {
-          if (track.kind === Track.Kind.Video && remoteVideoRef.current) {
-            track.attach(remoteVideoRef.current);
-          }
+        // 🔍 participantes que ya estaban en la sala
+        room.remoteParticipants.forEach((participant) => {
+          participant.trackPublications.forEach((pub) => {
+            if (
+              pub.track &&
+              pub.track.kind === Track.Kind.Video &&
+              remoteVideoRef.current
+            ) {
+              console.log("VIDEO EXISTENTE");
+              pub.track.attach(remoteVideoRef.current);
+            }
+
+            if (
+              pub.track &&
+              pub.track.kind === Track.Kind.Audio
+            ) {
+              console.log("AUDIO EXISTENTE");
+              pub.track.attach();
+            }
+          });
         });
 
         // 👥 participantes
