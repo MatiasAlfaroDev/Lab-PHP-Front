@@ -806,45 +806,47 @@ function getEcho(token) {
 //#endregion
 //#region app/context/NotificationContext.tsx
 var NotificationContext = createContext(null);
-function NotificationProvider({ children, userId, token }) {
+function NotificationProvider({ children, userId }) {
+	const { token } = useAuth();
 	const [notifications, setNotifications] = useState([]);
 	const loadNotifications = async () => {
-		const json = await (await fetch("/api/notificaciones", { headers: { Authorization: `Bearer ${token}` } })).json();
-		setNotifications(json.data);
-		setNotifications(json.data);
+		try {
+			const res = await api.get("/notificaciones", token);
+			if (res?.data) setNotifications(res.data);
+		} catch (err) {
+			console.error("Error cargando notificaciones", err);
+			setNotifications([]);
+		}
 	};
 	const unreadCount = notifications.filter((n) => n.read_at === null).length;
-	useEffect(() => {
-		if (!userId || !token) return;
-		const echo = getEcho(token);
-		if (!echo) return;
-		echo.private(`user.${userId}`).notification((notification) => {
-			setNotifications((prev) => [notification, ...prev]);
-		});
-		return () => {
-			echo.leave(`user.${userId}`);
-		};
-	}, [userId, token]);
 	const markAsRead = async (id) => {
-		await fetch(`/api/notificaciones/${id}/leer`, {
-			method: "POST",
-			headers: { Authorization: `Bearer ${token}` }
-		});
+		await api.post(`/notificaciones/${id}/leer`, {}, token);
 		setNotifications((prev) => prev.map((n) => n.id === id ? {
 			...n,
 			read_at: (/* @__PURE__ */ new Date()).toISOString()
 		} : n));
 	};
 	const markAllAsRead = async () => {
-		await fetch(`/api/notificaciones/leer-todas`, {
-			method: "POST",
-			headers: { Authorization: `Bearer ${token}` }
-		});
+		await api.post("/notificaciones/leer-todas", {}, token);
 		setNotifications((prev) => prev.map((n) => ({
 			...n,
 			read_at: (/* @__PURE__ */ new Date()).toISOString()
 		})));
 	};
+	useEffect(() => {
+		if (!userId || !token) return;
+		const echo = getEcho(token);
+		if (!echo) return;
+		echo.private(`user.${userId}`).notification((notification) => {
+			setNotifications((prev) => {
+				if (prev.some((n) => n.id === notification.id)) return prev;
+				return [notification, ...prev];
+			});
+		});
+		return () => {
+			echo.leave(`user.${userId}`);
+		};
+	}, [userId, token]);
 	return /* @__PURE__ */ jsx(NotificationContext.Provider, {
 		value: {
 			notifications,
@@ -857,9 +859,9 @@ function NotificationProvider({ children, userId, token }) {
 	});
 }
 function useGlobalNotifications() {
-	const context = useContext(NotificationContext);
-	if (!context) throw new Error("useGlobalNotifications debe usarse dentro de NotificationProvider");
-	return context;
+	const ctx = useContext(NotificationContext);
+	if (!ctx) throw new Error("useGlobalNotifications debe usarse dentro del Provider");
+	return ctx;
 }
 //#endregion
 //#region app/components/ClientSidebar.tsx
@@ -7959,6 +7961,16 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 		enFeriados: false,
 		horaCompleta: true
 	});
+	const [showExcepciones, setShowExcepciones] = useState(false);
+	const [showNuevaExcepcion, setShowNuevaExcepcion] = useState(false);
+	const [nuevaExcepcion, setNuevaExcepcion] = useState({
+		fecha: "",
+		diaCompleto: true,
+		hora_inicio: "",
+		hora_fin: "",
+		motivo: ""
+	});
+	const [excepciones, setExcepciones] = useState([]);
 	useEffect(() => {
 		setLoadingServicios(true);
 		api.get("/mis-servicios", token).then((res) => {
@@ -7976,6 +7988,12 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 			setSlots(res.success && res.data.length > 0 ? dispsToSlots(res.data) : structuredClone(DEFAULT_SLOTS));
 		}).catch(() => setSlots(structuredClone(DEFAULT_SLOTS))).finally(() => setLoadingDisp(false));
 	}, [selectedId, servicios]);
+	useEffect(() => {
+		if (!showExcepciones) return;
+		api.get("/excepciones", token).then((res) => {
+			if (res.success) setExcepciones(res.data);
+		}).catch(console.error);
+	}, [showExcepciones, token]);
 	useEffect(() => {
 		if (!drag) return;
 		const onMove = (e) => {
@@ -8191,6 +8209,30 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 			setSaving(false);
 		}
 	};
+	const handleCrearExcepcion = async () => {
+		if (!nuevaExcepcion.fecha) return;
+		try {
+			await api.post("/excepciones", {
+				fecha: nuevaExcepcion.fecha,
+				hora_inicio: nuevaExcepcion.diaCompleto ? void 0 : nuevaExcepcion.hora_inicio,
+				hora_fin: nuevaExcepcion.diaCompleto ? void 0 : nuevaExcepcion.hora_fin,
+				motivo: nuevaExcepcion.motivo
+			}, token);
+			setShowNuevaExcepcion(false);
+			const res = await api.get("/excepciones", token);
+			if (res.success) setExcepciones(res.data);
+		} catch (e) {
+			alert("Error al crear excepción");
+		}
+	};
+	const handleDeleteExcepcion = async (id) => {
+		try {
+			await api.delete(`/excepciones/${id}`, token);
+			setExcepciones((prev) => prev.filter((e) => e.excepcion_id !== id));
+		} catch (error) {
+			alert("Error al eliminar excepción");
+		}
+	};
 	const isDragging = drag !== null;
 	if (loadingServicios) return /* @__PURE__ */ jsx(AvailabilitySkeleton, {});
 	return /* @__PURE__ */ jsxs("div", {
@@ -8203,13 +8245,168 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "mb-4",
-				children: [/* @__PURE__ */ jsx("h1", {
-					className: "font-display text-3xl text-ink",
-					children: "Disponibilidad"
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "flex justify-between items-center",
+					children: [/* @__PURE__ */ jsx("h1", {
+						className: "font-display text-3xl text-ink",
+						children: "Disponibilidad"
+					}), /* @__PURE__ */ jsx("button", {
+						onClick: () => setShowExcepciones(true),
+						className: "px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200",
+						children: "Excepciones"
+					})]
 				}), /* @__PURE__ */ jsx("p", {
 					className: "text-ink-muted mt-1",
 					children: "Definí cuándo aceptás reservas y tus reglas de agenda."
 				})]
+			}),
+			showExcepciones && /* @__PURE__ */ jsx("div", {
+				className: "fixed inset-0 bg-black/40 flex items-center justify-center z-50",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex items-center justify-between mb-4",
+							children: [/* @__PURE__ */ jsx("h2", {
+								className: "text-xl font-semibold",
+								children: "Excepciones"
+							}), /* @__PURE__ */ jsx("button", {
+								onClick: () => setShowExcepciones(false),
+								className: "text-gray-500 hover:text-gray-700",
+								children: "✕"
+							})]
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "flex justify-end mb-4",
+							children: /* @__PURE__ */ jsx("button", {
+								onClick: () => setShowNuevaExcepcion(true),
+								className: "px-4 py-2 bg-primary text-white rounded-lg",
+								children: "+ Nueva excepción"
+							})
+						}),
+						excepciones.length === 0 ? /* @__PURE__ */ jsx("p", {
+							className: "text-ink-muted",
+							children: "No hay excepciones configuradas."
+						}) : /* @__PURE__ */ jsx("div", {
+							className: "space-y-3",
+							children: excepciones.map((e) => /* @__PURE__ */ jsxs("div", {
+								className: "border rounded-xl p-4",
+								children: [
+									/* @__PURE__ */ jsx("div", {
+										className: "font-medium",
+										children: e.fecha
+									}),
+									/* @__PURE__ */ jsx("div", {
+										className: "text-sm text-ink-muted",
+										children: e.hora_inicio && e.hora_fin ? `${e.hora_inicio.slice(0, 5)} - ${e.hora_fin.slice(0, 5)}` : "Día completo"
+									}),
+									e.motivo && /* @__PURE__ */ jsx("div", {
+										className: "text-sm mt-1",
+										children: e.motivo
+									}),
+									/* @__PURE__ */ jsx("div", {
+										className: "mt-3 flex justify-end",
+										children: /* @__PURE__ */ jsx("button", {
+											onClick: () => handleDeleteExcepcion(e.excepcion_id),
+											className: "text-red-600 hover:text-red-700",
+											children: "Eliminar"
+										})
+									})
+								]
+							}, e.excepcion_id))
+						})
+					]
+				})
+			}),
+			showNuevaExcepcion && /* @__PURE__ */ jsx("div", {
+				className: "fixed inset-0 bg-black/40 flex items-center justify-center z-[60]",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "bg-white rounded-2xl p-6 w-full max-w-md",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "flex justify-between items-center mb-4",
+						children: [/* @__PURE__ */ jsx("h2", {
+							className: "text-xl font-semibold",
+							children: "Nueva excepción"
+						}), /* @__PURE__ */ jsx("button", {
+							onClick: () => setShowNuevaExcepcion(false),
+							children: "✕"
+						})]
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "space-y-4",
+						children: [
+							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+								className: "block text-sm font-medium mb-1",
+								children: "Fecha"
+							}), /* @__PURE__ */ jsx("input", {
+								type: "date",
+								value: nuevaExcepcion.fecha,
+								onChange: (e) => setNuevaExcepcion({
+									...nuevaExcepcion,
+									fecha: e.target.value
+								}),
+								className: "w-full border rounded-lg px-3 py-2"
+							})] }),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex items-center gap-2",
+								children: [/* @__PURE__ */ jsx("input", {
+									type: "checkbox",
+									checked: nuevaExcepcion.diaCompleto,
+									onChange: (e) => setNuevaExcepcion({
+										...nuevaExcepcion,
+										diaCompleto: e.target.checked
+									})
+								}), /* @__PURE__ */ jsx("span", { children: "Día completo" })]
+							}),
+							!nuevaExcepcion.diaCompleto && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+								className: "block text-sm font-medium mb-1",
+								children: "Hora inicio"
+							}), /* @__PURE__ */ jsx("input", {
+								type: "time",
+								value: nuevaExcepcion.hora_inicio,
+								onChange: (e) => setNuevaExcepcion({
+									...nuevaExcepcion,
+									hora_inicio: e.target.value
+								}),
+								className: "w-full border rounded-lg px-3 py-2"
+							})] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+								className: "block text-sm font-medium mb-1",
+								children: "Hora fin"
+							}), /* @__PURE__ */ jsx("input", {
+								type: "time",
+								value: nuevaExcepcion.hora_fin,
+								onChange: (e) => setNuevaExcepcion({
+									...nuevaExcepcion,
+									hora_fin: e.target.value
+								}),
+								className: "w-full border rounded-lg px-3 py-2"
+							})] })] }),
+							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+								className: "block text-sm font-medium mb-1",
+								children: "Motivo"
+							}), /* @__PURE__ */ jsx("textarea", {
+								value: nuevaExcepcion.motivo,
+								onChange: (e) => setNuevaExcepcion({
+									...nuevaExcepcion,
+									motivo: e.target.value
+								}),
+								rows: 3,
+								className: "w-full border rounded-lg px-3 py-2"
+							})] }),
+							/* @__PURE__ */ jsxs("div", {
+								className: "flex justify-end gap-2 pt-2",
+								children: [/* @__PURE__ */ jsx("button", {
+									onClick: () => setShowNuevaExcepcion(false),
+									className: "px-4 py-2 border rounded-lg",
+									children: "Cancelar"
+								}), /* @__PURE__ */ jsx("button", {
+									onClick: handleCrearExcepcion,
+									className: "px-4 py-2 bg-primary text-white rounded-lg",
+									children: "Guardar"
+								})]
+							})
+						]
+					})]
+				})
 			}),
 			servicios.length > 0 && /* @__PURE__ */ jsxs("div", {
 				className: "mb-5 flex items-center gap-4 px-4 py-3 bg-surface border border-border rounded-xl text-sm flex-wrap",
@@ -10636,9 +10833,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-C7tkjFxA.js",
+			"module": "/assets/root-CgOHyBBu.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
-			"css": ["/assets/root-zhZdpGJU.css"],
+			"css": ["/assets/root-1gzEMnwb.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -10741,11 +10938,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-Bl4jSorg.js",
+			"module": "/assets/_layout-Dp-_pQVA.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-abZXu-Zm.js"
+				"/assets/NotificationContext-rjU_mIDt.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -10959,8 +11156,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-75XoWBB5.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/NotificationContext-abZXu-Zm.js"],
+			"module": "/assets/notifications-gjs7B1H3.js",
+			"imports": [
+				"/assets/jsx-runtime-B75Xqy3m.js",
+				"/assets/NotificationContext-rjU_mIDt.js",
+				"/assets/AuthContext-DzGty-Aa.js"
+			],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11026,11 +11227,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-OU6jg0vj.js",
+			"module": "/assets/_layout-CTA0bjCq.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-abZXu-Zm.js"
+				"/assets/NotificationContext-rjU_mIDt.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11135,7 +11336,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-DnPD6p9x.js",
+			"module": "/assets/availability-2Nslxqns.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11219,8 +11420,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-HC0od33a.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/NotificationContext-abZXu-Zm.js"],
+			"module": "/assets/notifications-By0ael1g.js",
+			"imports": [
+				"/assets/jsx-runtime-B75Xqy3m.js",
+				"/assets/NotificationContext-rjU_mIDt.js",
+				"/assets/AuthContext-DzGty-Aa.js"
+			],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11375,8 +11580,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-383d3090.js",
-	"version": "383d3090",
+	"url": "/assets/manifest-3de075fc.js",
+	"version": "3de075fc",
 	"sri": void 0
 };
 //#endregion

@@ -81,9 +81,14 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
 
     const channel = echo.private(`user.${userId}`);
 
-    channel.notification((notification: NotificationType) => {
-      setNotifications((prev) => [notification, ...prev]);
-    });
+    channel.notification((notification: any) => {
+  setNotifications((prev) => {
+    const exists = prev.some(n => n.id === notification.id);
+    if (exists) return prev;
+
+    return [notification, ...prev];
+  });
+});
 
     return () => {
       echo.leave(`user.${userId}`);
