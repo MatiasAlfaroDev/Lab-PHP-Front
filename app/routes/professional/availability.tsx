@@ -246,6 +246,16 @@ export default function Availability() {
   const [toggles, setToggles] = useState<Toggles>({
     aceptacionAuto: true, enFeriados: false, horaCompleta: true,
   });
+  const [showExcepciones, setShowExcepciones] = useState(false);
+  const [showNuevaExcepcion, setShowNuevaExcepcion] = useState(false);
+  const [nuevaExcepcion, setNuevaExcepcion] = useState({
+    fecha: "",
+    diaCompleto: true,
+    hora_inicio: "",
+    hora_fin: "",
+    motivo: "",
+  });
+  const [excepciones, setExcepciones] = useState([]);
 
   // ── Load services ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -278,6 +288,19 @@ export default function Availability() {
       .catch(() => setSlots(structuredClone(DEFAULT_SLOTS)))
       .finally(() => setLoadingDisp(false));
   }, [selectedId, servicios]);
+
+  useEffect(() => {
+    if (!showExcepciones) return;
+
+    api
+      .get<{ success: boolean; data: any[] }>("/excepciones", token)
+      .then((res:any) => {
+        if (res.success) {
+          setExcepciones(res.data);
+        }
+      })
+      .catch(console.error);
+  }, [showExcepciones, token]);
 
   // ── Global drag handlers ─────────────────────────────────────────────────
   useEffect(() => {
@@ -461,9 +484,40 @@ export default function Availability() {
     }
   };
 
+  const handleCrearExcepcion = async () => {
+    if (!nuevaExcepcion.fecha) return;
+    try {
+      await api.post("/excepciones", {
+        fecha: nuevaExcepcion.fecha,
+        hora_inicio: nuevaExcepcion.diaCompleto ? undefined : nuevaExcepcion.hora_inicio,
+        hora_fin: nuevaExcepcion.diaCompleto ? undefined : nuevaExcepcion.hora_fin,
+        motivo: nuevaExcepcion.motivo,
+      }, token);
+      setShowNuevaExcepcion(false);
+      // Recargar excepciones
+      const res:any = await api.get<{ success: boolean; data: any[] }>("/excepciones", token);
+      if (res.success) setExcepciones(res.data);
+    } catch (e) {
+      alert("Error al crear excepción");
+    }
+  };
+
+  const handleDeleteExcepcion = async (id: number) => {
+    try {
+      await api.delete(`/excepciones/${id}`, token);
+
+      setExcepciones((prev) =>
+        prev.filter((e: any) => e.excepcion_id !== id)
+      );
+    } catch (error) {
+      alert("Error al eliminar excepción");
+    }
+  };
+
   const isDragging = drag !== null;
 
   if (loadingServicios) return <AvailabilitySkeleton />;
+  
 
   return (
     <div
@@ -473,9 +527,218 @@ export default function Availability() {
       {/* Header */}
       <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Configuración</nav>
       <div className="mb-4">
-        <h1 className="font-display text-3xl text-ink">Disponibilidad</h1>
-        <p className="text-ink-muted mt-1">Definí cuándo aceptás reservas y tus reglas de agenda.</p>
+        <div className="flex justify-between items-center">
+          <h1 className="font-display text-3xl text-ink">
+            Disponibilidad
+          </h1>
+
+          <button
+            onClick={() => setShowExcepciones(true)}
+            className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+          >
+            Excepciones
+          </button>
+        </div>
+
+        <p className="text-ink-muted mt-1">
+          Definí cuándo aceptás reservas y tus reglas de agenda.
+        </p>
       </div>
+      {showExcepciones && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">
+                Excepciones
+              </h2>
+
+              <button
+                onClick={() => setShowExcepciones(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => setShowNuevaExcepcion(true)}
+                className="px-4 py-2 bg-primary text-white rounded-lg"
+              >
+                + Nueva excepción
+              </button>
+            </div>
+
+            {excepciones.length === 0 ? (
+              <p className="text-ink-muted">
+                No hay excepciones configuradas.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {excepciones.map((e: any) => (
+                  <div
+                    key={e.excepcion_id}
+                    className="border rounded-xl p-4"
+                  >
+                    <div className="font-medium">
+                      {e.fecha}
+                    </div>
+
+                    <div className="text-sm text-ink-muted">
+                      {e.hora_inicio && e.hora_fin
+                        ? `${e.hora_inicio.slice(0, 5)} - ${e.hora_fin.slice(0, 5)}`
+                        : "Día completo"}
+                    </div>
+
+                    {e.motivo && (
+                      <div className="text-sm mt-1">
+                        {e.motivo}
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        onClick={() => handleDeleteExcepcion(e.excepcion_id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {showNuevaExcepcion && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]">
+    <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">
+          Nueva excepción
+        </h2>
+
+        <button
+          onClick={() => setShowNuevaExcepcion(false)}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="space-y-4">
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Fecha
+          </label>
+
+          <input
+            type="date"
+            value={nuevaExcepcion.fecha}
+            onChange={(e) =>
+              setNuevaExcepcion({
+                ...nuevaExcepcion,
+                fecha: e.target.value,
+              })
+            }
+            className="w-full border rounded-lg px-3 py-2"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={nuevaExcepcion.diaCompleto}
+            onChange={(e) =>
+              setNuevaExcepcion({
+                ...nuevaExcepcion,
+                diaCompleto: e.target.checked,
+              })
+            }
+          />
+
+          <span>Día completo</span>
+        </div>
+
+        {!nuevaExcepcion.diaCompleto && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Hora inicio
+              </label>
+
+              <input
+                type="time"
+                value={nuevaExcepcion.hora_inicio}
+                onChange={(e) =>
+                  setNuevaExcepcion({
+                    ...nuevaExcepcion,
+                    hora_inicio: e.target.value,
+                  })
+                }
+                className="w-full border rounded-lg px-3 py-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Hora fin
+              </label>
+
+              <input
+                type="time"
+                value={nuevaExcepcion.hora_fin}
+                onChange={(e) =>
+                  setNuevaExcepcion({
+                    ...nuevaExcepcion,
+                    hora_fin: e.target.value,
+                  })
+                }
+                className="w-full border rounded-lg px-3 py-2"
+              />
+            </div>
+          </>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Motivo
+          </label>
+
+          <textarea
+            value={nuevaExcepcion.motivo}
+            onChange={(e) =>
+              setNuevaExcepcion({
+                ...nuevaExcepcion,
+                motivo: e.target.value,
+              })
+            }
+            rows={3}
+            className="w-full border rounded-lg px-3 py-2"
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            onClick={() => setShowNuevaExcepcion(false)}
+            className="px-4 py-2 border rounded-lg"
+          >
+            Cancelar
+          </button>
+
+          <button
+            onClick={handleCrearExcepcion}
+            className="px-4 py-2 bg-primary text-white rounded-lg"
+          >
+            Guardar
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Service context bar — doubles as selector */}
       {servicios.length > 0 && (
