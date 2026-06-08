@@ -11,7 +11,7 @@ const badgeCls: Record<string, string> = {
 
 export default function AdminPayments() {
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-3xl text-ink">Pagos</h1>

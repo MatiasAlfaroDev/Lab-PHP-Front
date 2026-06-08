@@ -134,7 +134,7 @@ export default function ClientPayments() {
     <>
       <ToastContainer position="top-right" autoClose={3500} hideProgressBar={false} closeOnClick pauseOnHover />
 
-      <div className="p-8 max-w-4xl mx-auto">
+      <div className="p-4 md:p-8 max-w-4xl mx-auto">
         <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Cliente</nav>
         <h1 className="font-display text-3xl text-ink mb-6">Pagos</h1>
 

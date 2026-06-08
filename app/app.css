@@ -25,6 +25,13 @@ body {
   background-color: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-body);
+  /* Prevent horizontal overflow on mobile */
+  overflow-x: hidden;
+}
+
+/* Safe area padding for iOS notch / home indicator */
+.safe-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .font-display {

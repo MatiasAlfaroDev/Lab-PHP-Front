@@ -191,7 +191,7 @@ const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void 
 // ── Skeleton ───────────────────────────────────────────────────────────────
 function AvailabilitySkeleton() {
   return (
-    <div className="p-8 max-w-6xl mx-auto animate-pulse">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto animate-pulse">
       <div className="h-3 w-24 bg-border/50 rounded mb-4" />
       <div className="flex items-start justify-between mb-4 gap-3">
         <div className="space-y-2">

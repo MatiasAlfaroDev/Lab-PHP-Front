@@ -220,8 +220,22 @@ var links = () => [
 	{
 		rel: "stylesheet",
 		href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&display=swap"
+	},
+	{
+		rel: "manifest",
+		href: "/manifest.webmanifest"
+	},
+	{
+		rel: "apple-touch-icon",
+		href: "/icon.svg"
 	}
 ];
+function ServiceWorkerRegistration() {
+	useEffect(() => {
+		if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+	}, []);
+	return null;
+}
 function Layout({ children }) {
 	return /* @__PURE__ */ jsxs("html", {
 		lang: "es",
@@ -229,7 +243,31 @@ function Layout({ children }) {
 			/* @__PURE__ */ jsx("meta", { charSet: "utf-8" }),
 			/* @__PURE__ */ jsx("meta", {
 				name: "viewport",
-				content: "width=device-width, initial-scale=1"
+				content: "width=device-width, initial-scale=1, viewport-fit=cover"
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				name: "theme-color",
+				content: "#1c1c1c"
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				name: "description",
+				content: "Gestiona tus citas, paquetes y pagos en una sola plataforma"
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				name: "mobile-web-app-capable",
+				content: "yes"
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				name: "apple-mobile-web-app-capable",
+				content: "yes"
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				name: "apple-mobile-web-app-status-bar-style",
+				content: "black-translucent"
+			}),
+			/* @__PURE__ */ jsx("meta", {
+				name: "apple-mobile-web-app-title",
+				content: "CitaPro"
 			}),
 			/* @__PURE__ */ jsx(Meta, {}),
 			/* @__PURE__ */ jsx(Links, {}),
@@ -243,6 +281,7 @@ function Layout({ children }) {
 			})
 		] }), /* @__PURE__ */ jsxs("body", { children: [
 			/* @__PURE__ */ jsx(AuthProvider, { children }),
+			/* @__PURE__ */ jsx(ServiceWorkerRegistration, {}),
 			/* @__PURE__ */ jsx(ScrollRestoration, {}),
 			/* @__PURE__ */ jsx(Scripts, {})
 		] })]
@@ -788,10 +827,10 @@ function getEcho(token) {
 		window.Pusher = Pusher;
 		echo = new Echo({
 			broadcaster: "reverb",
-			key: "cgux9icc65a7v6i6ia0v",
-			wsHost: "127.0.0.1",
-			wsPort: 8080,
-			wssPort: 8080,
+			key: void 0,
+			wsHost: void 0,
+			wsPort: NaN,
+			wssPort: NaN,
 			forceTLS: false,
 			enabledTransports: ["ws", "wss"],
 			authEndpoint: "http://localhost:8000/broadcasting/auth",
@@ -905,17 +944,30 @@ var navItems$2 = [
 		icon: BellIcon$2
 	}
 ];
-function ClientSidebar({ collapsed, onToggle }) {
+function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
 	const { user, logout } = useAuth();
 	const navigate = useNavigate();
 	const { unreadCount } = useGlobalNotifications();
-	return /* @__PURE__ */ jsxs("aside", {
-		className: `${collapsed ? "w-14" : "w-56"} min-h-screen bg-sidebar flex flex-col transition-all duration-200 ease-in-out shrink-0`,
+	const effectiveCollapsed = collapsed && !isMobileOpen;
+	return /* @__PURE__ */ jsxs(Fragment, { children: [isMobileOpen && /* @__PURE__ */ jsx("div", {
+		className: "fixed inset-0 bg-black/50 z-40 md:hidden",
+		onClick: onMobileClose
+	}), /* @__PURE__ */ jsxs("aside", {
+		className: [
+			"flex flex-col bg-sidebar shrink-0 transition-all duration-200 ease-in-out overflow-y-auto",
+			"fixed inset-y-0 left-0 z-50",
+			"w-72",
+			isMobileOpen ? "translate-x-0" : "-translate-x-full",
+			"md:relative md:inset-y-auto md:left-auto md:z-auto",
+			"md:translate-x-0",
+			collapsed ? "md:w-14" : "md:w-56",
+			"md:min-h-screen"
+		].join(" "),
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "p-4 border-b border-white/10",
 				children: [/* @__PURE__ */ jsxs("div", {
-					className: `flex items-center ${collapsed ? "justify-center" : "justify-between"}`,
+					className: `flex items-center ${effectiveCollapsed ? "justify-center" : "justify-between"}`,
 					children: [/* @__PURE__ */ jsxs("div", {
 						className: "flex items-center gap-2",
 						children: [/* @__PURE__ */ jsx("span", {
@@ -924,17 +976,17 @@ function ClientSidebar({ collapsed, onToggle }) {
 								className: "text-ink font-bold text-xs",
 								children: "+"
 							})
-						}), !collapsed && /* @__PURE__ */ jsx("span", {
+						}), !effectiveCollapsed && /* @__PURE__ */ jsx("span", {
 							className: "font-display text-sidebar-text text-lg tracking-tight",
 							children: "Cita.Pro"
 						})]
-					}), !collapsed && /* @__PURE__ */ jsx("button", {
-						onClick: onToggle,
-						title: "Contraer menú",
+					}), !effectiveCollapsed && /* @__PURE__ */ jsx("button", {
+						onClick: isMobileOpen ? onMobileClose : onToggle,
+						title: isMobileOpen ? "Cerrar menú" : "Contraer menú",
 						className: "text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors",
 						children: /* @__PURE__ */ jsx(ChevronLeftIcon$2, { className: "w-4 h-4" })
 					})]
-				}), collapsed && /* @__PURE__ */ jsx("div", {
+				}), effectiveCollapsed && /* @__PURE__ */ jsx("div", {
 					className: "flex justify-center mt-3",
 					children: /* @__PURE__ */ jsx("button", {
 						onClick: onToggle,
@@ -947,15 +999,15 @@ function ClientSidebar({ collapsed, onToggle }) {
 			/* @__PURE__ */ jsx("nav", {
 				className: "flex-1 p-2 space-y-0.5",
 				children: navItems$2.map(({ to, label, icon: Icon, end, disabled }) => disabled ? /* @__PURE__ */ jsxs("div", {
-					title: collapsed ? label : void 0,
-					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${collapsed ? "justify-center px-0" : ""}`,
+					title: effectiveCollapsed ? label : void 0,
+					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${effectiveCollapsed ? "justify-center px-0" : ""}`,
 					children: [
 						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
-						!collapsed && /* @__PURE__ */ jsx("span", {
+						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
 							className: "flex-1",
 							children: label
 						}),
-						!collapsed && /* @__PURE__ */ jsx("span", {
+						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
 							className: "text-[10px] text-sidebar-muted/60 font-normal",
 							children: "pronto"
 						})
@@ -963,15 +1015,16 @@ function ClientSidebar({ collapsed, onToggle }) {
 				}, to) : /* @__PURE__ */ jsxs(NavLink, {
 					to,
 					end,
-					title: collapsed ? label : void 0,
-					className: ({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${collapsed ? "justify-center px-0" : ""} ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`,
+					title: effectiveCollapsed ? label : void 0,
+					onClick: isMobileOpen ? onMobileClose : void 0,
+					className: ({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${effectiveCollapsed ? "justify-center px-0" : ""} ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`,
 					children: [
 						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
-						!collapsed && /* @__PURE__ */ jsx("span", {
+						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
 							className: "flex-1",
 							children: label
 						}),
-						to === "/client/notifications" && unreadCount > 0 && !collapsed && /* @__PURE__ */ jsx("span", {
+						to === "/client/notifications" && unreadCount > 0 && !effectiveCollapsed && /* @__PURE__ */ jsx("span", {
 							className: "ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full",
 							children: unreadCount
 						})
@@ -980,7 +1033,7 @@ function ClientSidebar({ collapsed, onToggle }) {
 			}),
 			/* @__PURE__ */ jsx("div", {
 				className: "p-3 border-t border-white/10",
-				children: collapsed ? /* @__PURE__ */ jsx("div", {
+				children: effectiveCollapsed ? /* @__PURE__ */ jsx("div", {
 					className: "flex justify-center py-1",
 					children: /* @__PURE__ */ jsx("button", {
 						onClick: () => navigate("/client/profile"),
@@ -992,7 +1045,10 @@ function ClientSidebar({ collapsed, onToggle }) {
 					className: "flex items-center gap-3 px-3 py-2",
 					children: [
 						/* @__PURE__ */ jsx("button", {
-							onClick: () => navigate("/client/profile"),
+							onClick: () => {
+								navigate("/client/profile");
+								if (isMobileOpen) onMobileClose();
+							},
 							title: "Editar perfil",
 							className: "w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all",
 							children: user?.initials ?? "LP"
@@ -1020,7 +1076,7 @@ function ClientSidebar({ collapsed, onToggle }) {
 				})
 			})
 		]
-	});
+	})] });
 }
 function HomeIcon$1({ className }) {
 	return /* @__PURE__ */ jsxs("svg", {
@@ -1044,6 +1100,25 @@ function SearchIcon({ className }) {
 			cy: "11",
 			r: "8"
 		}), /* @__PURE__ */ jsx("path", { d: "m21 21-4.35-4.35" })]
+	});
+}
+function PackageIcon$2({ className }) {
+	return /* @__PURE__ */ jsxs("svg", {
+		className,
+		fill: "none",
+		viewBox: "0 0 24 24",
+		stroke: "currentColor",
+		strokeWidth: 2,
+		children: [
+			/* @__PURE__ */ jsx("path", { d: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" }),
+			/* @__PURE__ */ jsx("polyline", { points: "3.29 7 12 12 20.71 7" }),
+			/* @__PURE__ */ jsx("line", {
+				x1: "12",
+				y1: "22",
+				x2: "12",
+				y2: "12"
+			})
+		]
 	});
 }
 function CalendarIcon$1({ className }) {
@@ -1113,6 +1188,16 @@ function CardIcon$1({ className }) {
 		})]
 	});
 }
+function BellIcon$2({ className }) {
+	return /* @__PURE__ */ jsx("svg", {
+		className,
+		fill: "none",
+		viewBox: "0 0 24 24",
+		stroke: "currentColor",
+		strokeWidth: 2,
+		children: /* @__PURE__ */ jsx("path", { d: "M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 1-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" })
+	});
+}
 function LogoutIcon$1({ className }) {
 	return /* @__PURE__ */ jsxs("svg", {
 		className,
@@ -1152,35 +1237,6 @@ function ChevronRightIcon$2({ className }) {
 		children: /* @__PURE__ */ jsx("polyline", { points: "9 18 15 12 9 6" })
 	});
 }
-function BellIcon$2({ className }) {
-	return /* @__PURE__ */ jsx("svg", {
-		className,
-		fill: "none",
-		viewBox: "0 0 24 24",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		children: /* @__PURE__ */ jsx("path", { d: "M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 1-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" })
-	});
-}
-function PackageIcon$2({ className }) {
-	return /* @__PURE__ */ jsxs("svg", {
-		className,
-		fill: "none",
-		viewBox: "0 0 24 24",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		children: [
-			/* @__PURE__ */ jsx("path", { d: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" }),
-			/* @__PURE__ */ jsx("polyline", { points: "3.29 7 12 12 20.71 7" }),
-			/* @__PURE__ */ jsx("line", {
-				x1: "12",
-				y1: "22",
-				x2: "12",
-				y2: "12"
-			})
-		]
-	});
-}
 //#endregion
 //#region app/routes/client/_layout.tsx
 var _layout_exports$2 = /* @__PURE__ */ __exportAll({ default: () => _layout_default$2 });
@@ -1188,6 +1244,7 @@ var _layout_default$2 = UNSAFE_withComponentProps(function ClientLayout() {
 	const { user, token, isLoading } = useAuth();
 	const navigate = useNavigate();
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+	const [mobileOpen, setMobileOpen] = useState(false);
 	useEffect(() => {
 		if (!isLoading && !user) navigate("/login", { replace: true });
 		if (!isLoading && user && user.role === "professional") navigate("/professional", { replace: true });
@@ -1207,14 +1264,65 @@ var _layout_default$2 = UNSAFE_withComponentProps(function ClientLayout() {
 			className: "flex min-h-screen bg-bg",
 			children: [/* @__PURE__ */ jsx(ClientSidebar, {
 				collapsed: sidebarCollapsed,
-				onToggle: () => setSidebarCollapsed((v) => !v)
-			}), /* @__PURE__ */ jsx("main", {
+				onToggle: () => setSidebarCollapsed((v) => !v),
+				isMobileOpen: mobileOpen,
+				onMobileClose: () => setMobileOpen(false)
+			}), /* @__PURE__ */ jsxs("main", {
 				className: "flex-1 overflow-auto min-w-0",
-				children: /* @__PURE__ */ jsx(Outlet, {})
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "sticky top-0 z-30 flex md:hidden items-center justify-between bg-sidebar px-4 py-3 border-b border-white/10",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "flex items-center gap-2",
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "w-5 h-5 rounded-sm bg-surface flex items-center justify-center shrink-0",
+							children: /* @__PURE__ */ jsx("span", {
+								className: "text-ink font-bold text-xs",
+								children: "+"
+							})
+						}), /* @__PURE__ */ jsx("span", {
+							className: "font-display text-sidebar-text text-lg tracking-tight",
+							children: "Cita.Pro"
+						})]
+					}), /* @__PURE__ */ jsx("button", {
+						onClick: () => setMobileOpen(true),
+						className: "text-sidebar-text p-1.5 rounded-lg hover:bg-white/10 transition-colors",
+						"aria-label": "Abrir menú",
+						children: /* @__PURE__ */ jsx(MenuIcon$1, { className: "w-5 h-5" })
+					})]
+				}), /* @__PURE__ */ jsx(Outlet, {})]
 			})]
 		})
 	});
 });
+function MenuIcon$1({ className }) {
+	return /* @__PURE__ */ jsxs("svg", {
+		className,
+		fill: "none",
+		viewBox: "0 0 24 24",
+		stroke: "currentColor",
+		strokeWidth: 2,
+		children: [
+			/* @__PURE__ */ jsx("line", {
+				x1: "3",
+				y1: "6",
+				x2: "21",
+				y2: "6"
+			}),
+			/* @__PURE__ */ jsx("line", {
+				x1: "3",
+				y1: "12",
+				x2: "21",
+				y2: "12"
+			}),
+			/* @__PURE__ */ jsx("line", {
+				x1: "3",
+				y1: "18",
+				x2: "21",
+				y2: "18"
+			})
+		]
+	});
+}
 //#endregion
 //#region app/routes/client/dashboard.tsx
 var dashboard_exports$2 = /* @__PURE__ */ __exportAll({ default: () => dashboard_default$2 });
@@ -1253,7 +1361,7 @@ var dashboard_default$2 = UNSAFE_withComponentProps(function ClientDashboard() {
 	const sesionesRestantes = paqueteDestacado ? paqueteDestacado.items.reduce((sum, item) => sum + item.sesiones_restantes, 0) : 0;
 	const porcentaje = totalSesiones > 0 ? sesionesRestantes / totalSesiones * 100 : 0;
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-5xl mx-auto",
+		className: "p-4 md:p-8 max-w-5xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "flex items-start justify-between mb-8",
@@ -2643,7 +2751,7 @@ var booking_$id_pay_default = UNSAFE_withComponentProps(function BookingPay() {
 		navigate(`/session/1/rating`);
 	};
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-5xl mx-auto",
+		className: "p-4 md:p-8 max-w-5xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("nav", {
 				className: "text-sm text-ink-muted mb-6 flex items-center gap-2",
@@ -2982,15 +3090,15 @@ var package_$id_pay_default = UNSAFE_withComponentProps(function PackagePay() {
 		});
 	}, [id, token]);
 	if (loadingPaquete) return /* @__PURE__ */ jsx("p", {
-		className: "p-8",
+		className: "p-4 md:p-8",
 		children: "Cargando..."
 	});
 	if (!paquete) return /* @__PURE__ */ jsx("p", {
-		className: "p-8",
+		className: "p-4 md:p-8",
 		children: "Paquete no encontrado"
 	});
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-5xl mx-auto",
+		className: "p-4 md:p-8 max-w-5xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("nav", {
 				className: "text-sm text-ink-muted mb-6 flex items-center gap-2",
@@ -3286,15 +3394,15 @@ var compra_package_$id_pay_default = UNSAFE_withComponentProps(function CompraPa
 		});
 	}, [id, token]);
 	if (loadingPaquete) return /* @__PURE__ */ jsx("p", {
-		className: "p-8",
+		className: "p-4 md:p-8",
 		children: "Cargando..."
 	});
 	if (!compra) return /* @__PURE__ */ jsx("p", {
-		className: "p-8",
+		className: "p-4 md:p-8",
 		children: "Compra no encontrada"
 	});
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-5xl mx-auto",
+		className: "p-4 md:p-8 max-w-5xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("nav", {
 				className: "text-sm text-ink-muted mb-6 flex items-center gap-2",
@@ -3582,11 +3690,11 @@ var packages_default = UNSAFE_withComponentProps(function Packages() {
 		}
 	};
 	if (loading) return /* @__PURE__ */ jsx("div", {
-		className: "p-8",
+		className: "p-4 md:p-8",
 		children: "Cargando paquetes..."
 	});
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-4xl mx-auto",
+		className: "p-4 md:p-8 max-w-4xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsx("h1", {
 				className: "font-display text-3xl text-ink mb-6",
@@ -3954,7 +4062,7 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 			pauseOnHover: true
 		}),
 		/* @__PURE__ */ jsxs("div", {
-			className: "p-8 max-w-4xl mx-auto",
+			className: "p-4 md:p-8 max-w-4xl mx-auto",
 			children: [
 				/* @__PURE__ */ jsx("nav", {
 					className: "text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold",
@@ -4254,7 +4362,7 @@ var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPa
 		loadNotifications();
 	}, []);
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-6xl mx-auto",
+		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [/* @__PURE__ */ jsxs("div", {
 			className: "flex items-center justify-between mb-6",
 			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
@@ -4774,7 +4882,7 @@ var profile_default$1 = UNSAFE_withComponentProps(function ClientProfile() {
 		}
 	};
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-2xl mx-auto",
+		className: "p-4 md:p-8 max-w-2xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsx("h1", {
 				className: "font-display text-3xl text-ink mb-1",
@@ -4946,17 +5054,30 @@ var navItems$1 = [
 		icon: BellIcon$1
 	}
 ];
-function ProfessionalSidebar({ collapsed, onToggle }) {
+function ProfessionalSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
 	const { user, logout } = useAuth();
 	const navigate = useNavigate();
 	const { unreadCount } = useGlobalNotifications();
-	return /* @__PURE__ */ jsxs("aside", {
-		className: `${collapsed ? "w-14" : "w-56"} min-h-screen bg-sidebar flex flex-col transition-all duration-200 ease-in-out shrink-0`,
+	const effectiveCollapsed = collapsed && !isMobileOpen;
+	return /* @__PURE__ */ jsxs(Fragment, { children: [isMobileOpen && /* @__PURE__ */ jsx("div", {
+		className: "fixed inset-0 bg-black/50 z-40 md:hidden",
+		onClick: onMobileClose
+	}), /* @__PURE__ */ jsxs("aside", {
+		className: [
+			"flex flex-col bg-sidebar shrink-0 transition-all duration-200 ease-in-out overflow-y-auto",
+			"fixed inset-y-0 left-0 z-50",
+			"w-72",
+			isMobileOpen ? "translate-x-0" : "-translate-x-full",
+			"md:relative md:inset-y-auto md:left-auto md:z-auto",
+			"md:translate-x-0",
+			collapsed ? "md:w-14" : "md:w-56",
+			"md:min-h-screen"
+		].join(" "),
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "p-4 border-b border-white/10",
 				children: [/* @__PURE__ */ jsxs("div", {
-					className: `flex items-center ${collapsed ? "justify-center" : "justify-between"}`,
+					className: `flex items-center ${effectiveCollapsed ? "justify-center" : "justify-between"}`,
 					children: [/* @__PURE__ */ jsxs("div", {
 						className: "flex items-center gap-2",
 						children: [/* @__PURE__ */ jsx("span", {
@@ -4965,20 +5086,22 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 								className: "text-ink font-bold text-xs",
 								children: "+"
 							})
-						}), !collapsed && /* @__PURE__ */ jsx("span", {
+						}), !effectiveCollapsed && /* @__PURE__ */ jsx("span", {
 							className: "font-display text-sidebar-text text-lg tracking-tight",
 							children: "Cita.Pro"
 						})]
-					}), !collapsed && /* @__PURE__ */ jsx("button", {
-						onClick: onToggle,
-						className: "text-sidebar-muted hover:text-sidebar-text p-1",
+					}), !effectiveCollapsed && /* @__PURE__ */ jsx("button", {
+						onClick: isMobileOpen ? onMobileClose : onToggle,
+						title: isMobileOpen ? "Cerrar menú" : "Contraer menú",
+						className: "text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors",
 						children: /* @__PURE__ */ jsx(ChevronLeftIcon$1, { className: "w-4 h-4" })
 					})]
-				}), collapsed && /* @__PURE__ */ jsx("div", {
+				}), effectiveCollapsed && /* @__PURE__ */ jsx("div", {
 					className: "flex justify-center mt-3",
 					children: /* @__PURE__ */ jsx("button", {
 						onClick: onToggle,
-						className: "text-sidebar-muted hover:text-sidebar-text p-1",
+						title: "Expandir menú",
+						className: "text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors",
 						children: /* @__PURE__ */ jsx(ChevronRightIcon$1, { className: "w-4 h-4" })
 					})
 				})]
@@ -4986,15 +5109,15 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 			/* @__PURE__ */ jsx("nav", {
 				className: "flex-1 p-2 space-y-0.5",
 				children: navItems$1.map(({ to, label, icon: Icon, end, disabled }) => disabled ? /* @__PURE__ */ jsxs("div", {
-					title: collapsed ? label : void 0,
-					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${collapsed ? "justify-center px-0" : ""}`,
+					title: effectiveCollapsed ? label : void 0,
+					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${effectiveCollapsed ? "justify-center px-0" : ""}`,
 					children: [
-						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4" }),
-						!collapsed && /* @__PURE__ */ jsx("span", {
+						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
+						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
 							className: "flex-1",
 							children: label
 						}),
-						!collapsed && /* @__PURE__ */ jsx("span", {
+						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
 							className: "text-[10px] text-sidebar-muted/60 font-normal",
 							children: "pronto"
 						})
@@ -5002,15 +5125,16 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 				}, to) : /* @__PURE__ */ jsxs(NavLink, {
 					to,
 					end,
-					title: collapsed ? label : void 0,
-					className: ({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed ? "justify-center px-0" : ""} ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`,
+					title: effectiveCollapsed ? label : void 0,
+					onClick: isMobileOpen ? onMobileClose : void 0,
+					className: ({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${effectiveCollapsed ? "justify-center px-0" : ""} ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`,
 					children: [
 						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
-						!collapsed && /* @__PURE__ */ jsx("span", {
+						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
 							className: "flex-1",
 							children: label
 						}),
-						to === "/professional/notifications" && unreadCount > 0 && !collapsed && /* @__PURE__ */ jsx("span", {
+						to === "/professional/notifications" && unreadCount > 0 && !effectiveCollapsed && /* @__PURE__ */ jsx("span", {
 							className: "ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full",
 							children: unreadCount
 						})
@@ -5019,27 +5143,30 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 			}),
 			/* @__PURE__ */ jsx("div", {
 				className: "p-3 border-t border-white/10",
-				children: collapsed ? /* @__PURE__ */ jsx("div", {
-					className: "flex justify-center",
+				children: effectiveCollapsed ? /* @__PURE__ */ jsx("div", {
+					className: "flex justify-center py-1",
 					children: /* @__PURE__ */ jsx("button", {
 						onClick: () => navigate("/professional/profile"),
-						title: user?.name ?? "Usuario",
-						className: "w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold",
+						title: user?.name ?? "Profesional",
+						className: "w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all",
 						children: user?.initials ?? "MO"
 					})
 				}) : /* @__PURE__ */ jsxs("div", {
 					className: "flex items-center gap-3 px-3 py-2",
 					children: [
 						/* @__PURE__ */ jsx("button", {
-							onClick: () => navigate("/professional/profile"),
+							onClick: () => {
+								navigate("/professional/profile");
+								if (isMobileOpen) onMobileClose();
+							},
 							title: "Editar perfil",
-							className: "w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold",
+							className: "w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all",
 							children: user?.initials ?? "MO"
 						}),
 						/* @__PURE__ */ jsxs("div", {
-							className: "flex-1",
+							className: "flex-1 min-w-0",
 							children: [/* @__PURE__ */ jsx("p", {
-								className: "text-sm text-sidebar-text truncate",
+								className: "text-sm font-medium text-sidebar-text truncate",
 								children: user?.name ?? "Profesional"
 							}), /* @__PURE__ */ jsx("p", {
 								className: "text-xs text-sidebar-muted",
@@ -5052,14 +5179,14 @@ function ProfessionalSidebar({ collapsed, onToggle }) {
 								navigate("/login");
 							},
 							title: "Cerrar sesión",
-							className: "text-sidebar-muted hover:text-sidebar-text",
+							className: "text-sidebar-muted hover:text-sidebar-text transition-colors",
 							children: /* @__PURE__ */ jsx(LogoutIcon, { className: "w-4 h-4" })
 						})
 					]
 				})
 			})
 		]
-	});
+	})] });
 }
 function HomeIcon({ className }) {
 	return /* @__PURE__ */ jsxs("svg", {
@@ -5126,6 +5253,45 @@ function PackageIcon({ className }) {
 		]
 	});
 }
+function BoxesIcon({ className }) {
+	return /* @__PURE__ */ jsxs("svg", {
+		className,
+		fill: "none",
+		viewBox: "0 0 24 24",
+		stroke: "currentColor",
+		strokeWidth: 2,
+		children: [
+			/* @__PURE__ */ jsx("rect", {
+				x: "3",
+				y: "3",
+				width: "7",
+				height: "7",
+				rx: "1"
+			}),
+			/* @__PURE__ */ jsx("rect", {
+				x: "14",
+				y: "3",
+				width: "7",
+				height: "7",
+				rx: "1"
+			}),
+			/* @__PURE__ */ jsx("rect", {
+				x: "3",
+				y: "14",
+				width: "7",
+				height: "7",
+				rx: "1"
+			}),
+			/* @__PURE__ */ jsx("rect", {
+				x: "14",
+				y: "14",
+				width: "7",
+				height: "7",
+				rx: "1"
+			})
+		]
+	});
+}
 function ClockIcon({ className }) {
 	return /* @__PURE__ */ jsxs("svg", {
 		className,
@@ -5171,6 +5337,16 @@ function MessageIcon({ className }) {
 		children: /* @__PURE__ */ jsx("path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" })
 	});
 }
+function BellIcon$1({ className }) {
+	return /* @__PURE__ */ jsx("svg", {
+		className,
+		fill: "none",
+		viewBox: "0 0 24 24",
+		stroke: "currentColor",
+		strokeWidth: 2,
+		children: /* @__PURE__ */ jsx("path", { d: "M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 1-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" })
+	});
+}
 function LogoutIcon({ className }) {
 	return /* @__PURE__ */ jsxs("svg", {
 		className,
@@ -5187,50 +5363,6 @@ function LogoutIcon({ className }) {
 				x2: "9",
 				y2: "12"
 			})
-		]
-	});
-}
-function BoxesIcon({ className }) {
-	return /* @__PURE__ */ jsxs("svg", {
-		className,
-		fill: "none",
-		viewBox: "0 0 24 24",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		children: [
-			" ",
-			/* @__PURE__ */ jsx("rect", {
-				x: "3",
-				y: "3",
-				width: "7",
-				height: "7",
-				rx: "1"
-			}),
-			" ",
-			/* @__PURE__ */ jsx("rect", {
-				x: "14",
-				y: "3",
-				width: "7",
-				height: "7",
-				rx: "1"
-			}),
-			" ",
-			/* @__PURE__ */ jsx("rect", {
-				x: "3",
-				y: "14",
-				width: "7",
-				height: "7",
-				rx: "1"
-			}),
-			" ",
-			/* @__PURE__ */ jsx("rect", {
-				x: "14",
-				y: "14",
-				width: "7",
-				height: "7",
-				rx: "1"
-			}),
-			" "
 		]
 	});
 }
@@ -5254,16 +5386,6 @@ function ChevronRightIcon$1({ className }) {
 		children: /* @__PURE__ */ jsx("polyline", { points: "9 18 15 12 9 6" })
 	});
 }
-function BellIcon$1({ className }) {
-	return /* @__PURE__ */ jsx("svg", {
-		className,
-		fill: "none",
-		viewBox: "0 0 24 24",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		children: /* @__PURE__ */ jsx("path", { d: "M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 1-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" })
-	});
-}
 //#endregion
 //#region app/routes/professional/_layout.tsx
 var _layout_exports$1 = /* @__PURE__ */ __exportAll({ default: () => _layout_default$1 });
@@ -5271,6 +5393,7 @@ var _layout_default$1 = UNSAFE_withComponentProps(function ProfessionalLayout() 
 	const { user, token, isLoading } = useAuth();
 	const navigate = useNavigate();
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+	const [mobileOpen, setMobileOpen] = useState(false);
 	useEffect(() => {
 		if (!isLoading && !user) navigate("/login", { replace: true });
 		if (!isLoading && user && user.role === "client") navigate("/client", { replace: true });
@@ -5290,14 +5413,65 @@ var _layout_default$1 = UNSAFE_withComponentProps(function ProfessionalLayout() 
 			className: "flex min-h-screen bg-bg",
 			children: [/* @__PURE__ */ jsx(ProfessionalSidebar, {
 				collapsed: sidebarCollapsed,
-				onToggle: () => setSidebarCollapsed((v) => !v)
-			}), /* @__PURE__ */ jsx("main", {
+				onToggle: () => setSidebarCollapsed((v) => !v),
+				isMobileOpen: mobileOpen,
+				onMobileClose: () => setMobileOpen(false)
+			}), /* @__PURE__ */ jsxs("main", {
 				className: "flex-1 overflow-auto min-w-0",
-				children: /* @__PURE__ */ jsx(Outlet, {})
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "sticky top-0 z-30 flex md:hidden items-center justify-between bg-sidebar px-4 py-3 border-b border-white/10",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "flex items-center gap-2",
+						children: [/* @__PURE__ */ jsx("span", {
+							className: "w-5 h-5 rounded-sm bg-surface flex items-center justify-center shrink-0",
+							children: /* @__PURE__ */ jsx("span", {
+								className: "text-ink font-bold text-xs",
+								children: "+"
+							})
+						}), /* @__PURE__ */ jsx("span", {
+							className: "font-display text-sidebar-text text-lg tracking-tight",
+							children: "Cita.Pro"
+						})]
+					}), /* @__PURE__ */ jsx("button", {
+						onClick: () => setMobileOpen(true),
+						className: "text-sidebar-text p-1.5 rounded-lg hover:bg-white/10 transition-colors",
+						"aria-label": "Abrir menú",
+						children: /* @__PURE__ */ jsx(MenuIcon, { className: "w-5 h-5" })
+					})]
+				}), /* @__PURE__ */ jsx(Outlet, {})]
 			})]
 		})
 	});
 });
+function MenuIcon({ className }) {
+	return /* @__PURE__ */ jsxs("svg", {
+		className,
+		fill: "none",
+		viewBox: "0 0 24 24",
+		stroke: "currentColor",
+		strokeWidth: 2,
+		children: [
+			/* @__PURE__ */ jsx("line", {
+				x1: "3",
+				y1: "6",
+				x2: "21",
+				y2: "6"
+			}),
+			/* @__PURE__ */ jsx("line", {
+				x1: "3",
+				y1: "12",
+				x2: "21",
+				y2: "12"
+			}),
+			/* @__PURE__ */ jsx("line", {
+				x1: "3",
+				y1: "18",
+				x2: "21",
+				y2: "18"
+			})
+		]
+	});
+}
 //#endregion
 //#region app/routes/professional/clients.tsx
 var clients_exports = /* @__PURE__ */ __exportAll({ default: () => clients_default });
@@ -5482,7 +5656,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 	const panelOpen = !!selectedClient;
 	const panelClientColor = selectedClient ? CLIENT_COLORS[Math.max(clients.findIndex((c) => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length] : CLIENT_COLORS[0];
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8",
+		className: "p-4 md:p-8",
 		children: [/* @__PURE__ */ jsxs("div", {
 			className: "mb-6",
 			children: [/* @__PURE__ */ jsx("h1", {
@@ -6128,7 +6302,7 @@ function Skeleton({ className = "" }) {
 }
 function DashboardSkeleton() {
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-6xl mx-auto",
+		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "flex items-start justify-between mb-8",
@@ -6250,7 +6424,7 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 	};
 	if (loading) return /* @__PURE__ */ jsx(DashboardSkeleton, {});
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-6xl mx-auto",
+		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "flex items-start justify-between mb-8",
@@ -6825,7 +6999,7 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 		} : x));
 	};
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-6xl mx-auto",
+		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [
 			toast && /* @__PURE__ */ jsx("div", {
 				className: `fixed top-5 right-5 z-50 px-4 py-3 rounded border text-sm font-semibold shadow-lg ${toast.ok ? "bg-accent text-ink border-ink/20" : "bg-red-100 text-red-800 border-red-200"}`,
@@ -7374,7 +7548,7 @@ var service_packages_default = UNSAFE_withComponentProps(function ServicePackage
 		}
 	};
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-6xl mx-auto",
+		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [
 			toast && /* @__PURE__ */ jsx("div", {
 				className: `fixed top-5 right-5 z-50 px-4 py-3 rounded border text-sm font-semibold shadow-lg transition-all ${toast.ok ? "bg-accent text-ink border-ink/20" : "bg-red-100 text-red-800 border-red-200"}`,
@@ -7902,7 +8076,7 @@ var Toggle = ({ checked, onChange }) => /* @__PURE__ */ jsx("button", {
 });
 function AvailabilitySkeleton() {
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-6xl mx-auto animate-pulse",
+		className: "p-4 md:p-8 max-w-6xl mx-auto animate-pulse",
 		children: [
 			/* @__PURE__ */ jsx("div", { className: "h-3 w-24 bg-border/50 rounded mb-4" }),
 			/* @__PURE__ */ jsxs("div", {
@@ -8977,7 +9151,7 @@ var badgeCls$2 = {
 };
 var payments_default$1 = UNSAFE_withComponentProps(function Payments() {
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-5xl mx-auto",
+		className: "p-4 md:p-8 max-w-5xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "flex items-center justify-between mb-6",
@@ -9322,7 +9496,7 @@ var profile_default = UNSAFE_withComponentProps(function ProfessionalProfile() {
 		}
 	};
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-2xl mx-auto",
+		className: "p-4 md:p-8 max-w-2xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsx("h1", {
 				className: "font-display text-3xl text-ink mb-1",
@@ -9582,6 +9756,7 @@ var navItems = [
 var _layout_default = UNSAFE_withComponentProps(function AdminLayout() {
 	const { user, isLoading, logout } = useAuth();
 	const navigate = useNavigate();
+	const [mobileOpen, setMobileOpen] = useState(false);
 	useEffect(() => {
 		if (!isLoading && !user) navigate("/login", { replace: true });
 	}, [
@@ -9595,15 +9770,101 @@ var _layout_default = UNSAFE_withComponentProps(function AdminLayout() {
 	});
 	return /* @__PURE__ */ jsxs("div", {
 		className: "flex min-h-screen bg-bg",
-		children: [/* @__PURE__ */ jsxs("aside", {
-			className: "w-56 min-h-screen bg-sidebar flex flex-col",
-			children: [
-				/* @__PURE__ */ jsx("div", {
-					className: "p-5 border-b border-white/10",
-					children: /* @__PURE__ */ jsxs("div", {
+		children: [
+			mobileOpen && /* @__PURE__ */ jsx("div", {
+				className: "fixed inset-0 bg-black/50 z-40 md:hidden",
+				onClick: () => setMobileOpen(false)
+			}),
+			/* @__PURE__ */ jsxs("aside", {
+				className: [
+					"flex flex-col bg-sidebar shrink-0 transition-all duration-200 ease-in-out",
+					"fixed inset-y-0 left-0 z-50",
+					"w-72",
+					mobileOpen ? "translate-x-0" : "-translate-x-full",
+					"md:relative md:inset-y-auto md:left-auto md:z-auto",
+					"md:translate-x-0 md:w-56 md:min-h-screen"
+				].join(" "),
+				children: [
+					/* @__PURE__ */ jsx("div", {
+						className: "p-5 border-b border-white/10",
+						children: /* @__PURE__ */ jsxs("div", {
+							className: "flex items-center justify-between",
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "flex items-center gap-2",
+								children: [/* @__PURE__ */ jsx("span", {
+									className: "w-5 h-5 bg-surface flex items-center justify-center",
+									children: /* @__PURE__ */ jsx("span", {
+										className: "text-ink font-bold text-xs",
+										children: "+"
+									})
+								}), /* @__PURE__ */ jsx("span", {
+									className: "font-display text-sidebar-text text-lg",
+									children: "Cita.Pro"
+								})]
+							}), /* @__PURE__ */ jsx("button", {
+								onClick: () => setMobileOpen(false),
+								className: "md:hidden text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors",
+								children: /* @__PURE__ */ jsx("svg", {
+									className: "w-4 h-4",
+									fill: "none",
+									viewBox: "0 0 24 24",
+									stroke: "currentColor",
+									strokeWidth: 2,
+									children: /* @__PURE__ */ jsx("polyline", { points: "15 18 9 12 15 6" })
+								})
+							})]
+						})
+					}),
+					/* @__PURE__ */ jsx("nav", {
+						className: "flex-1 p-3 space-y-0.5",
+						children: navItems.map(({ to, label, icon, end }) => /* @__PURE__ */ jsxs(NavLink, {
+							to,
+							end,
+							onClick: () => setMobileOpen(false),
+							className: ({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`,
+							children: [/* @__PURE__ */ jsx("span", { children: icon }), /* @__PURE__ */ jsx("span", { children: label })]
+						}, to))
+					}),
+					/* @__PURE__ */ jsx("div", {
+						className: "p-3 border-t border-white/10",
+						children: /* @__PURE__ */ jsxs("div", {
+							className: "flex items-center gap-3 px-3 py-2",
+							children: [
+								/* @__PURE__ */ jsx("div", {
+									className: "w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold shrink-0",
+									children: "A"
+								}),
+								/* @__PURE__ */ jsxs("div", {
+									className: "flex-1 min-w-0",
+									children: [/* @__PURE__ */ jsx("p", {
+										className: "text-sm font-semibold text-sidebar-text truncate",
+										children: "Admin"
+									}), /* @__PURE__ */ jsx("p", {
+										className: "text-xs text-sidebar-muted",
+										children: "Administrador"
+									})]
+								}),
+								/* @__PURE__ */ jsx("button", {
+									onClick: () => {
+										logout();
+										navigate("/login");
+									},
+									className: "text-sidebar-muted hover:text-sidebar-text text-xs",
+									children: "✕"
+								})
+							]
+						})
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("main", {
+				className: "flex-1 overflow-auto",
+				children: [/* @__PURE__ */ jsxs("div", {
+					className: "sticky top-0 z-30 flex md:hidden items-center justify-between bg-sidebar px-4 py-3 border-b border-white/10",
+					children: [/* @__PURE__ */ jsxs("div", {
 						className: "flex items-center gap-2",
 						children: [/* @__PURE__ */ jsx("span", {
-							className: "w-5 h-5 bg-surface flex items-center justify-center",
+							className: "w-5 h-5 bg-surface flex items-center justify-center shrink-0",
 							children: /* @__PURE__ */ jsx("span", {
 								className: "text-ink font-bold text-xs",
 								children: "+"
@@ -9612,52 +9873,41 @@ var _layout_default = UNSAFE_withComponentProps(function AdminLayout() {
 							className: "font-display text-sidebar-text text-lg",
 							children: "Cita.Pro"
 						})]
-					})
-				}),
-				/* @__PURE__ */ jsx("nav", {
-					className: "flex-1 p-3 space-y-0.5",
-					children: navItems.map(({ to, label, icon, end }) => /* @__PURE__ */ jsxs(NavLink, {
-						to,
-						end,
-						className: ({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`,
-						children: [/* @__PURE__ */ jsx("span", { children: icon }), /* @__PURE__ */ jsx("span", { children: label })]
-					}, to))
-				}),
-				/* @__PURE__ */ jsx("div", {
-					className: "p-3 border-t border-white/10",
-					children: /* @__PURE__ */ jsxs("div", {
-						className: "flex items-center gap-3 px-3 py-2",
-						children: [
-							/* @__PURE__ */ jsx("div", {
-								className: "w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold shrink-0",
-								children: "A"
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "flex-1 min-w-0",
-								children: [/* @__PURE__ */ jsx("p", {
-									className: "text-sm font-semibold text-sidebar-text truncate",
-									children: "Admin"
-								}), /* @__PURE__ */ jsx("p", {
-									className: "text-xs text-sidebar-muted",
-									children: "Administrador"
-								})]
-							}),
-							/* @__PURE__ */ jsx("button", {
-								onClick: () => {
-									logout();
-									navigate("/login");
-								},
-								className: "text-sidebar-muted hover:text-sidebar-text text-xs",
-								children: "✕"
-							})
-						]
-					})
-				})
-			]
-		}), /* @__PURE__ */ jsx("main", {
-			className: "flex-1 overflow-auto",
-			children: /* @__PURE__ */ jsx(Outlet, {})
-		})]
+					}), /* @__PURE__ */ jsx("button", {
+						onClick: () => setMobileOpen(true),
+						className: "text-sidebar-text p-1.5 rounded-lg hover:bg-white/10 transition-colors",
+						"aria-label": "Abrir menú",
+						children: /* @__PURE__ */ jsxs("svg", {
+							className: "w-5 h-5",
+							fill: "none",
+							viewBox: "0 0 24 24",
+							stroke: "currentColor",
+							strokeWidth: 2,
+							children: [
+								/* @__PURE__ */ jsx("line", {
+									x1: "3",
+									y1: "6",
+									x2: "21",
+									y2: "6"
+								}),
+								/* @__PURE__ */ jsx("line", {
+									x1: "3",
+									y1: "12",
+									x2: "21",
+									y2: "12"
+								}),
+								/* @__PURE__ */ jsx("line", {
+									x1: "3",
+									y1: "18",
+									x2: "21",
+									y2: "18"
+								})
+							]
+						})
+					})]
+				}), /* @__PURE__ */ jsx(Outlet, {})]
+			})
+		]
 	});
 });
 //#endregion
@@ -9774,7 +10024,7 @@ var barData = Array.from({ length: 30 }, (_, i) => ({
 }));
 var dashboard_default = UNSAFE_withComponentProps(function AdminDashboard() {
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-7xl mx-auto",
+		className: "p-4 md:p-8 max-w-7xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "flex items-center justify-between mb-8",
@@ -10082,7 +10332,7 @@ var badgeCls$1 = {
 };
 var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-5xl mx-auto",
+		className: "p-4 md:p-8 max-w-5xl mx-auto",
 		children: [/* @__PURE__ */ jsxs("div", {
 			className: "flex items-center justify-between mb-6",
 			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
@@ -10222,7 +10472,7 @@ var badgeCls = {
 };
 var payments_default = UNSAFE_withComponentProps(function AdminPayments() {
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-6xl mx-auto",
+		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
 				className: "flex items-center justify-between mb-6",
@@ -10833,9 +11083,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-CgOHyBBu.js",
+			"module": "/assets/root-BazQ-Afz.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
-			"css": ["/assets/root-1gzEMnwb.css"],
+			"css": ["/assets/root-CPQA-ywX.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -10938,11 +11188,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-Dp-_pQVA.js",
+			"module": "/assets/_layout-BvcAQ6-T.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-rjU_mIDt.js"
+				"/assets/NotificationContext-BYEu_8z6.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -10963,7 +11213,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-IY-y9_2h.js",
+			"module": "/assets/dashboard-B2Tj5bSM.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11026,7 +11276,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/booking._id.pay-DIMFXA4e.js",
+			"module": "/assets/booking._id.pay-BR6KO0y9.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11047,7 +11297,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/package._id.pay-KEO3hbTB.js",
+			"module": "/assets/package._id.pay-Didvq8NR.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11068,7 +11318,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/compra-package._id.pay-BJfgoWwx.js",
+			"module": "/assets/compra-package._id.pay-BiXF3jVr.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11089,7 +11339,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/packages-CJRQCRG5.js",
+			"module": "/assets/packages-DdZVNa-F.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11131,7 +11381,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-D9ngC89F.js",
+			"module": "/assets/payments-CrxVNHJS.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
@@ -11156,10 +11406,10 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-gjs7B1H3.js",
+			"module": "/assets/notifications-7a7b7r0n.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/NotificationContext-rjU_mIDt.js",
+				"/assets/NotificationContext-BYEu_8z6.js",
 				"/assets/AuthContext-DzGty-Aa.js"
 			],
 			"css": [],
@@ -11206,7 +11456,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-DxMNlhOK.js",
+			"module": "/assets/profile-DPH8vFbk.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11227,11 +11477,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-CTA0bjCq.js",
+			"module": "/assets/_layout-yshKi_o8.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-rjU_mIDt.js"
+				"/assets/NotificationContext-BYEu_8z6.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11252,7 +11502,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/clients-BiksgHMt.js",
+			"module": "/assets/clients-DOzvhNSZ.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11273,7 +11523,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-B6AibfmS.js",
+			"module": "/assets/dashboard-DA7BcdBJ.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11294,7 +11544,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/services-CVhdUeK4.js",
+			"module": "/assets/services-eYj63uXY.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11315,7 +11565,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/service-packages-CsUNYvTm.js",
+			"module": "/assets/service-packages-B9IP5cmX.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11336,7 +11586,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-2Nslxqns.js",
+			"module": "/assets/availability-Doecj-nC.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11357,7 +11607,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-D_TadIxc.js",
+			"module": "/assets/payments-BZ-CHMBZ.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11399,7 +11649,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-qLUtHvXe.js",
+			"module": "/assets/profile-DnyyCR4O.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11420,10 +11670,10 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-By0ael1g.js",
+			"module": "/assets/notifications-DCLQHYhM.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/NotificationContext-rjU_mIDt.js",
+				"/assets/NotificationContext-BYEu_8z6.js",
 				"/assets/AuthContext-DzGty-Aa.js"
 			],
 			"css": [],
@@ -11445,7 +11695,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-BH1--bm7.js",
+			"module": "/assets/_layout-DUi0RfrJ.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11466,7 +11716,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-DlKszhvr.js",
+			"module": "/assets/dashboard-CZm5Z1Va.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11487,7 +11737,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/users-CC3DfTVO.js",
+			"module": "/assets/users-lmmyoUcp.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11508,7 +11758,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-DuJU4nS6.js",
+			"module": "/assets/payments-DaOgg-ls.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11580,8 +11830,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-3de075fc.js",
-	"version": "3de075fc",
+	"url": "/assets/manifest-a4b29fd5.js",
+	"version": "a4b29fd5",
 	"sri": void 0
 };
 //#endregion

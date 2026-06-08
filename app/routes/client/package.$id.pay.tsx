@@ -67,16 +67,16 @@ const [loading, setLoading] = useState(false);
     }, [id, token]);
 
     if (loadingPaquete) {
-        return <p className="p-8">Cargando...</p>;
+        return <p className="p-4 md:p-8">Cargando...</p>;
     }
 
     if (!paquete) {
-        return <p className="p-8">Paquete no encontrado</p>;
+        return <p className="p-4 md:p-8">Paquete no encontrado</p>;
     }
 
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
       {/* Breadcrumb */}
       <nav className="text-sm text-ink-muted mb-6 flex items-center gap-2">
         <Link to="/client/discover" className="hover:text-ink">Descubrir</Link>

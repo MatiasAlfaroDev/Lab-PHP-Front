@@ -19,7 +19,7 @@ export default function BookingPay() {
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
       {/* Breadcrumb */}
       <nav className="text-sm text-ink-muted mb-6 flex items-center gap-2">
         <Link to="/client/discover" className="hover:text-ink">Descubrir</Link>

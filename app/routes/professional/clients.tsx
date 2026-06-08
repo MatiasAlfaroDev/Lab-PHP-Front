@@ -224,7 +224,7 @@ export default function ClientsAndAgenda() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Page header */}
       <div className="mb-6">
         <h1 className="font-display text-3xl text-ink">Clientes</h1>

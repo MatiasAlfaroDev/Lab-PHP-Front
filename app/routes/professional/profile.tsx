@@ -67,7 +67,7 @@ export default function ProfessionalProfile() {
   };
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
+    <div className="p-4 md:p-8 max-w-2xl mx-auto">
       <h1 className="font-display text-3xl text-ink mb-1">Mi perfil</h1>
       <p className="text-ink-muted mb-8">Gestiona tu información personal</p>
 

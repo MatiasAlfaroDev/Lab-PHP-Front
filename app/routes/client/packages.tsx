@@ -55,14 +55,14 @@ export default function Packages() {
 
   if (loading) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         Cargando paquetes...
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <h1 className="font-display text-3xl text-ink mb-6">
         Paquetes
       </h1>
