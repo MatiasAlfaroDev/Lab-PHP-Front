@@ -151,14 +151,24 @@ export default function ProfessionalDashboard() {
   const [loading, setLoading]         = useState(true);
   const [openSolicitudes, setOpenSolicitudes] = useState(false);
   const [loadingId, setLoadingId]     = useState<number | null>(null);
+  const [calificaciones, setCalificaciones] = useState<any[]>([]);
+  const [promedio, setPromedio] = useState(0);
+  const [openCalificaciones, setOpenCalificaciones] = useState(false);
+  const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !user?.id) return;
     Promise.all([
       api.get("/mi-agenda", token).then((res: any) => setAllReservas(res.data ?? [])).catch(() => {}),
       api.get("/reservas/pendientes", token).then((res: any) => setPendientes(res.data ?? [])).catch(() => {}),
+      api.get(`/profesionales/${user.id}/calificaciones`, token).then((res: any) => {
+        const payload = res; 
+        setCalificaciones(payload.data ?? []);
+        setPromedio(payload.promedio ?? 0);
+        setCantidadCalificaciones(payload.cantidad ?? 0);
+      }).catch(() => {}),
     ]).finally(() => setLoading(false));
-  }, [token]);
+  }, [token, user?.id]);
 
   const hoy        = todayStr();
   const semanaDesde = startOfWeekStr();
@@ -177,7 +187,7 @@ export default function ProfessionalDashboard() {
     { label: "SESIONES HOY",         value: String(sesionesHoy),        sub: "reservas para hoy" },
     { label: "SESIONES ESTA SEMANA", value: String(sesionesEstaSemana), sub: "semana en curso" },
     { label: "PENDIENTES",           value: String(pendientes.length),  sub: "esperan confirmación" },
-    { label: "CALIFICACIÓN",         value: "—",                        sub: "Próximamente" },
+    { label: "CALIFICACIÓN",         value: promedio > 0 ? promedio.toString() : "—", sub: `${cantidadCalificaciones} reseñas`,},
   ];
 
   const cambiarEstado = async (id: number, estado: "confirmada" | "cancelada") => {
@@ -193,7 +203,8 @@ export default function ProfessionalDashboard() {
   };
 
   if (loading) return <DashboardSkeleton />;
-
+  console.log("CALIFICACIONES:", calificaciones);
+  console.log("PRIMERA:", calificaciones[0]);
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       {/* Header */}
@@ -365,14 +376,22 @@ export default function ProfessionalDashboard() {
                 <ChevronIcon open={openSolicitudes} />
               </div>
 
-              {/* Reseñas — próximamente */}
-              <div className="flex items-center gap-3 p-3 bg-bg rounded border border-border opacity-50 cursor-not-allowed select-none">
-                <span className="shrink-0 text-ink-muted"><StarIcon /></span>
+              <div
+                className="flex items-center gap-3 p-3 bg-bg rounded border border-border hover:bg-border/50 cursor-pointer transition-colors"
+                onClick={() => setOpenCalificaciones(true)}
+              >
+                <span className="shrink-0 text-ink-muted">
+                  <StarIcon />
+                </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-ink">Reseñas</p>
-                  <p className="text-xs text-ink-muted">Próximamente</p>
+                  <p className="text-sm font-semibold text-ink">
+                    Reseñas ({cantidadCalificaciones})
+                  </p>
+                  <p className="text-xs text-ink-muted">
+                    Promedio: {promedio}/5
+                  </p>
                 </div>
-                <span className="text-ink-muted/40"><ChevronIcon open={false} /></span>
+                <ChevronIcon open={openCalificaciones} />
               </div>
             </div>
           </div>
@@ -414,6 +433,55 @@ export default function ProfessionalDashboard() {
                         {loadingId === r.reserva_id ? "..." : "Cancelar"}
                       </button>
                     </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {openCalificaciones && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-surface w-full max-w-lg rounded border border-border p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-semibold text-ink">
+                Reseñas recibidas
+              </h3>
+
+              <button
+                onClick={() => setOpenCalificaciones(false)}
+                className="text-ink-muted hover:text-ink"
+              >
+                <XIcon />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {calificaciones.length === 0 ? (
+                <p className="text-sm text-ink-muted">
+                  Aún no tenés reseñas.
+                </p>
+              ) : (
+                calificaciones.map((c) => (
+                  <div
+                    key={c.calificacion_id}
+                    className="p-3 border rounded bg-bg"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="text-amber-500 font-bold">
+                        ⭐ {c.puntuacion}/5
+                      </span>
+                    </div>
+
+                    {c.comentario && (
+                      <p className="text-sm text-ink-muted mt-2">
+                        {c.comentario}
+                      </p>
+                    )}
+
+                    <p className="text-xs text-ink-muted mt-2">
+                      {c.reserva?.servicio?.nombre}
+                    </p>
                   </div>
                 ))
               )}

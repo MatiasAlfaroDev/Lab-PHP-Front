@@ -18,6 +18,11 @@ interface Reserva {
   fecha: string;
   hora: string;
   estado: string;
+   calificacion?: {
+    calificacion_id: number;
+    puntuacion: number;
+    comentario: string;
+  } | null;
   servicio: {
     nombre: string;
     duracion: number;
@@ -58,6 +63,10 @@ export default function MisReservas() {
   const [filter, setFilter]         = useState("Próximas");
   const [cancelling, setCancelling] = useState<number | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState<number | null>(null);
+  const [showCalificacion, setShowCalificacion] = useState(false);
+  const [reservaSeleccionada, setReservaSeleccionada] = useState<Reserva | null>(null);
+  const [puntuacion, setPuntuacion] = useState(5);
+  const [comentario, setComentario] = useState("");
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
@@ -98,6 +107,52 @@ export default function MisReservas() {
     } finally {
       setCancelling(null);
     }
+
+    
+  };
+  const abrirModalCalificacion = (reserva: Reserva) => {
+      setReservaSeleccionada(reserva);
+      setPuntuacion(5);
+      setComentario("");
+      setShowCalificacion(true);
+    };
+  const guardarCalificacion = async () => {
+    if (!reservaSeleccionada) return;
+
+    try {
+      const response: any = await api.post(
+        `/reservas/${reservaSeleccionada.reserva_id}/calificar`,
+        {
+          puntuacion,
+          comentario,
+        },
+        token
+      );
+
+      if (!response.success) {
+        toast.error(response.message);
+        return;
+      }
+
+      const nuevaCalificacion = response.data;
+
+      setReservas(prev =>
+        prev.map(r =>
+          r.reserva_id === reservaSeleccionada.reserva_id
+            ? {
+                ...r,
+                calificacion: nuevaCalificacion,
+              }
+            : r
+        )
+      );
+      
+      console.log("RESPUESTA:", response);
+      toast.success("Calificación enviada");
+      setShowCalificacion(false);
+    } catch (e: any) {
+      toast.error(e.message ?? "Error al enviar la calificación");
+    }
   };
 
   return (
@@ -135,6 +190,73 @@ export default function MisReservas() {
                 className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors"
               >
                 Sí, cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showCalificacion && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setShowCalificacion(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl border border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold mb-4">
+              Calificar servicio
+            </h2>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                Puntuación
+              </label>
+
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setPuntuacion(n)}
+                    className={`text-3xl ${
+                      n <= puntuacion
+                        ? "text-yellow-500"
+                        : "text-gray-300"
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                Comentario
+              </label>
+
+              <textarea
+                value={comentario}
+                onChange={(e) => setComentario(e.target.value)}
+                rows={4}
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="Contanos tu experiencia..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowCalificacion(false)}
+                className="px-4 py-2 border rounded-lg"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={guardarCalificacion}
+                className="px-4 py-2 bg-primary text-white rounded-lg"
+              >
+                Enviar
               </button>
             </div>
           </div>
@@ -192,6 +314,7 @@ export default function MisReservas() {
               const [ry, rm, rd] = r.fecha.split("-").map(Number);
               const rDate = new Date(ry, rm - 1, rd);
               const isPast = rDate < today;
+              const puedeCalificar =  isPast &&  r.estado === "finalizada" && !r.calificacion;;
               const isCancelled = r.estado === "cancelada" || r.estado === "no_asistida";
               const displayEstado = isPast && !TERMINAL.has(r.estado) ? "realizada" : r.estado;
               const badge      = ESTADO_STYLE[displayEstado] ?? { label: displayEstado, cls: "bg-surface text-ink-muted border-border" };
@@ -253,6 +376,14 @@ export default function MisReservas() {
                         ? <ion-icon name="hourglass-outline" style={{ fontSize: "16px" }} />
                         : <ion-icon name="trash-outline" style={{ fontSize: "16px" }} />
                       }
+                    </button>
+                  )}
+                  {puedeCalificar && (
+                    <button
+                      onClick={() => abrirModalCalificacion(r)}
+                      className="px-3 py-2 bg-yellow-500 text-white rounded-lg text-xs"
+                    >
+                      Calificar
                     </button>
                   )}
                 </div>
