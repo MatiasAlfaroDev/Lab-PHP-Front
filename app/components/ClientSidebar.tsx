@@ -24,6 +24,15 @@ export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { unreadCount } = useGlobalNotifications();
+  function getInitials(name?: string) {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map(w => w[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  }
 
   // On mobile drawer: always show labels (never collapsed)
   const effectiveCollapsed = collapsed && !isMobileOpen;
@@ -147,7 +156,7 @@ export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose
                 title={user?.name ?? "Usuario"}
                 className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all"
               >
-                {user?.initials ?? "LP"}
+                {getInitials(user?.name)}
               </button>
             </div>
           ) : (
@@ -157,7 +166,7 @@ export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose
                 title="Editar perfil"
                 className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all"
               >
-                {user?.initials ?? "LP"}
+                {getInitials(user?.name)}
               </button>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-sidebar-text truncate">

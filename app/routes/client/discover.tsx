@@ -335,8 +335,8 @@ export default function Discover() {
                         </button>
                       </div>
                       <div className="p-4">
-                        <div className="flex items-start gap-3 mb-3">
-                          <div className={`w-9 h-9 rounded-full ${colors.avatar} flex items-center justify-center text-white text-xs font-semibold shrink-0 -mt-7 border-2 border-white`}>
+                        <div className="flex items-start gap-3 mb-3 relative">
+                          <div className={`w-9 h-9 rounded-full ${colors.avatar} flex items-center justify-center text-white text-xs font-semibold border-2 border-white`}>
                             {initials}
                           </div>
                           <div className="min-w-0">
