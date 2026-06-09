@@ -263,7 +263,8 @@ export default function Services() {
 
       {/* Tabla */}
       {!loading && services.length > 0 && (
-        <div className="bg-surface border border-border rounded overflow-hidden">
+        <div className="border border-border rounded overflow-x-auto">
+          <div className="bg-surface" style={{ minWidth: "640px" }}>
           {/* Cabecera */}
           <div
             className="grid px-5 py-2 border-b border-border bg-bg"
@@ -378,6 +379,7 @@ export default function Services() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </div>

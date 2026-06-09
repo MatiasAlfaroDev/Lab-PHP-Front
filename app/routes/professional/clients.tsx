@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
 
@@ -113,6 +113,8 @@ export default function ClientsAndAgenda() {
   // Control de acción en curso
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [actionMode, setActionMode] = useState<"none" | "attendance">("none");
+  const [mobileStartDay, setMobileStartDay] = useState(0);
+  const touchStartX = useRef(0);
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchAgenda = () => {
     if (!token) return;
@@ -123,6 +125,8 @@ export default function ClientsAndAgenda() {
       .catch(() => {})
       .finally(() => setAgendaLoading(false));
   };
+
+  useEffect(() => { setMobileStartDay(0); }, [weekStart]);
 
   useEffect(() => {
     if (!token) return;
@@ -216,6 +220,16 @@ export default function ClientsAndAgenda() {
     setSelectedReserva(null);
   };
 
+  const prevMobileDays = () => setMobileStartDay((d) => Math.max(0, d - 1));
+  const nextMobileDays = () => setMobileStartDay((d) => Math.min(4, d + 1));
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const delta = touchStartX.current - e.changedTouches[0].clientX;
+    if (delta > 40) nextMobileDays();
+    else if (delta < -40) prevMobileDays();
+  };
+  const mobileDays = weekDates.slice(mobileStartDay, mobileStartDay + 3);
+
   const panelOpen = !!selectedClient;
 
   const panelClientColor = selectedClient
@@ -233,10 +247,10 @@ export default function ClientsAndAgenda() {
         </p>
       </div>
 
-      <div className="grid grid-cols-4 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
 
         {/* ── Main content (col-span-3) ─────────────────────────────────── */}
-        <div className="col-span-3 min-w-0 space-y-6">
+        <div className="lg:col-span-3 min-w-0 space-y-6">
 
           {/* AGENDA ─────────────────────────────────────────────────────── */}
           <section>
@@ -270,101 +284,172 @@ export default function ClientsAndAgenda() {
             {agendaLoading ? (
               <div className="bg-surface border border-border rounded h-64 animate-pulse" />
             ) : (
-              <div className="bg-surface border border-border rounded overflow-auto">
-                {/* Day headers — lun a vie */}
-                <div className="grid border-b border-border" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
-                  <div className="border-r border-border" />
-                  {weekDates.map((d, i) => {
-                    const str       = toDateStr(d);
-                    const isToday   = str === todayStr;
-                    const isWeekend = i >= 5;
-                    return (
-                      <div
-                        key={str}
-                        className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[56px] ${isToday ? "bg-accent/10" : isWeekend ? "bg-border/10" : ""}`}
-                      >
-                        <p className="text-xs text-ink-muted uppercase tracking-wide font-semibold">
-                          {DOW_LABELS[i]}
-                        </p>
-                        {isToday ? (
-                          <span className="inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink text-white text-xs font-bold">
-                            {d.getDate()}
-                          </span>
-                        ) : (
-                          <p className="text-sm font-bold text-ink mt-0.5">{d.getDate()}</p>
-                        )}
-                        {reservasByDay[str]?.length > 0 && (
-                          <p className="text-xs text-ink-muted mt-0.5">{reservasByDay[str].length}t</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Time grid */}
-                <div className="relative grid" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
-                  {/* Hour labels */}
-                  <div className="border-r border-border">
-                    {HOURS.map((h) => (
-                      <div
-                        key={h}
-                        className="border-b border-border/30 flex items-center justify-center px-1"
-                        style={{ height: CELL }}
-                      >
-                        <span className="text-xs text-ink-muted">{h}</span>
-                      </div>
-                    ))}
+              <>
+                {/* ── Mobile: 3-day view ─────────────────────────────────── */}
+                <div className="lg:hidden">
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <button
+                      onClick={prevMobileDays}
+                      disabled={mobileStartDay === 0}
+                      className="w-8 h-8 rounded border border-border flex items-center justify-center text-ink-muted disabled:opacity-30 hover:bg-bg transition-colors"
+                    >
+                      <ChevronLeftIcon />
+                    </button>
+                    <span className="text-sm font-medium text-ink">
+                      {DOW_LABELS[mobileDays[0].getDay() === 0 ? 6 : mobileDays[0].getDay() - 1]} {mobileDays[0].getDate()}
+                      {" – "}
+                      {DOW_LABELS[mobileDays[2].getDay() === 0 ? 6 : mobileDays[2].getDay() - 1]} {mobileDays[2].getDate()}
+                    </span>
+                    <button
+                      onClick={nextMobileDays}
+                      disabled={mobileStartDay >= 4}
+                      className="w-8 h-8 rounded border border-border flex items-center justify-center text-ink-muted disabled:opacity-30 hover:bg-bg transition-colors"
+                    >
+                      <ChevronRightIcon />
+                    </button>
                   </div>
 
-                  {/* Day columns */}
-                  {weekDates.map((d, i) => {
-                    const str      = toDateStr(d);
-                    const isToday  = str === todayStr;
-                    const isWeekend = i >= 5;
-                    const dayRes   = reservasByDay[str] ?? [];
-                    return (
-                      <div
-                        key={str}
-                        className={`relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : isWeekend ? "bg-border/10" : ""}`}
-                      >
-                        {HOURS.map((_, hi) => (
-                          <div key={hi} className="border-b border-border/20" style={{ height: CELL }} />
+                  <div
+                    className="bg-surface border border-border rounded overflow-hidden"
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                  >
+                    <div className="grid border-b border-border" style={{ gridTemplateColumns: "48px repeat(3, 1fr)" }}>
+                      <div className="border-r border-border" />
+                      {mobileDays.map((d, i) => {
+                        const str = toDateStr(d);
+                        const isToday = str === todayStr;
+                        const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
+                        return (
+                          <div key={str} className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[52px] ${isToday ? "bg-accent/10" : ""}`}>
+                            <p className="text-xs text-ink-muted uppercase tracking-wide font-semibold">{DOW_LABELS[dow]}</p>
+                            {isToday ? (
+                              <span className="inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink text-white text-xs font-bold">{d.getDate()}</span>
+                            ) : (
+                              <p className="text-sm font-bold text-ink mt-0.5">{d.getDate()}</p>
+                            )}
+                            {reservasByDay[str]?.length > 0 && (
+                              <p className="text-xs text-ink-muted mt-0.5">{reservasByDay[str].length}t</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="relative grid" style={{ gridTemplateColumns: "48px repeat(3, 1fr)" }}>
+                      <div className="border-r border-border">
+                        {HOURS.map((h) => (
+                          <div key={h} className="border-b border-border/30 flex items-center justify-center px-1" style={{ height: CELL }}>
+                            <span className="text-xs text-ink-muted">{h}</span>
+                          </div>
                         ))}
-                        {dayRes.map((r) => {
-                          const [hh, mm] = r.hora.split(":").map(Number);
-                          const topH  = hh + mm / 60 - GRID_START;
-                          const durH  = (r.servicio?.duracion ?? 60) / 60;
-                          const color = clientColorMap[r.cliente_nombre]?.block ?? ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border";
-                          const isSelected = selectedReserva?.reserva_id === r.reserva_id;
+                      </div>
+                      {mobileDays.map((d) => {
+                        const str = toDateStr(d);
+                        const isToday = str === todayStr;
+                        const dayRes = reservasByDay[str] ?? [];
+                        return (
+                          <div key={str} className={`relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : ""}`}>
+                            {HOURS.map((_, hi) => <div key={hi} className="border-b border-border/20" style={{ height: CELL }} />)}
+                            {dayRes.map((r) => {
+                              const [hh, mm] = r.hora.split(":").map(Number);
+                              const topH = hh + mm / 60 - GRID_START;
+                              const durH = (r.servicio?.duracion ?? 60) / 60;
+                              const color = clientColorMap[r.cliente_nombre]?.block ?? ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border";
+                              const isSelected = selectedReserva?.reserva_id === r.reserva_id;
+                              return (
+                                <div
+                                  key={r.reserva_id}
+                                  onClick={() => handleReservaClick(r)}
+                                  className={`absolute left-0.5 right-0.5 ${color} rounded-r px-1 py-1 overflow-hidden cursor-pointer transition-all ${isSelected ? "ring-2 ring-ink ring-offset-1 brightness-95" : "hover:brightness-95"}`}
+                                  style={{ top: topH * CELL, height: Math.max(durH * CELL - 2, 22) }}
+                                >
+                                  <p className="text-xs font-bold text-ink truncate leading-tight">{r.cliente_nombre}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center gap-1.5 mt-3">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <button key={i} onClick={() => setMobileStartDay(i)}
+                        className={`w-1.5 h-1.5 rounded-full transition-colors ${i === mobileStartDay ? "bg-ink" : "bg-border"}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── Desktop: 7-day view ────────────────────────────────── */}
+                <div className="hidden lg:block">
+                  <div className="bg-surface border border-border rounded overflow-x-auto">
+                    <div style={{ minWidth: "520px" }}>
+                      <div className="grid border-b border-border" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
+                        <div className="border-r border-border" />
+                        {weekDates.map((d, i) => {
+                          const str = toDateStr(d);
+                          const isToday = str === todayStr;
+                          const isWeekend = i >= 5;
                           return (
-                            <div
-                              key={r.reserva_id}
-                              onClick={() => handleReservaClick(r)}
-                              title={`${r.cliente_nombre} · ${r.servicio?.nombre}`}
-                              className={`absolute left-0.5 right-0.5 ${color} rounded-r px-2 py-1 overflow-hidden cursor-pointer transition-all ${
-                                isSelected
-                                  ? "ring-2 ring-ink ring-offset-1 brightness-95"
-                                  : "hover:brightness-95"
-                              }`}
-                              style={{
-                                top:    topH * CELL,
-                                height: Math.max(durH * CELL - 2, 22),
-                              }}
-                            >
-                              <p className="text-xs font-bold text-ink truncate leading-tight">
-                                {r.cliente_nombre}
-                              </p>
-                              {durH * CELL > 36 && (
-                                <p className="text-xs text-ink-muted truncate">{r.servicio?.nombre}</p>
+                            <div key={str} className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[56px] ${isToday ? "bg-accent/10" : isWeekend ? "bg-border/10" : ""}`}>
+                              <p className="text-xs text-ink-muted uppercase tracking-wide font-semibold">{DOW_LABELS[i]}</p>
+                              {isToday ? (
+                                <span className="inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink text-white text-xs font-bold">{d.getDate()}</span>
+                              ) : (
+                                <p className="text-sm font-bold text-ink mt-0.5">{d.getDate()}</p>
+                              )}
+                              {reservasByDay[str]?.length > 0 && (
+                                <p className="text-xs text-ink-muted mt-0.5">{reservasByDay[str].length}t</p>
                               )}
                             </div>
                           );
                         })}
                       </div>
-                    );
-                  })}
+                      <div className="relative grid" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
+                        <div className="border-r border-border">
+                          {HOURS.map((h) => (
+                            <div key={h} className="border-b border-border/30 flex items-center justify-center px-1" style={{ height: CELL }}>
+                              <span className="text-xs text-ink-muted">{h}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {weekDates.map((d, i) => {
+                          const str = toDateStr(d);
+                          const isToday = str === todayStr;
+                          const isWeekend = i >= 5;
+                          const dayRes = reservasByDay[str] ?? [];
+                          return (
+                            <div key={str} className={`relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : isWeekend ? "bg-border/10" : ""}`}>
+                              {HOURS.map((_, hi) => <div key={hi} className="border-b border-border/20" style={{ height: CELL }} />)}
+                              {dayRes.map((r) => {
+                                const [hh, mm] = r.hora.split(":").map(Number);
+                                const topH = hh + mm / 60 - GRID_START;
+                                const durH = (r.servicio?.duracion ?? 60) / 60;
+                                const color = clientColorMap[r.cliente_nombre]?.block ?? ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border";
+                                const isSelected = selectedReserva?.reserva_id === r.reserva_id;
+                                return (
+                                  <div
+                                    key={r.reserva_id}
+                                    onClick={() => handleReservaClick(r)}
+                                    title={`${r.cliente_nombre} · ${r.servicio?.nombre}`}
+                                    className={`absolute left-0.5 right-0.5 ${color} rounded-r px-2 py-1 overflow-hidden cursor-pointer transition-all ${isSelected ? "ring-2 ring-ink ring-offset-1 brightness-95" : "hover:brightness-95"}`}
+                                    style={{ top: topH * CELL, height: Math.max(durH * CELL - 2, 22) }}
+                                  >
+                                    <p className="text-xs font-bold text-ink truncate leading-tight">{r.cliente_nombre}</p>
+                                    {durH * CELL > 36 && <p className="text-xs text-ink-muted truncate">{r.servicio?.nombre}</p>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </section>
 
@@ -461,7 +546,7 @@ export default function ClientsAndAgenda() {
         </div>
 
         {/* ── Right panel — siempre presente como en disponibilidad ─────── */}
-        <div className="sticky top-8 space-y-3">
+        <div className="lg:sticky lg:top-8 space-y-3">
           {panelOpen && selectedClient ? (
             <div className="bg-surface border border-border rounded overflow-hidden">
 

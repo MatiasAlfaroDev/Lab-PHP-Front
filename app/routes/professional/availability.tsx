@@ -204,18 +204,20 @@ function AvailabilitySkeleton() {
         </div>
       </div>
       <div className="h-12 bg-surface border border-border rounded-xl mb-5" />
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 bg-surface border border-border rounded-2xl overflow-hidden">
-          <div className="grid h-16 border-b border-border" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
-            <div className="border-r border-border" />
-            {DAYS.map((d) => <div key={d} className="border-r border-border last:border-r-0" />)}
-          </div>
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="grid border-b border-border/30" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
-              <div className="h-10 border-r border-border/40" />
-              {DAYS.map((d) => <div key={d} className="h-10 border-r border-border/20 last:border-r-0" />)}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-surface border border-border rounded-2xl overflow-x-auto">
+          <div style={{ minWidth: "520px" }}>
+            <div className="grid h-16 border-b border-border" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
+              <div className="border-r border-border" />
+              {DAYS.map((d) => <div key={d} className="border-r border-border last:border-r-0" />)}
             </div>
-          ))}
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="grid border-b border-border/30" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
+                <div className="h-10 border-r border-border/40" />
+                {DAYS.map((d) => <div key={d} className="h-10 border-r border-border/20 last:border-r-0" />)}
+              </div>
+            ))}
+          </div>
         </div>
         <div className="space-y-4">
           <div className="bg-surface border border-border rounded-2xl h-96" />
@@ -521,20 +523,20 @@ export default function Availability() {
 
   return (
     <div
-      className={`p-8 max-w-6xl mx-auto ${isDragging ? "select-none" : ""}`}
+      className={`p-4 md:p-8 max-w-6xl mx-auto ${isDragging ? "select-none" : ""}`}
       style={{ cursor: isDragging ? (drag.mode === "move" ? "grabbing" : "ns-resize") : undefined }}
     >
       {/* Header */}
       <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Configuración</nav>
       <div className="mb-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <h1 className="font-display text-3xl text-ink">
             Disponibilidad
           </h1>
 
           <button
             onClick={() => setShowExcepciones(true)}
-            className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+            className="self-start sm:self-auto px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
           >
             Excepciones
           </button>
@@ -776,15 +778,15 @@ export default function Availability() {
         <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
       )}
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── Weekly visual grid ─────────────────────────────────────── */}
-        <div className="col-span-2 bg-surface border border-border rounded-2xl overflow-hidden">
+        <div className="lg:col-span-2 bg-surface border border-border rounded-2xl overflow-x-auto">
           {loadingDisp ? (
-            <div className="flex items-center justify-center h-64">
+            <div className="flex items-center justify-center h-64" style={{ minWidth: "520px" }}>
               <span className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <>
+            <div style={{ minWidth: "520px" }}><>
               {/* Day headers */}
               <div className="grid border-b border-border" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
                 <div className="border-r border-border" />
@@ -881,7 +883,7 @@ export default function Availability() {
                   </div>
                 ))}
               </div>
-            </>
+            </></div>
           )}
         </div>
 

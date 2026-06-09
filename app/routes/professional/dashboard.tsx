@@ -89,7 +89,7 @@ function DashboardSkeleton() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="bg-surface border border-border rounded p-5 space-y-2">
             <Skeleton className="h-3 w-28" />
@@ -99,7 +99,7 @@ function DashboardSkeleton() {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Agenda skeleton */}
         <div className="col-span-2">
           <Skeleton className="h-6 w-64 mb-4" />
@@ -208,7 +208,7 @@ export default function ProfessionalDashboard() {
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
         <div>
           <h1 className="font-display text-3xl text-ink">Buenos días, {firstName}</h1>
           <p className="text-ink-muted mt-1">
@@ -217,7 +217,7 @@ export default function ProfessionalDashboard() {
               : "Sin sesiones hoy"}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button className="relative p-2 border border-border rounded bg-surface hover:bg-bg">
             <BellIcon />
             {pendientes.length > 0 && (
@@ -245,7 +245,7 @@ export default function ProfessionalDashboard() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {kpis.map((k) => (
           <div key={k.label} className="bg-surface border border-border rounded p-5">
             <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-2">{k.label}</p>
@@ -255,9 +255,9 @@ export default function ProfessionalDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Agenda de hoy */}
-        <div className="col-span-2">
+        <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-xl text-ink">
               Agenda de hoy ·{" "}
@@ -281,11 +281,11 @@ export default function ProfessionalDashboard() {
                 return (
                   <div
                     key={item.reserva_id}
-                    className={`flex items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 ${
+                    className={`flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-4 border-b border-border last:border-b-0 ${
                       estado === "en_curso" ? "bg-accent/10" : ""
                     }`}
                   >
-                    <div className="w-16 shrink-0">
+                    <div className="w-12 sm:w-16 shrink-0">
                       <p className="text-sm font-semibold text-ink">{hora}</p>
                       <p className="text-xs text-ink-muted">{duracion}</p>
                     </div>
@@ -310,9 +310,9 @@ export default function ProfessionalDashboard() {
                       )}
                       {item.modalidad === "virtual" && puedeEntrar(item) && (
                         <Link to={`/videollamada/${item.reserva_id}`}>
-                          <button className="flex items-center gap-2 bg-ink text-white text-sm font-semibold px-4 py-2 rounded hover:bg-primary transition-colors">
+                          <button className="flex items-center gap-1 bg-ink text-white text-sm font-semibold px-2 sm:px-4 py-2 rounded hover:bg-primary transition-colors">
                             <VideoIcon />
-                            Iniciar videollamada
+                            <span className="hidden sm:inline">Iniciar videollamada</span>
                           </button>
                         </Link>
                       )}

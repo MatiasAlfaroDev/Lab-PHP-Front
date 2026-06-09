@@ -39,15 +39,15 @@ export default function AdminDashboard() {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
           <h1 className="font-display text-3xl text-ink">Panel administrativo</h1>
           <p className="text-ink-muted mt-1">Última actualización: hace 2 min · 1.247 usuarios activos hoy</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 border border-border rounded bg-surface px-4 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 border border-border rounded bg-surface px-4 py-2 w-full sm:w-auto">
             <span className="text-ink-muted text-sm">🔍</span>
-            <input className="bg-transparent text-sm text-ink placeholder-ink-muted outline-none w-52" placeholder="Buscar usuarios, reservas..." />
+            <input className="bg-transparent text-sm text-ink placeholder-ink-muted outline-none w-full sm:w-44" placeholder="Buscar usuarios, reservas..." />
           </div>
           <button className="relative p-2 border border-border rounded bg-surface hover:bg-bg">
             🔔
@@ -59,7 +59,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         {kpis.map((k) => (
           <div key={k.label} className="bg-surface border border-border rounded p-4">
             <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-2">{k.label}</p>
@@ -74,9 +74,9 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart */}
-        <div className="col-span-2 bg-surface border border-border rounded p-6">
+        <div className="lg:col-span-2 bg-surface border border-border rounded p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="font-display text-xl text-ink">Volumen de reservas</h2>

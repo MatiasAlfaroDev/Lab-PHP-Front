@@ -17,7 +17,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="font-display text-3xl text-ink">
             Notificaciones
@@ -30,16 +30,16 @@ export default function NotificationsPage() {
 
         <button
           onClick={markAllAsRead}
-          className="text-sm font-semibold border px-4 py-2 rounded bg-surface hover:bg-bg transition"
+          className="self-start sm:self-auto text-sm font-semibold border px-4 py-2 rounded bg-surface hover:bg-bg transition"
         >
           ✓ Marcar todas como leídas
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
 
         {/* FEED */}
-        <div className="col-span-2 space-y-3">
+        <div className="lg:col-span-2 space-y-3">
           {notifications.length === 0 ? (
             <div className="border rounded p-6 text-center">
               <p className="text-ink-muted">

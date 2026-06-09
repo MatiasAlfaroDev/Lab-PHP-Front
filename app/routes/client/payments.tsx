@@ -216,52 +216,55 @@ export default function ClientPayments() {
 
         {/* Historial */}
         <h2 className="text-lg font-semibold text-ink mb-3">Historial de reservas</h2>
-        <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-          <div className="grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase">
-            <div className="col-span-2">Fecha</div>
-            <div className="col-span-4">Servicio</div>
-            <div className="col-span-3">Profesional</div>
-            <div className="col-span-2">Monto</div>
-            <div className="col-span-1">Estado</div>
-          </div>
-          {conPago.length === 0 ? (
-            <p className="px-5 py-6 text-sm text-ink-muted">Sin registros</p>
-          ) : (
-            conPago.map((r) => (
-              <div key={r.reserva_id} className="grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0">
-                <div className="col-span-2 text-sm text-ink-muted">{r.fecha}</div>
-                <div className="col-span-4 text-sm text-ink">{r.servicio.nombre}</div>
-                <div className="col-span-3 text-sm text-ink-muted">{r.servicio.profesional_nombre}</div>
-                <div className="col-span-2 font-bold text-ink">${r.servicio.precio}</div>
-                <div className="col-span-1">
-                  <span className={badgeCls[r.pago?.estado ?? "pendiente"]}>
-                    {(r.pago?.estado ?? "pendiente").toUpperCase()}
-                  </span>
+        <div className="border border-border rounded-2xl overflow-x-auto">
+          <div style={{ minWidth: "520px" }}>
+            <div className="grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase bg-bg">
+              <div className="col-span-2">Fecha</div>
+              <div className="col-span-4">Servicio</div>
+              <div className="col-span-3">Profesional</div>
+              <div className="col-span-2">Monto</div>
+              <div className="col-span-1">Estado</div>
+            </div>
+            {conPago.length === 0 ? (
+              <p className="px-5 py-6 text-sm text-ink-muted bg-surface">Sin registros</p>
+            ) : (
+              conPago.map((r) => (
+                <div key={r.reserva_id} className="grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0 bg-surface">
+                  <div className="col-span-2 text-sm text-ink-muted">{r.fecha}</div>
+                  <div className="col-span-4 text-sm text-ink">{r.servicio.nombre}</div>
+                  <div className="col-span-3 text-sm text-ink-muted">{r.servicio.profesional_nombre}</div>
+                  <div className="col-span-2 font-bold text-ink">${r.servicio.precio}</div>
+                  <div className="col-span-1">
+                    <span className={badgeCls[r.pago?.estado ?? "pendiente"]}>
+                      {(r.pago?.estado ?? "pendiente").toUpperCase()}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       
       <h2 className="text-lg font-semibold text-ink mb-3 mt-8">Historial de paquetes</h2>
 
-      <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-        <div className="grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase">
-          <div className="col-span-3">Fecha</div>
-          <div className="col-span-5">Paquete</div>
-          <div className="col-span-2">Monto</div>
-          <div className="col-span-2">Estado</div>
-        </div>
+      <div className="border border-border rounded-2xl overflow-x-auto">
+        <div style={{ minWidth: "400px" }}>
+          <div className="grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase bg-bg">
+            <div className="col-span-3">Fecha</div>
+            <div className="col-span-5">Paquete</div>
+            <div className="col-span-2">Monto</div>
+            <div className="col-span-2">Estado</div>
+          </div>
 
         {comprasPaquetes.length === 0 ? (
-          <p className="px-5 py-6 text-sm text-ink-muted">
+          <p className="px-5 py-6 text-sm text-ink-muted bg-surface">
             Sin registros
           </p>
         ) : (
           comprasPaquetes.map((compra) => (
             <div
               key={compra.compra_paquete_id}
-              className="grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0"
+              className="grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0 bg-surface"
             >
               <div className="col-span-3 text-sm text-ink-muted">
                 {compra.fecha_compra}
@@ -289,6 +292,7 @@ export default function ClientPayments() {
             </div>
           ))
         )}
+        </div>
       </div>
     </div>
       {/* Modal */}
@@ -298,7 +302,7 @@ export default function ClientPayments() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="bg-surface border border-border rounded-2xl p-6 w-[480px] mx-4 space-y-4"
+            className="bg-surface border border-border rounded-2xl p-6 w-full max-w-[480px] mx-4 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold text-ink">Método de pago</h2>

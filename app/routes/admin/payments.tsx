@@ -20,7 +20,7 @@ export default function AdminPayments() {
         <button className="border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink">Exportar CSV</button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { label: "GMV DEL MES", value: "€1.84M" },
           { label: "COMISIONES", value: "€184K" },
@@ -34,24 +34,26 @@ export default function AdminPayments() {
         ))}
       </div>
 
-      <div className="bg-surface border border-border rounded overflow-hidden">
-        <div className="grid grid-cols-12 px-5 py-3 border-b border-border bg-bg">
-          {["FECHA", "DE", "PARA", "SERVICIO", "TOTAL", "COMISIÓN", "NETO", "ESTADO"].map((h, i) => (
-            <div key={i} className={`text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-1" : i === 1 ? "col-span-2" : i === 2 ? "col-span-2" : i === 3 ? "col-span-2" : "col-span-1"}`}>{h}</div>
+      <div className="border border-border rounded overflow-x-auto">
+        <div style={{ minWidth: "640px" }}>
+          <div className="grid grid-cols-12 px-5 py-3 border-b border-border bg-bg">
+            {["FECHA", "DE", "PARA", "SERVICIO", "TOTAL", "COMISIÓN", "NETO", "ESTADO"].map((h, i) => (
+              <div key={i} className={`text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-1" : i === 1 ? "col-span-2" : i === 2 ? "col-span-2" : i === 3 ? "col-span-2" : "col-span-1"}`}>{h}</div>
+            ))}
+          </div>
+          {transactions.map((t, i) => (
+            <div key={i} className="grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors text-sm bg-surface">
+              <div className="col-span-1 text-ink-muted">{t.date}</div>
+              <div className="col-span-2 text-ink font-semibold">{t.from}</div>
+              <div className="col-span-2 text-ink font-semibold">{t.to}</div>
+              <div className="col-span-2 text-ink-muted">{t.service}</div>
+              <div className="col-span-1 font-bold text-ink">€{t.amount}</div>
+              <div className="col-span-1 text-ink-muted">€{t.fee}</div>
+              <div className="col-span-1 font-bold text-ink">€{t.net}</div>
+              <div className="col-span-1"><span className={badgeCls[t.status]}>{t.status.toUpperCase()}</span></div>
+            </div>
           ))}
         </div>
-        {transactions.map((t, i) => (
-          <div key={i} className="grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors text-sm">
-            <div className="col-span-1 text-ink-muted">{t.date}</div>
-            <div className="col-span-2 text-ink font-semibold">{t.from}</div>
-            <div className="col-span-2 text-ink font-semibold">{t.to}</div>
-            <div className="col-span-2 text-ink-muted">{t.service}</div>
-            <div className="col-span-1 font-bold text-ink">€{t.amount}</div>
-            <div className="col-span-1 text-ink-muted">€{t.fee}</div>
-            <div className="col-span-1 font-bold text-ink">€{t.net}</div>
-            <div className="col-span-1"><span className={badgeCls[t.status]}>{t.status.toUpperCase()}</span></div>
-          </div>
-        ))}
       </div>
     </div>
   );

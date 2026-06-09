@@ -117,14 +117,14 @@ export default function ClientDashboard() {
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
         <div>
           { <h1 className="font-display italic text-3xl text-ink">Hola, {user?.name}</h1> }
           <p className="text-ink-muted mt-1">Tenés {upcomingCount} reserva{upcomingCount !== 1 ? "s" : ""} próximas</p>
         </div>
         <Link
           to="/client/discover"
-          className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+          className="self-start sm:self-auto flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
         >
           + Nueva reserva
         </Link>
