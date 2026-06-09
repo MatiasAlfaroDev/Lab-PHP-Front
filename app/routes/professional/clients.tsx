@@ -468,10 +468,6 @@ export default function ClientsAndAgenda() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <button className="bg-ink text-white px-3 py-1.5 rounded hover:bg-primary text-sm font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0">
-                <UserPlusIcon />
-                Agregar
-              </button>
             </div>
 
             {clientsLoading ? (
@@ -492,9 +488,9 @@ export default function ClientsAndAgenda() {
                       {[
                         { label: "CLIENTE",        span: "col-span-3" },
                         { label: "EMAIL",          span: "col-span-3" },
-                        { label: "SESIONES",       span: "col-span-1" },
+                        { label: "SESIONES",       span: "col-span-2" },
                         { label: "PRÓXIMA SESIÓN", span: "col-span-3" },
-                        { label: "ESTADO",         span: "col-span-2" },
+                        { label: "ESTADO",         span: "col-span-1" },
                       ].map((h) => (
                         <div key={h.label} className={`text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`}>
                           {h.label}
@@ -522,7 +518,7 @@ export default function ClientsAndAgenda() {
                           <div className="col-span-3">
                             <span className="text-sm text-ink-muted truncate block">{c.email}</span>
                           </div>
-                          <div className="col-span-1">
+                          <div className="col-span-2">
                             <span className="text-sm font-semibold text-ink">{c.sesiones_restantes}</span>
                           </div>
                           <div className="col-span-3">
@@ -530,7 +526,7 @@ export default function ClientsAndAgenda() {
                               {c.proxima_sesion} {c.hora_proxima_sesion?.slice(0, 5) ?? ""}
                             </span>
                           </div>
-                          <div className="col-span-2">
+                          <div className="col-span-1 flex justify-center">
                             <span className={`badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`}>
                               {c.estado}
                             </span>
