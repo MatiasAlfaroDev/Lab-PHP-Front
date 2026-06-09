@@ -488,9 +488,9 @@ export default function ClientsAndAgenda() {
                       {[
                         { label: "CLIENTE",        span: "col-span-3" },
                         { label: "EMAIL",          span: "col-span-3" },
-                        { label: "SESIONES",       span: "col-span-2" },
+                        { label: "SESIONES",       span: "col-span-2 flex items-center justify-center" },
                         { label: "PRÓXIMA SESIÓN", span: "col-span-3" },
-                        { label: "ESTADO",         span: "col-span-1" },
+                        { label: "ESTADO",         span: "col-span-1 flex items-center justify-center" },
                       ].map((h) => (
                         <div key={h.label} className={`text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`}>
                           {h.label}
@@ -518,7 +518,7 @@ export default function ClientsAndAgenda() {
                           <div className="col-span-3">
                             <span className="text-sm text-ink-muted truncate block">{c.email}</span>
                           </div>
-                          <div className="col-span-2">
+                          <div className="col-span-2 flex justify-center">
                             <span className="text-sm font-semibold text-ink">{c.sesiones_restantes}</span>
                           </div>
                           <div className="col-span-3">
