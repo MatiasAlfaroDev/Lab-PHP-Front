@@ -203,8 +203,6 @@ export default function ProfessionalDashboard() {
   };
 
   if (loading) return <DashboardSkeleton />;
-  console.log("CALIFICACIONES:", calificaciones);
-  console.log("PRIMERA:", calificaciones[0]);
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       {/* Header */}

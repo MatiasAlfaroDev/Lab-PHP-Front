@@ -14,8 +14,8 @@ export default function Videollamada() {
 
   const roomRef = useRef<Room | null>(null);
 
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
+  const [micOn, setMicOn] = useState(false);
+  const [camOn, setCamOn] = useState(false);
   const [participants, setParticipants] = useState(1);
 
   // SALIR
@@ -43,7 +43,6 @@ export default function Videollamada() {
     };
 
     window.addEventListener("beforeunload", handleUnload);
-
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, [id]);
 
@@ -53,17 +52,9 @@ export default function Videollamada() {
     const room = new Room();
     roomRef.current = room;
 
-    const attachLocalVideo = () => {
-      room.localParticipant.videoTrackPublications.forEach((pub) => {
-        if (pub.track && localVideoRef.current) {
-          pub.track.attach(localVideoRef.current);
-        }
-      });
-    };
-
     const join = async () => {
       try {
-        // token livekit
+        // TOKEN LIVEKIT
         const res = await api.get<{
           success: boolean;
           data: { token: string; url: string };
@@ -71,10 +62,8 @@ export default function Videollamada() {
 
         const { token: livekitToken, url } = res.data;
 
-        // 🔴 REMOTO (poner ANTES del connect)
+        // 🔴 REMOTO (UN SOLO HANDLER)
         room.on("trackSubscribed", (track) => {
-          console.log("SUBSCRIBED", track.kind);
-
           if (track.kind === Track.Kind.Video && remoteVideoRef.current) {
             track.attach(remoteVideoRef.current);
           }
@@ -84,46 +73,38 @@ export default function Videollamada() {
           }
         });
 
+        // CONNECT
         await room.connect(url, livekitToken);
 
-        // estado en curso
-        await api.post(
+        // BACKEND (NO BLOQUEA UI)
+        api.post(
           `/videollamada/${id}/estado`,
           { estado: "en_curso" },
           token
-        );
+        ).catch(() => {});
 
-        // 🔵 cámara y mic
-        await room.localParticipant.setCameraEnabled(true);
-        await room.localParticipant.setMicrophoneEnabled(true);
+        // 🔵 CAM + MIC (INMEDIATO)
+        await Promise.all([
+          room.localParticipant.setCameraEnabled(true),
+          room.localParticipant.setMicrophoneEnabled(true),
+        ]);
 
-        // 🟢 LOCAL VIDEO
-        attachLocalVideo();
-        room.localParticipant.on("trackPublished", attachLocalVideo);
+        setCamOn(true);
+        setMicOn(true);
 
-        // 🔍 participantes que ya estaban en la sala
-        room.remoteParticipants.forEach((participant) => {
-          participant.trackPublications.forEach((pub) => {
-            if (
-              pub.track &&
-              pub.track.kind === Track.Kind.Video &&
-              remoteVideoRef.current
-            ) {
-              console.log("VIDEO EXISTENTE");
-              pub.track.attach(remoteVideoRef.current);
-            }
-
-            if (
-              pub.track &&
-              pub.track.kind === Track.Kind.Audio
-            ) {
-              console.log("AUDIO EXISTENTE");
-              pub.track.attach();
+        // 🟢 LOCAL VIDEO (FIX: EXISTENTES + FUTUROS)
+        const attachLocal = () => {
+          room.localParticipant.videoTrackPublications.forEach((pub) => {
+            if (pub.track && localVideoRef.current) {
+              pub.track.attach(localVideoRef.current);
             }
           });
-        });
+        };
 
-        // 👥 participantes
+        attachLocal();
+        room.localParticipant.on("trackPublished", attachLocal);
+
+        // 👥 PARTICIPANTES
         setParticipants(room.numParticipants);
 
         room.on("participantConnected", () => {
@@ -145,7 +126,7 @@ export default function Videollamada() {
     };
   }, [id, token]);
 
-  // 🎤 mic
+  // 🎤 MIC
   const toggleMic = async () => {
     if (!roomRef.current) return;
 
@@ -155,7 +136,7 @@ export default function Videollamada() {
     await roomRef.current.localParticipant.setMicrophoneEnabled(enabled);
   };
 
-  // 📷 cam
+  // 📷 CAM
   const toggleCam = async () => {
     if (!roomRef.current) return;
 
