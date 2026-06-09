@@ -31,7 +31,7 @@ export default function ClientProfile() {
     setSaving(true);
     setInfoMsg(null);
     try {
-      await api.put("/profile", { name: name.trim(), email: email.trim() }, token);
+      await api.put("/client/profile", { name: name.trim(), email: email.trim() }, token);
       updateUser({ name: name.trim(), email: email.trim(), initials: getInitials(name.trim()) });
       setInfoMsg({ type: "ok", text: "Datos actualizados correctamente." });
     } catch (err: any) {

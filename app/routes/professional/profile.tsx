@@ -16,6 +16,7 @@ export default function ProfessionalProfile() {
 
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
+  const [descripcion, setDescripcion] = useState(user?.descripcion ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,8 +32,8 @@ export default function ProfessionalProfile() {
     setSaving(true);
     setInfoMsg(null);
     try {
-      await api.put("/profile", { name: name.trim(), email: email.trim() }, token);
-      updateUser({ name: name.trim(), email: email.trim(), initials: getInitials(name.trim()) });
+      await api.put("/profesional/profile", { name: name.trim(), email: email.trim(), descripcion: descripcion.trim() }, token);
+      updateUser({ name: name.trim(), email: email.trim(), initials: getInitials(name.trim()), descripcion: descripcion.trim() });
       setInfoMsg({ type: "ok", text: "Datos actualizados correctamente." });
     } catch (err: any) {
       setInfoMsg({ type: "err", text: err.message ?? "Error al guardar." });
@@ -94,6 +95,15 @@ export default function ProfessionalProfile() {
               onChange={(e) => setName(e.target.value)}
               className="w-full border border-border rounded px-3 py-2 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
               required
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-ink-muted uppercase mb-1">Descripción</label>
+            <input
+              type="text"
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              className="w-full border border-border rounded px-3 py-2 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>

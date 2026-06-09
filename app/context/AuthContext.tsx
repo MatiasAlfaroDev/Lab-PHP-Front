@@ -10,6 +10,7 @@ export interface AuthUser {
   role: UserRole;
   initials: string;
   avatar?: string;
+  descripcion?: string;
 }
 
 interface AuthContextType {
