@@ -231,14 +231,6 @@ export default function ProfessionalDashboard() {
             <PlusIcon />
             Nuevo servicio
           </Link>
-          <button
-            disabled
-            title="Próximamente"
-            className="flex items-center gap-2 bg-ink/40 text-white/60 px-4 py-2 rounded text-sm font-semibold cursor-not-allowed select-none"
-          >
-            <LockIcon />
-            Bloquear agenda
-          </button>
         </div>
       </div>
 

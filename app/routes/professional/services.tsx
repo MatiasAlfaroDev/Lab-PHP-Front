@@ -316,7 +316,7 @@ export default function Services() {
                   <div className="font-display text-sm font-bold text-ink">${s.precio}</div>
 
                   <div className="text-sm text-ink-muted">
-                    {s.reservas_count != null ? `${s.reservas_count} este año` : "—"}
+                    {s.reservas_count != null ? `${s.reservas_count} totales` : "—"}
                   </div>
 
                   <div className="flex items-center justify-end gap-1">
