@@ -158,6 +158,9 @@ export default function ClientsAndAgenda() {
       setUpdatingId(null);
     }
   };
+  const cancelarReserva = async (reservaId: number) => {
+    await api.put(`/reservas/${reservaId}/cancelar`, {}, token);
+  };
 
   // ── Computed ───────────────────────────────────────────────────────────────
   const weekDates = getWeekDates(weekStart);
@@ -596,6 +599,7 @@ export default function ClientsAndAgenda() {
                     reserva={selectedReserva}
                     updatingId={updatingId}
                     onCambiarEstado={cambiarEstado}
+                    onCancelarReserva={cancelarReserva}
                     highlight
                   />
 
@@ -701,6 +705,7 @@ export default function ClientsAndAgenda() {
                           reserva={r}
                           updatingId={updatingId}
                           onCambiarEstado={cambiarEstado}
+                          onCancelarReserva={cancelarReserva}
                         />
                       ))}
                     {clientReservas.filter((r) => r.reserva_id !== selectedReserva?.reserva_id).length === 0 && (
@@ -731,11 +736,13 @@ function ReservaCard({
   reserva,
   updatingId,
   onCambiarEstado,
+  onCancelarReserva,
   highlight = false,
 }: {
   reserva: Reserva;
   updatingId: number | null;
   onCambiarEstado: (id: number, estado: "confirmada" | "cancelada") => void;
+  onCancelarReserva: (id: number) => void;
   highlight?: boolean;
 }) {
   const canConfirm = reserva.estado === "pendiente";
@@ -771,7 +778,13 @@ function ReservaCard({
           {canCancel && (
             <button
               disabled={isUpdating}
-              onClick={() => onCambiarEstado(reserva.reserva_id, "cancelada")}
+              onClick={() => {
+                if (reserva.estado === "confirmada") {
+                  onCancelarReserva(reserva.reserva_id);
+                } else {
+                  onCambiarEstado(reserva.reserva_id, "cancelada");
+                }
+              }}
               className={`py-1 text-xs font-semibold border border-border rounded hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-ink-muted transition-colors disabled:opacity-50 ${canConfirm ? "px-2" : "flex-1"}`}
             >
               {isUpdating ? "..." : "Cancelar"}

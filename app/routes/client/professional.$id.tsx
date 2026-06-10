@@ -293,6 +293,11 @@ export default function ProfessionalDetail() {
   const { token } = useAuth();
   const [searchParams] = useSearchParams();
   const compraItemId = searchParams.get("compraItem");
+  const reprogramarId = searchParams.get("reprogramar");
+  const isReprogramando = !!reprogramarId;
+  const [reprogramado, setReprogramado] = useState(false);
+  const [reservaOriginal, setReservaOriginal] = useState<any>(null);
+  const [loadingReserva, setLoadingReserva] = useState(false);
 
   // Booking modal
   const [showModal, setShowModal] = useState(false);
@@ -330,7 +335,9 @@ export default function ProfessionalDetail() {
         if (res.success) {
           setProfile(res.data);
           const first = res.data.profesional?.servicios?.[0] ?? null;
-          setSelectedService(first);
+          if (!reprogramarId) {
+            setSelectedService(first);
+          }
         } else {
           setProfileError("Profesional no encontrado");
         }
@@ -379,6 +386,58 @@ export default function ProfessionalDetail() {
       .finally(() => setLoadingSlots(false));
   }, [selectedDate, selectedService]);
 
+  useEffect(() => {
+    if (!reprogramarId) return;
+
+    setLoadingReserva(true);
+
+    api
+      .get(`/reservas/${reprogramarId}`, token)
+      .then((res: any) => {
+        if (!res.success) return;
+
+        setReservaOriginal(res.data);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingReserva(false));
+  }, [reprogramarId]);
+
+  useEffect(() => {
+    if (!profile || !reservaOriginal) return;
+
+    const servicioId = reservaOriginal.servicio_id;
+
+    const servicio = profile.profesional.servicios.find(
+      (s) => Number(s.servicio_id) === Number(servicioId)
+    );
+
+    if (!servicio) return;
+
+    setSelectedService(servicio);
+    setActiveTab("Servicios");
+  }, [profile, reservaOriginal]);
+
+  const handleReprogramar = async () => {
+  if (!reprogramarId || !selectedService || !selectedDate || !selectedSlot) return;
+
+  try {
+    await api.put(
+      `/reservas/${reprogramarId}/reprogramar`,
+      {
+        servicio_id: selectedService.servicio_id,
+        fecha: selectedDate,
+        hora: selectedSlot.hora,
+        modalidad: selectedSlot.modalidad,
+      },
+      token
+    );
+
+    setReprogramado(true);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
   // ── Loading / error states ────────────────────────────────────────────
   if (loadingProfile) {
     return (
@@ -392,6 +451,13 @@ export default function ProfessionalDetail() {
       </div>
     );
   }
+  if (loadingReserva) {
+  return (
+    <div className="p-6 max-w-6xl mx-auto flex items-center justify-center py-24 text-sm text-ink-muted">
+      Cargando reserva...
+    </div>
+  );
+}
 
   if (profileError || !profile) {
     return (
@@ -583,7 +649,16 @@ export default function ProfessionalDetail() {
                 </div>
 
                 <hr className="border-border" />
-
+                {isReprogramando && !reprogramado && (
+                  <div className="mb-3 bg-blue-100 text-blue-700 px-3 py-2 rounded-xl text-sm">
+                    Estás reprogramando una reserva. Elegí nueva fecha y horario.
+                  </div>
+                )}
+                {reprogramado && (
+                  <div className="mb-3 bg-green-100 text-green-700 px-3 py-2 rounded-xl text-sm">
+                    Reserva reprogramada correctamente ✔
+                  </div>
+                )}
                 {/* Calendar */}
                 <div>
                   <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-3">
@@ -670,7 +745,15 @@ export default function ProfessionalDetail() {
 
                 <button
                   disabled={!selectedSlot}
-                  onClick={() => selectedSlot && setShowModal(true)}
+                  onClick={() => {
+                    if (!selectedSlot) return;
+
+                    if (isReprogramando) {
+                      handleReprogramar();
+                    } else {
+                      setShowModal(true);
+                    }
+                  }}
                   className={`w-full font-medium py-3 rounded-xl transition-colors ${
                     selectedSlot
                       ? "bg-primary hover:bg-primary-hover text-white"
@@ -689,7 +772,7 @@ export default function ProfessionalDetail() {
         </div>
       </div>
 
-      {showModal && selectedService && selectedDate && selectedSlot && (
+      {showModal && !isReprogramando && selectedService && selectedDate && selectedSlot && (
         <BookingModal
           service={selectedService}
           date={selectedDate}

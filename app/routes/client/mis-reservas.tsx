@@ -67,6 +67,7 @@ export default function MisReservas() {
   const [reservaSeleccionada, setReservaSeleccionada] = useState<Reserva | null>(null);
   const [puntuacion, setPuntuacion] = useState(5);
   const [comentario, setComentario] = useState("");
+  const [cancelSuccess, setCancelSuccess] = useState(false);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
@@ -93,22 +94,30 @@ export default function MisReservas() {
 
   const handleCancel = async () => {
     if (confirmingCancel === null) return;
+
     const id = confirmingCancel;
-    setConfirmingCancel(null);
     setCancelling(id);
+
     try {
       await api.put(`/reservas/${id}/cancelar`, {}, token);
-      setReservas((prev) =>
-        prev.map((r) => r.reserva_id === id ? { ...r, estado: "cancelada" } : r)
-      );
-      toast.success("Reserva cancelada correctamente");
-    } catch (e: any) {
-      toast.error(e.message ?? "Error al cancelar la reserva");
-    } finally {
-      setCancelling(null);
-    }
 
-    
+      setReservas((prev) =>
+        prev.map((r) =>
+          r.reserva_id === id ? { ...r, estado: "cancelada" } : r
+        )
+      );
+
+      setCancelling(null);
+      setCancelSuccess(true); //mostramos éxito en el modal
+
+      setTimeout(() => {
+        setConfirmingCancel(null);
+        setCancelSuccess(false); 
+      }, 6000);
+    } catch (e: any) {
+      setCancelling(null);
+      setConfirmingCancel(null);
+    }
   };
   const abrirModalCalificacion = (reserva: Reserva) => {
       setReservaSeleccionada(reserva);
@@ -163,35 +172,58 @@ export default function MisReservas() {
       {confirmingCancel !== null && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => setConfirmingCancel(null)}
+          onClick={() => {
+            setConfirmingCancel(null);
+            setCancelSuccess(false);
+          }}
         >
           <div
             className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl border border-border"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-col items-center gap-2 mb-5">
-              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-1">
-                <ion-icon name="trash-outline" style={{ fontSize: "22px", color: "#f87171" }} />
+            {cancelSuccess ? (
+              <div className="text-center space-y-3 py-4">
+                <div className="w-12 h-12 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+                  <ion-icon name="checkmark-outline" style={{ fontSize: "22px", color: "#22c55e" }} />
+                </div>
+
+                <h2 className="font-semibold text-lg">Reserva cancelada</h2>
+
+                <p className="text-sm text-ink-muted">
+                  Cancelada correctamente. Contactá al profesional para gestionar el reembolso.
+                </p>
               </div>
-              <h2 className="font-display text-lg text-ink text-center">¿Cancelar esta reserva?</h2>
-              <p className="text-sm text-ink-muted text-center">
-                Esta acción no se puede deshacer. La reserva quedará cancelada permanentemente.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmingCancel(null)}
-                className="flex-1 px-4 py-2 rounded-xl border border-border text-ink text-sm font-medium hover:bg-surface transition-colors"
-              >
-                Volver
-              </button>
-              <button
-                onClick={handleCancel}
-                className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors"
-              >
-                Sí, cancelar
-              </button>
-            </div>
+            ) : (
+              <>
+                <div className="flex flex-col items-center gap-2 mb-5">
+                  <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-1">
+                    <ion-icon name="trash-outline" style={{ fontSize: "22px", color: "#f87171" }} />
+                  </div>
+                  <h2 className="font-display text-lg text-ink text-center">
+                    ¿Cancelar esta reserva?
+                  </h2>
+                  <p className="text-sm text-ink-muted text-center">
+                    Esta acción no se puede deshacer. La reserva quedará cancelada permanentemente.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmingCancel(null)}
+                    className="flex-1 px-4 py-2 rounded-xl border border-border text-ink text-sm font-medium hover:bg-surface transition-colors"
+                  >
+                    Volver
+                  </button>
+
+                  <button
+                    onClick={handleCancel}
+                    className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors"
+                  >
+                    Sí, cancelar
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -314,7 +346,8 @@ export default function MisReservas() {
               const [ry, rm, rd] = r.fecha.split("-").map(Number);
               const rDate = new Date(ry, rm - 1, rd);
               const isPast = rDate < today;
-              const puedeCalificar =  isPast &&  r.estado === "finalizada" && !r.calificacion;;
+              const puedeCalificar =  isPast &&  r.estado === "finalizada" && !r.calificacion;
+              const canReschedule = ["confirmada", "pagada"].includes(r.estado) && !isPast;
               const isCancelled = r.estado === "cancelada" || r.estado === "no_asistida";
               const displayEstado = isPast && !TERMINAL.has(r.estado) ? "realizada" : r.estado;
               const badge      = ESTADO_STYLE[displayEstado] ?? { label: displayEstado, cls: "bg-surface text-ink-muted border-border" };
@@ -365,19 +398,32 @@ export default function MisReservas() {
                   </div>
 
                   {/* Actions */}
-                  {canCancel && (
-                    <button
-                      onClick={() => setConfirmingCancel(r.reserva_id)}
-                      disabled={cancelling === r.reserva_id}
-                      title="Cancelar reserva"
-                      className="shrink-0 w-9 h-9 flex items-center justify-center text-red-400 hover:text-red-600 border border-red-200 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {cancelling === r.reserva_id
-                        ? <ion-icon name="hourglass-outline" style={{ fontSize: "16px" }} />
-                        : <ion-icon name="trash-outline" style={{ fontSize: "16px" }} />
-                      }
-                    </button>
-                  )}
+                  <div className="shrink-0 flex flex-col gap-2">
+                    
+                    {canReschedule && (
+                      <Link
+                        to={`/client/professional/${r.servicio.profesional_id}?reprogramar=${r.reserva_id}`}
+                        className="px-3 py-2 text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-lg text-xs"
+                      >
+                        Reprogramar
+                      </Link>
+                    )}
+
+                    {canCancel && (
+                      <button
+                        onClick={() => setConfirmingCancel(r.reserva_id)}
+                        disabled={cancelling === r.reserva_id}
+                        title="Cancelar reserva"
+                        className="w-full px-3 py-2 text-red-400 hover:text-red-600 border border-red-200 hover:bg-red-50 rounded-lg text-xs transition-colors disabled:opacity-50"
+                      >
+                        {cancelling === r.reserva_id
+                          ? <ion-icon name="hourglass-outline" style={{ fontSize: "16px" }} />
+                          : <ion-icon name="trash-outline" style={{ fontSize: "16px" }} />
+                        }
+                      </button>
+                    )}
+
+                  </div>
                   {puedeCalificar && (
                     <button
                       onClick={() => abrirModalCalificacion(r)}
