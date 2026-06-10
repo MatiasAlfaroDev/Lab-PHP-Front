@@ -1,5 +1,6 @@
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
+import { APP_BASE_URL } from "./api";
 
 let echo: Echo<any> | null = null;
 
@@ -17,10 +18,10 @@ export function getEcho(token?: string) {
       wsPort: Number(import.meta.env.VITE_REVERB_PORT),
       wssPort: Number(import.meta.env.VITE_REVERB_PORT),
 
-      forceTLS: false,
+      forceTLS: import.meta.env.VITE_REVERB_SCHEME === "https",
       enabledTransports: ["ws", "wss"],
 
-      authEndpoint: "http://localhost:8000/broadcasting/auth",
+      authEndpoint: `${APP_BASE_URL}/broadcasting/auth`,
 
       auth: {
         headers: {
