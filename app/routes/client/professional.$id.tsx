@@ -3,14 +3,6 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "ion-icon": React.HTMLAttributes<HTMLElement> & { name?: string };
-    }
-  }
-}
-
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Servicio {
   servicio_id: number;

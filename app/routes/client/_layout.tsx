@@ -6,7 +6,7 @@ import { NotificationProvider } from "~/context/NotificationContext";
 
 
 export default function ClientLayout() {
-  const { user, token, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -28,7 +28,6 @@ export default function ClientLayout() {
   return (
     <NotificationProvider
       userId={user?.id}
-      token={token ?? undefined}
     >
       <div className="flex min-h-screen bg-bg">
         <ClientSidebar

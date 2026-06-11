@@ -5,14 +5,6 @@ import { api } from "~/lib/api";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "ion-icon": React.HTMLAttributes<HTMLElement> & { name?: string };
-    }
-  }
-}
-
 interface Reserva {
   reserva_id: number;
   fecha: string;
