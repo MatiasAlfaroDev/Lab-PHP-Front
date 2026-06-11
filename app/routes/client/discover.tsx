@@ -20,6 +20,8 @@ interface Servicio {
   pausa: number;
   modalidad: string;
   profesional: Profesional | null;
+  promedio?: number;
+  cantidad_calificaciones?: number;
 }
 
 interface PackageItem {
@@ -331,6 +333,15 @@ export default function Discover() {
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-ink">{servicio.nombre}</p>
                             <p className="text-xs text-ink-muted">{servicio.tipo}</p>
+                            {servicio.cantidad_calificaciones ? (
+                                <p className="text-xs text-ink-muted mt-1">
+                                  ⭐ {servicio.promedio?.toFixed(1)} ({servicio.cantidad_calificaciones})
+                                </p>
+                              ) : (
+                                <p className="text-xs text-ink-muted mt-1">
+                                  Sin reseñas
+                                </p>
+                              )}
                           </div>
                         </div>
                         {servicio.descripcion && (
