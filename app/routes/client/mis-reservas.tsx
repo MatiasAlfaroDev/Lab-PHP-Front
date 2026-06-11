@@ -42,10 +42,10 @@ const ESTADO_STYLE: Record<string, { label: string; cls: string }> = {
   cancelada:    { label: "Cancelada",   cls: "bg-red-50 text-red-400 border-red-200" },
   finalizada:   { label: "Finalizada",  cls: "bg-surface text-ink-muted border-border" },
   no_asistida:  { label: "No asistida", cls: "bg-red-50 text-red-400 border-red-200" },
-  realizada:    { label: "Realizada",   cls: "bg-green-50 text-green-600 border-green-200" },
+  realizada:    { label: "No aceptada",   cls: "bg-green-50 text-green-600 border-green-200" },
 };
 
-const TERMINAL = new Set(["cancelada", "finalizada", "no_asistida", "realizada"]);
+const TERMINAL = new Set(["cancelada", "finalizada", "no_asistida", "no aceptada"]);
 
 const MONTH_NAMES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
@@ -349,7 +349,7 @@ export default function MisReservas() {
               const puedeCalificar =  isPast &&  r.estado === "finalizada" && !r.calificacion;
               const canReschedule = ["confirmada", "pagada"].includes(r.estado) && !isPast;
               const isCancelled = r.estado === "cancelada" || r.estado === "no_asistida";
-              const displayEstado = isPast && !TERMINAL.has(r.estado) ? "realizada" : r.estado;
+              const displayEstado = isPast && !TERMINAL.has(r.estado) ? "no aceptada" : r.estado;
               const badge      = ESTADO_STYLE[displayEstado] ?? { label: displayEstado, cls: "bg-surface text-ink-muted border-border" };
               const canCancel  = ["pendiente", "confirmada"].includes(r.estado) && !isPast;
 

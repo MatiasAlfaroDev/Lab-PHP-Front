@@ -491,7 +491,6 @@ export default function ClientsAndAgenda() {
                       {[
                         { label: "CLIENTE",        span: "col-span-3" },
                         { label: "EMAIL",          span: "col-span-3" },
-                        { label: "SESIONES",       span: "col-span-2 flex items-center justify-center" },
                         { label: "PRÓXIMA SESIÓN", span: "col-span-3" },
                         { label: "ESTADO",         span: "col-span-1 flex items-center justify-center" },
                       ].map((h) => (
@@ -520,9 +519,6 @@ export default function ClientsAndAgenda() {
                           </div>
                           <div className="col-span-3">
                             <span className="text-sm text-ink-muted truncate block">{c.email}</span>
-                          </div>
-                          <div className="col-span-2 flex justify-center">
-                            <span className="text-sm font-semibold text-ink">{c.sesiones_restantes}</span>
                           </div>
                           <div className="col-span-3">
                             <span className="text-sm text-ink">
