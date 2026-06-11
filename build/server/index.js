@@ -4023,7 +4023,7 @@ var messages_default$1 = UNSAFE_withComponentProps(function ClientMessages() {
 //#endregion
 //#region app/routes/client/payments.tsx
 var payments_exports$2 = /* @__PURE__ */ __exportAll({ default: () => payments_default$2 });
-var badgeCls$3 = {
+var badgeCls$2 = {
 	pendiente: "badge badge-pendiente",
 	aprobado: "badge badge-pagada",
 	rechazado: "badge badge-cancelada",
@@ -4291,7 +4291,7 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 								/* @__PURE__ */ jsx("div", {
 									className: "col-span-1",
 									children: /* @__PURE__ */ jsx("span", {
-										className: badgeCls$3[r.pago?.estado ?? "pendiente"],
+										className: badgeCls$2[r.pago?.estado ?? "pendiente"],
 										children: (r.pago?.estado ?? "pendiente").toUpperCase()
 									})
 								})
@@ -4348,7 +4348,7 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 								/* @__PURE__ */ jsx("div", {
 									className: "col-span-2",
 									children: /* @__PURE__ */ jsx("span", {
-										className: badgeCls$3[compra.pago?.estado ?? "pendiente"],
+										className: badgeCls$2[compra.pago?.estado ?? "pendiente"],
 										children: (compra.pago?.estado ?? "pendiente").toUpperCase()
 									})
 								})
@@ -4486,13 +4486,7 @@ var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPa
 						className: "flex gap-3",
 						children: [/* @__PURE__ */ jsx("div", {
 							className: "w-10 h-10 rounded bg-accent/20 flex items-center justify-center",
-							children: /* @__PURE__ */ jsxs("div", {
-								className: "relative",
-								children: [/* @__PURE__ */ jsx(Bell, { className: "w-5 h-5 text-ink" }), unreadCount > 0 && /* @__PURE__ */ jsx("span", {
-									className: "absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 rounded-full",
-									children: unreadCount
-								})]
-							})
+							children: /* @__PURE__ */ jsx(Bell, { className: "w-5 h-5 text-ink" })
 						}), /* @__PURE__ */ jsxs("div", {
 							className: "flex-1",
 							children: [
@@ -9503,7 +9497,7 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 //#endregion
 //#region app/routes/professional/payments.tsx
 var payments_exports$1 = /* @__PURE__ */ __exportAll({ default: () => payments_default$1 });
-var transactions$1 = [
+var transactions = [
 	{
 		date: "22 may",
 		client: "Lucía Pérez",
@@ -9540,7 +9534,7 @@ var transactions$1 = [
 		status: "pendiente"
 	}
 ];
-var badgeCls$2 = {
+var badgeCls$1 = {
 	liquidado: "badge badge-confirmada",
 	pendiente: "badge badge-pendiente"
 };
@@ -9613,7 +9607,7 @@ var payments_default$1 = UNSAFE_withComponentProps(function Payments() {
 							className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-1" : i === 1 ? "col-span-3" : i === 2 ? "col-span-4" : i === 3 ? "col-span-2" : "col-span-2"}`,
 							children: h
 						}, i))
-					}), transactions$1.map((t, i) => /* @__PURE__ */ jsxs("div", {
+					}), transactions.map((t, i) => /* @__PURE__ */ jsxs("div", {
 						className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
 						children: [
 							/* @__PURE__ */ jsx("div", {
@@ -9647,7 +9641,7 @@ var payments_default$1 = UNSAFE_withComponentProps(function Payments() {
 							/* @__PURE__ */ jsx("div", {
 								className: "col-span-2",
 								children: /* @__PURE__ */ jsx("span", {
-									className: badgeCls$2[t.status],
+									className: badgeCls$1[t.status],
 									children: t.status.toUpperCase()
 								})
 							})
@@ -10083,7 +10077,7 @@ var notifications_default = UNSAFE_withComponentProps(function NotificationsPage
 						className: "flex gap-3",
 						children: [/* @__PURE__ */ jsx("div", {
 							className: "w-10 h-10 rounded bg-accent/20 flex items-center justify-center",
-							children: "🔔"
+							children: /* @__PURE__ */ jsx(Bell, { className: "w-5 h-5 text-ink" })
 						}), /* @__PURE__ */ jsxs("div", {
 							className: "flex-1",
 							children: [
@@ -10330,157 +10324,103 @@ var _layout_default = UNSAFE_withComponentProps(function AdminLayout() {
 //#endregion
 //#region app/routes/admin/dashboard.tsx
 var dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => dashboard_default });
-var kpis = [
+var defaultKpis = [
 	{
 		label: "USUARIOS TOTALES",
-		value: "14.328",
-		delta: "+3.2%",
-		sub: "↑ 442 esta semana"
+		value: "-",
+		delta: "",
+		sub: ""
 	},
 	{
-		label: "PROFESIONALES ACTIVOS",
-		value: "2.187",
-		delta: "+18",
-		sub: "91% verificados"
+		label: "CLIENTES REGISTRADOS",
+		value: "-",
+		delta: "",
+		sub: ""
 	},
 	{
-		label: "RESERVAS (MES)",
-		value: "38.412",
-		delta: "+11%",
-		sub: "€1.84M en GMV"
+		label: "PROFESIONALES REGISTRADOS",
+		value: "-",
+		delta: "",
+		sub: ""
 	},
 	{
-		label: "TASA DE CANCELACIÓN",
-		value: "4.2%",
-		delta: "-0.6%",
-		sub: "bajo el target de 5%"
-	},
-	{
-		label: "REPORTES ABIERTOS",
-		value: "3",
-		delta: "−2",
-		sub: "2 alta prioridad"
+		label: "RESERVAS TOTALES",
+		value: "-",
+		delta: "",
+		sub: ""
 	}
 ];
-var recentActivity = [
-	{
-		time: "09:42",
-		text: "Pedro Yáñez creó cuenta de profesional",
-		status: "PENDIENTE VERIFICACIÓN",
-		cls: "badge badge-pendiente"
-	},
-	{
-		time: "09:38",
-		text: "Carolina A. reportó a Roberto M. por no presentarse",
-		status: "ALTA PRIORIDAD",
-		cls: "badge badge-cancelada"
-	},
-	{
-		time: "09:21",
-		text: "Sistema liquidó €38.420 a 142 profesionales",
-		status: "PROCESADO",
-		cls: "badge badge-confirmada"
-	},
-	{
-		time: "09:14",
-		text: "Tomás Riveiro editó su perfil y agregó 2 servicios",
-		status: "OK",
-		cls: "text-xs text-ink-muted font-semibold"
-	}
-];
-var pending = [
-	{
-		initials: "PY",
-		name: "Pedro Yáñez",
-		sub: "Consultoría legal · Hoy 09:42",
-		dot: false,
-		color: "bg-orange-500"
-	},
-	{
-		initials: "SM",
-		name: "Sofía Mendiluce",
-		sub: "Coaching · Ayer",
-		dot: true,
-		color: "bg-purple-500"
-	},
-	{
-		initials: "LC",
-		name: "Luis Carmona",
-		sub: "Fisioterapia · Hace 2 días",
-		dot: false,
-		color: "bg-teal-500"
-	}
-];
-var categories = [
-	{
-		name: "Salud y bienestar",
-		count: 842
-	},
-	{
-		name: "Consultoría",
-		count: 487
-	},
-	{
-		name: "Entrenamiento",
-		count: 364
-	},
-	{
-		name: "Educación",
-		count: 268
-	},
-	{
-		name: "Otros",
-		count: 226
-	}
-];
-var maxCat = 842;
-var barData = Array.from({ length: 30 }, (_, i) => ({
-	confirmed: Math.floor(80 + Math.random() * 120),
-	paid: Math.floor(70 + Math.random() * 110),
-	cancelled: Math.floor(5 + Math.random() * 15)
-}));
 var dashboard_default = UNSAFE_withComponentProps(function AdminDashboard() {
+	const { token } = useAuth();
+	const [kpis, setKpis] = useState(defaultKpis);
+	const [recentActivity, setRecentActivity] = useState([]);
+	const [barData, setBarData] = useState([]);
+	const [tooltip, setTooltip] = useState(null);
+	const [serviceByType, setServiceByType] = useState([]);
+	const [topServices, setTopServices] = useState([]);
+	useEffect(() => {
+		if (!token) return;
+		const loadKpis = async () => {
+			try {
+				const res = await api.get("/admin/dashboard", token);
+				if (!res.success) return;
+				setKpis([
+					{
+						label: "USUARIOS TOTALES",
+						value: res.data.kpis.users,
+						delta: "",
+						sub: ""
+					},
+					{
+						label: "CLIENTES TOTALES",
+						value: res.data.kpis.clients,
+						delta: "",
+						sub: ""
+					},
+					{
+						label: "PROFESIONALES ACTIVOS",
+						value: res.data.kpis.professionals,
+						delta: "",
+						sub: ""
+					},
+					{
+						label: "RESERVAS TOTALES",
+						value: res.data.kpis.reservas,
+						delta: "",
+						sub: ""
+					}
+				]);
+				setRecentActivity(res.data.recent_activity);
+				setBarData(res.data.reservas_por_dia);
+				setServiceByType(res.data.servicios_por_tipo);
+				setTopServices(res.data.servicios_mas_reservados);
+			} catch (e) {
+				console.error("Error KPIs:", e);
+			}
+		};
+		loadKpis();
+	}, [token]);
+	const maxService = Math.max(...serviceByType.map((s) => Number(s.total || 0)), 1);
+	Math.max(...barData.map((d) => Number(d.finalizadas || 0) + Number(d.no_asistidas || 0) + Number(d.canceladas || 0)), 1);
+	const rawMax = Math.max(...barData.map((d) => Number(d.finalizadas || 0) + Number(d.no_asistidas || 0) + Number(d.canceladas || 0)), 1);
+	const step = Math.ceil(rawMax / 4);
+	const maxScale = step * 4;
+	const ESTADO_STYLE = {
+		pendiente: "bg-amber-50 text-amber-700 border-amber-200",
+		confirmada: "bg-blue-50 text-blue-700 border-blue-200",
+		pagada: "bg-green-50 text-green-700 border-green-200",
+		cancelada: "bg-red-50 text-red-500 border-red-200",
+		finalizada: "bg-gray-100 text-gray-700 border-gray-200"
+	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8 max-w-7xl mx-auto",
 		children: [
-			/* @__PURE__ */ jsxs("div", {
+			/* @__PURE__ */ jsx("div", {
 				className: "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
+				children: /* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx("h1", {
 					className: "font-display text-3xl text-ink",
 					children: "Panel administrativo"
-				}), /* @__PURE__ */ jsx("p", {
-					className: "text-ink-muted mt-1",
-					children: "Última actualización: hace 2 min · 1.247 usuarios activos hoy"
-				})] }), /* @__PURE__ */ jsxs("div", {
-					className: "flex flex-wrap items-center gap-2",
-					children: [
-						/* @__PURE__ */ jsxs("div", {
-							className: "flex items-center gap-2 border border-border rounded bg-surface px-4 py-2 w-full sm:w-auto",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "text-ink-muted text-sm",
-								children: "🔍"
-							}), /* @__PURE__ */ jsx("input", {
-								className: "bg-transparent text-sm text-ink placeholder-ink-muted outline-none w-full sm:w-44",
-								placeholder: "Buscar usuarios, reservas..."
-							})]
-						}),
-						/* @__PURE__ */ jsxs("button", {
-							className: "relative p-2 border border-border rounded bg-surface hover:bg-bg",
-							children: ["🔔", /* @__PURE__ */ jsx("span", {
-								className: "absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold",
-								children: "3"
-							})]
-						}),
-						/* @__PURE__ */ jsx("button", {
-							className: "border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink",
-							children: "Exportar"
-						}),
-						/* @__PURE__ */ jsx("button", {
-							className: "bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors",
-							children: "Reporte mensual"
-						})
-					]
-				})]
+				}) })
 			}),
 			/* @__PURE__ */ jsx("div", {
 				className: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8",
@@ -10488,7 +10428,7 @@ var dashboard_default = UNSAFE_withComponentProps(function AdminDashboard() {
 					className: "bg-surface border border-border rounded p-4",
 					children: [
 						/* @__PURE__ */ jsx("p", {
-							className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2",
+							className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2 min-h-[32px]",
 							children: k.label
 						}),
 						/* @__PURE__ */ jsxs("div", {
@@ -10496,12 +10436,12 @@ var dashboard_default = UNSAFE_withComponentProps(function AdminDashboard() {
 							children: [/* @__PURE__ */ jsx("span", {
 								className: "font-display text-2xl text-ink font-bold",
 								children: k.value
-							}), /* @__PURE__ */ jsx("span", {
-								className: `text-xs font-bold px-1.5 py-0.5 rounded ${k.delta.startsWith("-") ? "bg-red-100 text-red-700" : "bg-accent text-ink"}`,
+							}), k.delta && /* @__PURE__ */ jsx("span", {
+								className: "text-xs text-green-500 font-semibold",
 								children: k.delta
 							})]
 						}),
-						/* @__PURE__ */ jsx("p", {
+						k.sub && /* @__PURE__ */ jsx("p", {
 							className: "text-xs text-ink-muted mt-1",
 							children: k.sub
 						})
@@ -10513,185 +10453,193 @@ var dashboard_default = UNSAFE_withComponentProps(function AdminDashboard() {
 				children: [/* @__PURE__ */ jsxs("div", {
 					className: "lg:col-span-2 bg-surface border border-border rounded p-6",
 					children: [
-						/* @__PURE__ */ jsxs("div", {
-							className: "flex items-center justify-between mb-4",
-							children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", {
-								className: "font-display text-xl text-ink",
-								children: "Volumen de reservas"
-							}), /* @__PURE__ */ jsx("p", {
-								className: "text-xs text-ink-muted",
-								children: "Últimos 30 días · todas las modalidades"
-							})] }), /* @__PURE__ */ jsx("div", {
-								className: "flex gap-1",
-								children: [
-									"7d",
-									"30d",
-									"90d",
-									"YTD"
-								].map((v) => /* @__PURE__ */ jsx("button", {
-									className: `text-xs px-3 py-1.5 rounded font-semibold transition-colors ${v === "30d" ? "bg-ink text-white" : "border border-border text-ink-muted hover:bg-bg"}`,
-									children: v
-								}, v))
-							})]
+						/* @__PURE__ */ jsx("h2", {
+							className: "font-display text-xl text-ink",
+							children: "Volumen de reservas del último mes"
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "h-48 flex items-end gap-0.5",
-							children: barData.map((d, i) => {
-								const total = d.confirmed + d.paid + d.cancelled;
-								return /* @__PURE__ */ jsxs("div", {
-									className: "flex-1 flex flex-col justify-end gap-0.5",
-									style: { height: `${total / 250 * 100}%` },
+							className: "mt-4",
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "flex",
+								children: [/* @__PURE__ */ jsxs("div", {
+									className: "w-10 h-56 flex flex-col justify-between text-xs text-ink-muted pr-2",
 									children: [
-										/* @__PURE__ */ jsx("div", {
-											className: "bg-red-400",
+										/* @__PURE__ */ jsx("span", { children: maxScale }),
+										/* @__PURE__ */ jsx("span", { children: step * 3 }),
+										/* @__PURE__ */ jsx("span", { children: step * 2 }),
+										/* @__PURE__ */ jsx("span", { children: step }),
+										/* @__PURE__ */ jsx("span", { children: "0" })
+									]
+								}), /* @__PURE__ */ jsxs("div", {
+									className: "flex-1",
+									children: [
+										/* @__PURE__ */ jsxs("div", {
+											className: "relative h-56 border-l border-b border-border",
+											children: [/* @__PURE__ */ jsx("div", {
+												className: "absolute inset-0 flex flex-col justify-between pointer-events-none",
+												children: [
+													1,
+													2,
+													3,
+													4
+												].map((n) => /* @__PURE__ */ jsx("div", { className: "border-t border-dashed border-border" }, n))
+											}), /* @__PURE__ */ jsx("div", {
+												className: "absolute inset-0 flex items-end gap-1 px-1",
+												children: barData.map((d, i) => {
+													const finalizadas = Number(d.finalizadas || 0);
+													const no_asistidas = Number(d.no_asistidas || 0);
+													const canceladas = Number(d.canceladas || 0);
+													finalizadas + no_asistidas + canceladas;
+													const hFinalizadas = finalizadas / maxScale * 100;
+													const hNo = no_asistidas / maxScale * 100;
+													const hCanceladas = canceladas / maxScale * 100;
+													return /* @__PURE__ */ jsx("div", {
+														className: "flex-1 h-full flex items-end cursor-pointer relative",
+														onMouseEnter: (e) => {
+															setTooltip({
+																x: e.clientX,
+																y: e.clientY,
+																data: d
+															});
+														},
+														onMouseLeave: () => setTooltip(null),
+														children: /* @__PURE__ */ jsxs("div", {
+															className: "w-full flex flex-col justify-end h-full",
+															children: [
+																canceladas > 0 && /* @__PURE__ */ jsx("div", {
+																	className: "bg-red-500 w-full",
+																	style: { height: `${hCanceladas}%` }
+																}),
+																no_asistidas > 0 && /* @__PURE__ */ jsx("div", {
+																	className: "bg-orange-400 w-full",
+																	style: { height: `${hNo}%` }
+																}),
+																finalizadas > 0 && /* @__PURE__ */ jsx("div", {
+																	className: "bg-green-500 w-full",
+																	style: { height: `${hFinalizadas}%` }
+																})
+															]
+														})
+													}, i);
+												})
+											})]
+										}),
+										tooltip && /* @__PURE__ */ jsxs("div", {
+											className: "fixed z-50 bg-black text-white text-xs p-3 rounded shadow-lg pointer-events-none",
 											style: {
-												height: `${d.cancelled / total * 100}%`,
-												minHeight: 2
-											}
+												left: tooltip.x + 10,
+												top: tooltip.y + 10
+											},
+											children: [
+												/* @__PURE__ */ jsx("div", {
+													className: "font-bold mb-1",
+													children: tooltip.data.fecha
+												}),
+												/* @__PURE__ */ jsxs("div", { children: ["✔ Finalizadas: ", tooltip.data.finalizadas] }),
+												/* @__PURE__ */ jsxs("div", { children: ["⚠ No asistieron: ", tooltip.data.no_asistidas] }),
+												/* @__PURE__ */ jsxs("div", { children: ["✖ Canceladas: ", tooltip.data.canceladas] })
+											]
 										}),
 										/* @__PURE__ */ jsx("div", {
-											className: "bg-accent",
-											style: { height: `${d.paid / total * 100}%` }
+											className: "flex mt-2 text-[10px] text-ink-muted",
+											children: barData.map((d, i) => /* @__PURE__ */ jsx("div", {
+												className: "flex-1 flex flex-col justify-end",
+												children: i % 5 === 0 ? new Date(d.fecha).toLocaleDateString("es-UY", {
+													day: "2-digit",
+													month: "2-digit"
+												}) : ""
+											}, i))
 										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "bg-ink",
-											style: { height: `${d.confirmed / total * 100}%` }
+										/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center gap-5 mt-4 text-xs text-ink-muted",
+											children: [
+												/* @__PURE__ */ jsxs("span", {
+													className: "flex items-center gap-1",
+													children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-green-500 rounded-sm" }), "Finalizadas"]
+												}),
+												/* @__PURE__ */ jsxs("span", {
+													className: "flex items-center gap-1",
+													children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-orange-400 rounded-sm" }), "No asistieron"]
+												}),
+												/* @__PURE__ */ jsxs("span", {
+													className: "flex items-center gap-1",
+													children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-red-500 rounded-sm" }), "Canceladas"]
+												})
+											]
 										})
 									]
-								}, i);
+								})]
 							})
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "flex items-center gap-6 mt-3 text-xs",
-							children: [
-								/* @__PURE__ */ jsxs("span", {
-									className: "flex items-center gap-1.5",
-									children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-ink rounded-sm" }), "Confirmadas 34.812"]
-								}),
-								/* @__PURE__ */ jsxs("span", {
-									className: "flex items-center gap-1.5",
-									children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-accent rounded-sm" }), "Pagadas 32.144"]
-								}),
-								/* @__PURE__ */ jsxs("span", {
-									className: "flex items-center gap-1.5",
-									children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-red-400 rounded-sm" }), "Canceladas 1.612"]
-								})
-							]
 						}),
 						/* @__PURE__ */ jsxs("div", {
 							className: "mt-6 border-t border-border pt-4",
 							children: [/* @__PURE__ */ jsx("p", {
-								className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-3",
-								children: "ACTIVIDAD RECIENTE DEL SISTEMA"
-							}), /* @__PURE__ */ jsx("div", {
-								className: "space-y-2",
-								children: recentActivity.map((a, i) => /* @__PURE__ */ jsxs("div", {
-									className: "flex items-center gap-4 text-sm",
+								className: "text-xs font-bold text-ink-muted uppercase mb-3",
+								children: "RESERVAS RECIENTES"
+							}), recentActivity.map((a, i) => /* @__PURE__ */ jsxs("div", {
+								className: "flex items-center justify-between py-2 border-b border-border last:border-b-0",
+								children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+									className: "text-sm font-medium text-ink",
+									children: a.texto
+								}), /* @__PURE__ */ jsxs("p", {
+									className: "text-xs text-ink-muted",
 									children: [
-										/* @__PURE__ */ jsx("span", {
-											className: "text-ink-muted w-12 shrink-0",
-											children: a.time
-										}),
-										/* @__PURE__ */ jsx("span", {
-											className: "text-ink flex-1",
-											children: a.text
-										}),
-										/* @__PURE__ */ jsx("span", {
-											className: a.cls,
-											children: a.status
-										})
+										a.fecha,
+										" · ",
+										a.hora
 									]
-								}, i))
-							})]
+								})] }), /* @__PURE__ */ jsx("span", {
+									className: `px-2 py-0.5 rounded-full border text-xs font-medium ${ESTADO_STYLE[a.estado] ?? "bg-gray-100 text-gray-600 border-gray-200"}`,
+									children: a.estado
+								})]
+							}, i))]
 						})
 					]
 				}), /* @__PURE__ */ jsxs("div", {
 					className: "space-y-5",
-					children: [
-						/* @__PURE__ */ jsxs("div", {
-							className: "bg-surface border border-border rounded p-5",
-							children: [
-								/* @__PURE__ */ jsxs("div", {
-									className: "flex items-center justify-between mb-4",
-									children: [/* @__PURE__ */ jsx("h3", {
-										className: "font-display text-lg text-ink",
-										children: "Verificaciones pendientes"
-									}), /* @__PURE__ */ jsx("span", {
-										className: "w-7 h-7 rounded-full bg-accent flex items-center justify-center text-ink text-sm font-bold",
-										children: "7"
-									})]
-								}),
-								/* @__PURE__ */ jsx("div", {
-									className: "space-y-3",
-									children: pending.map((p) => /* @__PURE__ */ jsxs("div", {
-										className: "flex items-center gap-3 hover:bg-bg rounded p-2 -mx-2 cursor-pointer transition-colors",
-										children: [
-											/* @__PURE__ */ jsx("div", {
-												className: `w-9 h-9 rounded-lg ${p.color} flex items-center justify-center text-white text-xs font-bold shrink-0`,
-												children: p.initials
-											}),
-											/* @__PURE__ */ jsxs("div", {
-												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ jsxs("div", {
-													className: "flex items-center gap-1.5",
-													children: [/* @__PURE__ */ jsx("p", {
-														className: "text-sm font-semibold text-ink",
-														children: p.name
-													}), p.dot && /* @__PURE__ */ jsx("span", { className: "w-2 h-2 rounded-full bg-red-500" })]
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted",
-													children: p.sub
-												})]
-											}),
-											/* @__PURE__ */ jsx("span", {
-												className: "text-ink-muted",
-												children: "›"
-											})
-										]
-									}, p.name))
-								}),
-								/* @__PURE__ */ jsx("button", {
-									className: "w-full text-sm text-ink-muted font-semibold text-center mt-3 hover:text-ink transition-colors",
-									children: "Ver todos →"
-								})
-							]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "bg-surface border border-border rounded p-5",
-							children: [/* @__PURE__ */ jsx("h3", {
-								className: "font-display text-lg text-ink mb-4",
-								children: "Top categorías"
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded p-5",
+						children: [/* @__PURE__ */ jsx("h3", {
+							className: "font-display text-lg mb-4",
+							children: "Categorias más reservadas"
+						}), serviceByType.map((s, i) => /* @__PURE__ */ jsxs("div", {
+							className: "mb-3",
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "flex justify-between text-sm",
+								children: [/* @__PURE__ */ jsx("span", { children: s.tipo }), /* @__PURE__ */ jsx("span", {
+									className: "font-semibold",
+									children: s.total
+								})]
 							}), /* @__PURE__ */ jsx("div", {
-								className: "space-y-3",
-								children: categories.map((c) => /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
-									className: "flex items-center justify-between mb-1",
-									children: [/* @__PURE__ */ jsx("span", {
-										className: "text-sm text-ink",
-										children: c.name
-									}), /* @__PURE__ */ jsx("span", {
-										className: "text-sm font-semibold text-ink",
-										children: c.count
-									})]
-								}), /* @__PURE__ */ jsx("div", {
-									className: "h-1.5 bg-border rounded-full",
-									children: /* @__PURE__ */ jsx("div", {
-										className: "h-full bg-ink rounded-full",
-										style: { width: `${c.count / maxCat * 100}%` }
-									})
-								})] }, c.name))
+								className: "h-1.5 bg-border rounded",
+								children: /* @__PURE__ */ jsx("div", {
+									className: "h-full bg-ink rounded",
+									style: { width: `${s.total / maxService * 100}%` }
+								})
 							})]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "bg-surface border border-border rounded p-4 flex items-center justify-between",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "text-sm font-semibold text-ink",
-								children: "Estado del sistema"
-							}), /* @__PURE__ */ jsx("span", {
-								className: "badge badge-confirmada",
-								children: "OPERATIVO"
+						}, i))]
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded p-5",
+						children: [/* @__PURE__ */ jsx("h3", {
+							className: "font-display text-lg mb-4",
+							children: "Servicios más reservados"
+						}), topServices.map((s, i) => /* @__PURE__ */ jsxs("div", {
+							className: "mb-3",
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "flex justify-between text-sm",
+								children: [/* @__PURE__ */ jsx("span", { children: s.nombre }), /* @__PURE__ */ jsx("span", {
+									className: "font-semibold",
+									children: s.total
+								})]
+							}), /* @__PURE__ */ jsx("div", {
+								className: "h-1.5 bg-border rounded",
+								children: /* @__PURE__ */ jsx("div", {
+									className: "h-full bg-ink rounded",
+									style: { width: `${s.total / Math.max(...topServices.map((x) => x.total), 1) * 100}%` }
+								})
 							})]
-						})
-					]
+						}, i))]
+					})]
 				})]
 			})
 		]
@@ -10700,142 +10648,77 @@ var dashboard_default = UNSAFE_withComponentProps(function AdminDashboard() {
 //#endregion
 //#region app/routes/admin/users.tsx
 var users_exports = /* @__PURE__ */ __exportAll({ default: () => users_default });
-var users = [
-	{
-		initials: "LP",
-		name: "Lucía Pérez",
-		email: "lucia@gmail.com",
-		role: "Cliente",
-		sessions: 14,
-		joined: "15 mar 2026",
-		status: "activo",
-		color: "bg-violet-500"
-	},
-	{
-		initials: "MO",
-		name: "María Ortiz",
-		email: "maria.ortiz@cita.pro",
-		role: "Profesional",
-		sessions: 234,
-		joined: "10 ene 2025",
-		status: "verificado",
-		color: "bg-orange-400"
-	},
-	{
-		initials: "PY",
-		name: "Pedro Yáñez",
-		email: "pedro@gmail.com",
-		role: "Profesional",
-		sessions: 0,
-		joined: "hoy",
-		status: "pendiente",
-		color: "bg-teal-500"
-	},
-	{
-		initials: "CR",
-		name: "Carlos Ruiz",
-		email: "carlos@gmail.com",
-		role: "Cliente",
-		sessions: 3,
-		joined: "20 abr 2026",
-		status: "activo",
-		color: "bg-purple-400"
-	}
-];
-var badgeCls$1 = {
-	activo: "badge badge-confirmada",
-	verificado: "badge badge-pagada",
-	pendiente: "badge badge-pendiente"
-};
 var users_default = UNSAFE_withComponentProps(function AdminUsers() {
-	return /* @__PURE__ */ jsxs("div", {
-		className: "p-4 md:p-8 max-w-5xl mx-auto",
-		children: [/* @__PURE__ */ jsxs("div", {
-			className: "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6",
-			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
-				className: "font-display text-3xl text-ink",
-				children: "Usuarios"
-			}), /* @__PURE__ */ jsx("p", {
-				className: "text-ink-muted mt-1",
-				children: "14.328 usuarios totales"
-			})] }), /* @__PURE__ */ jsxs("div", {
-				className: "flex flex-wrap items-center gap-2",
-				children: [/* @__PURE__ */ jsx("input", {
-					className: "border border-border rounded px-4 py-2 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink w-full sm:w-48",
-					placeholder: "Buscar usuario..."
-				}), /* @__PURE__ */ jsxs("select", {
-					className: "border border-border rounded px-4 py-2 text-sm bg-surface text-ink focus:outline-none w-full sm:w-auto",
-					children: [
-						/* @__PURE__ */ jsx("option", { children: "Todos los roles" }),
-						/* @__PURE__ */ jsx("option", { children: "Cliente" }),
-						/* @__PURE__ */ jsx("option", { children: "Profesional" })
-					]
-				})]
-			})]
+	const { token } = useAuth();
+	const [clients, setClients] = useState([]);
+	const [professionals, setProfessionals] = useState([]);
+	useEffect(() => {
+		if (!token) return;
+		const loadUsers = async () => {
+			try {
+				const [resClients, resPros] = await Promise.all([api.get("/admin/clients", token), api.get("/admin/professionals", token)]);
+				if (resClients.success) setClients(resClients.data);
+				if (resPros.success) setProfessionals(resPros.data);
+			} catch (e) {
+				console.error("Error loading users:", e);
+			}
+		};
+		loadUsers();
+	}, [token]);
+	const getInitials = (name) => name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+	const Table = ({ title, data }) => /* @__PURE__ */ jsxs("div", {
+		className: "mb-10",
+		children: [/* @__PURE__ */ jsx("h2", {
+			className: "text-xl font-bold text-ink mb-3",
+			children: title
 		}), /* @__PURE__ */ jsx("div", {
 			className: "border border-border rounded overflow-x-auto",
 			children: /* @__PURE__ */ jsxs("div", {
-				style: { minWidth: "580px" },
+				style: { minWidth: "500px" },
 				children: [/* @__PURE__ */ jsx("div", {
-					className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
+					className: "grid grid-cols-24 px-5 py-3 border-b border-border bg-bg",
 					children: [
 						"USUARIO",
 						"EMAIL",
-						"ROL",
 						"SESIONES",
 						"DESDE",
-						"ESTADO",
 						""
 					].map((h, i) => /* @__PURE__ */ jsx("div", {
-						className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-3" : i === 1 ? "col-span-3" : i === 2 ? "col-span-1" : i === 3 ? "col-span-1" : i === 4 ? "col-span-2" : i === 5 ? "col-span-1" : "col-span-1"}`,
+						className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-7" : i === 1 ? "col-span-7" : i === 2 ? "col-span-3 text-center" : i === 3 ? "col-span-5 text-center" : "col-span-2"}`,
 						children: h
 					}, i))
-				}), users.map((u) => /* @__PURE__ */ jsxs("div", {
-					className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
+				}), data.map((u) => /* @__PURE__ */ jsxs("div", {
+					className: "grid grid-cols-24 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
 					children: [
 						/* @__PURE__ */ jsxs("div", {
-							className: "col-span-3 flex items-center gap-3",
+							className: "col-span-7 flex items-center gap-3",
 							children: [/* @__PURE__ */ jsx("div", {
-								className: `w-9 h-9 rounded-lg ${u.color} flex items-center justify-center text-white text-xs font-bold shrink-0`,
-								children: u.initials
+								className: "w-9 h-9 rounded-lg bg-violet-500 flex items-center justify-center text-white text-xs font-bold",
+								children: getInitials(u.name)
 							}), /* @__PURE__ */ jsx("span", {
 								className: "text-sm font-semibold text-ink",
 								children: u.name
 							})]
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "col-span-3",
+							className: "col-span-7 min-w-0",
 							children: /* @__PURE__ */ jsx("span", {
-								className: "text-sm text-ink-muted",
+								className: "text-sm text-ink-muted block truncate sm:truncate-none sm:break-words",
 								children: u.email
 							})
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "col-span-1",
-							children: /* @__PURE__ */ jsx("span", {
-								className: "text-xs font-bold text-ink-muted uppercase",
-								children: u.role
-							})
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-1",
+							className: "col-span-3 text-center",
 							children: /* @__PURE__ */ jsx("span", {
 								className: "text-sm text-ink",
 								children: u.sessions
 							})
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "col-span-2",
+							className: "col-span-5 text-center",
 							children: /* @__PURE__ */ jsx("span", {
-								className: "text-sm text-ink-muted",
+								className: "text-sm text-ink-muted justify items-center",
 								children: u.joined
-							})
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-1",
-							children: /* @__PURE__ */ jsx("span", {
-								className: badgeCls$1[u.status],
-								children: u.status.toUpperCase()
 							})
 						}),
 						/* @__PURE__ */ jsx("div", {
@@ -10846,156 +10729,178 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 							})
 						})
 					]
-				}, u.name))]
+				}, u.email))]
 			})
 		})]
+	});
+	return /* @__PURE__ */ jsxs("div", {
+		className: "p-4 md:p-8 max-w-5xl mx-auto",
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "mb-6",
+				children: [/* @__PURE__ */ jsx("h1", {
+					className: "font-display text-3xl text-ink",
+					children: "Usuarios"
+				}), /* @__PURE__ */ jsx("p", {
+					className: "text-ink-muted mt-1",
+					children: "Gestión de clientes y profesionales"
+				})]
+			}),
+			/* @__PURE__ */ jsx(Table, {
+				title: "Clientes",
+				data: clients
+			}),
+			/* @__PURE__ */ jsx(Table, {
+				title: "Profesionales",
+				data: professionals
+			})
+		]
 	});
 });
 //#endregion
 //#region app/routes/admin/payments.tsx
 var payments_exports = /* @__PURE__ */ __exportAll({ default: () => payments_default });
-var transactions = [
-	{
-		date: "22 may",
-		from: "Lucía Pérez",
-		to: "María Ortiz",
-		service: "Sesión individual",
-		amount: 48,
-		fee: 4.8,
-		net: 43.2,
-		status: "liquidado"
-	},
-	{
-		date: "21 may",
-		from: "Carlos Ruiz",
-		to: "Andrés Calleja",
-		service: "Entrenamiento",
-		amount: 35,
-		fee: 3.5,
-		net: 31.5,
-		status: "pendiente"
-	},
-	{
-		date: "20 may",
-		from: "Lucía Pérez",
-		to: "Liana Souza",
-		service: "Paquete 8 sesiones",
-		amount: 320,
-		fee: 32,
-		net: 288,
-		status: "liquidado"
-	}
-];
 var badgeCls = {
-	liquidado: "badge badge-confirmada",
+	aprobado: "badge badge-confirmada",
 	pendiente: "badge badge-pendiente"
 };
 var payments_default = UNSAFE_withComponentProps(function AdminPayments() {
+	const { token } = useAuth();
+	const [summary, setSummary] = useState(null);
+	const [transactions, setTransactions] = useState([]);
+	useEffect(() => {
+		if (!token) return;
+		const loadPayments = async () => {
+			try {
+				const [res, resSummary] = await Promise.all([api.get("/admin/pagos", token), api.get("/admin/pagosTotales", token)]);
+				if (res.success) setTransactions(res.data);
+				if (resSummary.success) setSummary(resSummary.data);
+			} catch (e) {
+				console.error("Error loading payments:", e);
+			}
+		};
+		loadPayments();
+	}, [token]);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [
-			/* @__PURE__ */ jsxs("div", {
+			/* @__PURE__ */ jsx("div", {
 				className: "flex items-center justify-between mb-6",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
+				children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
 					className: "font-display text-3xl text-ink",
 					children: "Pagos"
 				}), /* @__PURE__ */ jsx("p", {
 					className: "text-ink-muted mt-1",
 					children: "Todas las transacciones de la plataforma"
-				})] }), /* @__PURE__ */ jsx("button", {
-					className: "border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink",
-					children: "Exportar CSV"
-				})]
+				})] })
 			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "grid grid-cols-2 md:grid-cols-4 gap-4 mb-8",
+			/* @__PURE__ */ jsxs("div", {
+				className: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-8",
 				children: [
-					{
-						label: "GMV DEL MES",
-						value: "€1.84M"
-					},
-					{
-						label: "COMISIONES",
-						value: "€184K"
-					},
-					{
-						label: "LIQUIDACIONES PENDIENTES",
-						value: "€890"
-					},
-					{
-						label: "DISPUTAS ABIERTAS",
-						value: "3"
-					}
-				].map((c) => /* @__PURE__ */ jsxs("div", {
-					className: "bg-surface border border-border rounded p-5",
-					children: [/* @__PURE__ */ jsx("p", {
-						className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2",
-						children: c.label
-					}), /* @__PURE__ */ jsx("p", {
-						className: "font-display text-2xl text-ink font-bold",
-						children: c.value
-					})]
-				}, c.label))
+					/* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded p-5",
+						children: [/* @__PURE__ */ jsx("p", {
+							className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2",
+							children: "TOTAL"
+						}), /* @__PURE__ */ jsxs("p", {
+							className: "font-display text-2xl text-ink font-bold",
+							children: ["€", summary?.total ?? 0]
+						})]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded p-5",
+						children: [/* @__PURE__ */ jsx("p", {
+							className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2",
+							children: "PAGADO"
+						}), /* @__PURE__ */ jsxs("p", {
+							className: "font-display text-2xl text-ink font-bold text-green-600",
+							children: ["€", summary?.pagado ?? 0]
+						})]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded p-5",
+						children: [/* @__PURE__ */ jsx("p", {
+							className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2",
+							children: "PENDIENTE"
+						}), /* @__PURE__ */ jsxs("p", {
+							className: "font-display text-2xl text-ink font-bold text-yellow-600",
+							children: ["€", summary?.pendiente ?? 0]
+						})]
+					})
+				]
 			}),
 			/* @__PURE__ */ jsx("div", {
 				className: "border border-border rounded overflow-x-auto",
 				children: /* @__PURE__ */ jsxs("div", {
 					style: { minWidth: "640px" },
-					children: [/* @__PURE__ */ jsx("div", {
-						className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "flex px-5 py-3 border-b border-border bg-bg text-xs font-bold text-ink-muted uppercase tracking-widest",
 						children: [
-							"FECHA",
-							"DE",
-							"PARA",
-							"SERVICIO",
-							"TOTAL",
-							"COMISIÓN",
-							"NETO",
-							"ESTADO"
-						].map((h, i) => /* @__PURE__ */ jsx("div", {
-							className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-1" : i === 1 ? "col-span-2" : i === 2 ? "col-span-2" : i === 3 ? "col-span-2" : "col-span-1"}`,
-							children: h
-						}, i))
+							/* @__PURE__ */ jsx("div", {
+								className: "w-24",
+								children: "FECHA"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "flex-[2]",
+								children: "DE"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "flex-[2]",
+								children: "PARA"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "flex-[3]",
+								children: "SERVICIO"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "w-20 text-left",
+								children: "TOTAL"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "w-24 text-center",
+								children: "MÉTODO"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "w-28 text-center",
+								children: "ESTADO"
+							})
+						]
 					}), transactions.map((t, i) => /* @__PURE__ */ jsxs("div", {
-						className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors text-sm bg-surface",
+						className: "flex px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors text-sm bg-surface",
 						children: [
 							/* @__PURE__ */ jsx("div", {
-								className: "col-span-1 text-ink-muted",
-								children: t.date
+								className: "w-24 text-ink-muted",
+								children: t.fecha
 							}),
 							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2 text-ink font-semibold",
-								children: t.from
+								className: "flex-[2] text-ink font-semibold truncate pr-2",
+								children: t.de
 							}),
 							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2 text-ink font-semibold",
-								children: t.to
+								className: "flex-[2] text-ink font-semibold truncate pr-2",
+								children: t.para
 							}),
 							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2 text-ink-muted",
-								children: t.service
+								className: "flex-[3] text-ink-muted truncate pr-2",
+								children: t.servicio
 							}),
 							/* @__PURE__ */ jsxs("div", {
-								className: "col-span-1 font-bold text-ink",
-								children: ["€", t.amount]
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "col-span-1 text-ink-muted",
-								children: ["€", t.fee]
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "col-span-1 font-bold text-ink",
-								children: ["€", t.net]
+								className: "w-20 text-left font-bold text-ink",
+								children: ["$", t.total]
 							}),
 							/* @__PURE__ */ jsx("div", {
-								className: "col-span-1",
+								className: "w-24 text-center text-ink-muted uppercase text-xs",
+								children: t.metodo
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "w-28 text-center",
 								children: /* @__PURE__ */ jsx("span", {
-									className: badgeCls[t.status],
-									children: t.status.toUpperCase()
+									className: badgeCls[t.estado],
+									children: t.estado?.toUpperCase()
 								})
 							})
 						]
-					}, i))]
+					}))]
 				})
 			})
 		]
@@ -11494,9 +11399,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-BDqg2nkM.js",
+			"module": "/assets/root-Dtx0gCyo.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
-			"css": ["/assets/root-CHIwybwR.css"],
+			"css": ["/assets/root-DFPc2p_x.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -11817,10 +11722,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-BQj9QwJT.js",
+			"module": "/assets/notifications-D4MNgO-S.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/NotificationContext-DJ39hRro.js",
+				"/assets/bell-B_0dwYTY.js",
 				"/assets/AuthContext-DzGty-Aa.js"
 			],
 			"css": [],
@@ -12081,10 +11987,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-Bf3tWNlq.js",
+			"module": "/assets/notifications-BGXg4K2W.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/NotificationContext-DJ39hRro.js",
+				"/assets/bell-B_0dwYTY.js",
 				"/assets/AuthContext-DzGty-Aa.js"
 			],
 			"css": [],
@@ -12127,8 +12034,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-DP-5Ro_j.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
+			"module": "/assets/dashboard-B6uF7RTo.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12148,8 +12055,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/users-DJG_6ArX.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
+			"module": "/assets/users-BfExO8CR.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12169,8 +12076,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-BheMBXI5.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
+			"module": "/assets/payments-CZPjdXSL.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12241,8 +12148,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-ff9cbe56.js",
-	"version": "ff9cbe56",
+	"url": "/assets/manifest-e1cc3276.js",
+	"version": "e1cc3276",
 	"sri": void 0
 };
 //#endregion
