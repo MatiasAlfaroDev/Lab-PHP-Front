@@ -29,6 +29,8 @@ export function getEcho(token?: string) {
           Accept: "application/json",
         },
       },
+
+      withCredentials: true,
     });
   }
 

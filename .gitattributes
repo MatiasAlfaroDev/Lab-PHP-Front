@@ -1,0 +1,13 @@
+# Merge strategy "ours": on a local merge, conflicts on these paths are
+# resolved by keeping the version from the branch you are merging INTO
+# (e.g. main's production build artifact wins when merging development -> main).
+#
+# This only applies to LOCAL merges (git merge / git merge-tree), not to
+# merges performed via the GitHub UI "Merge pull request" button, and only
+# protects files that exist on BOTH branches (modify/modify). New files
+# added on only one side are still incorporated normally.
+#
+# One-time setup required in every local clone:
+#   git config merge.ours.driver true
+
+build/server/index.js merge=ours

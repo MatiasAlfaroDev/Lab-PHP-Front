@@ -292,7 +292,6 @@ export default function Services() {
                   style={{ gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <Toggle checked={activo} onChange={() => toggleActivo(s)} />
                     <div className="min-w-0">
                       <p className={`text-sm font-semibold truncate ${activo ? "text-ink" : "text-ink-muted"}`}>
                         {s.nombre}

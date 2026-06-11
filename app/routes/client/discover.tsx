@@ -130,7 +130,7 @@ export default function Discover() {
   const filteredPkg = paquetes.filter((p) => Number(p.precio_total) <= priceRange);
 
   const resetFilters = () => {
-    setSelectedTypes(serviceTypes.map((t) => t.key));
+    setSelectedTypes([]);
     setSelectedModality("Todas");
     setPriceRange(maxPrice);
   };
@@ -243,9 +243,6 @@ export default function Discover() {
               }
             </p>
           </div>
-          <button className="relative p-2 rounded-xl border border-border bg-surface hover:bg-bg cursor-pointer">
-            <ion-icon name="notifications-outline" style={{ fontSize: "18px" }} />
-          </button>
         </div>
 
         {/* Tabs */}

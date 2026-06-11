@@ -8,6 +8,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
 import { ToastContainer, toast } from "react-toastify";
+import { Bell } from "lucide-react";
 import { Room, Track } from "livekit-client";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
@@ -827,10 +828,10 @@ function getEcho(token) {
 		window.Pusher = Pusher;
 		echo = new Echo({
 			broadcaster: "reverb",
-			key: void 0,
-			wsHost: void 0,
-			wsPort: NaN,
-			wssPort: NaN,
+			key: "cgux9icc65a7v6i6ia0v",
+			wsHost: "127.0.0.1",
+			wsPort: 8080,
+			wssPort: 8080,
 			forceTLS: false,
 			enabledTransports: ["ws", "wss"],
 			authEndpoint: "http://localhost:8000/broadcasting/auth",
@@ -840,6 +841,20 @@ function getEcho(token) {
 			} }
 		});
 	}
+	echo = new Echo({
+		broadcaster: "reverb",
+		key: "cgux9icc65a7v6i6ia0v",
+		wsHost: "127.0.0.1",
+		wsPort: 8080,
+		forceTLS: false,
+		enabledTransports: ["ws", "wss"],
+		authEndpoint: "http://localhost:8000/broadcasting/auth",
+		auth: { headers: {
+			Authorization: token ? `Bearer ${token}` : "",
+			Accept: "application/json"
+		} },
+		withCredentials: true
+	});
 	return echo;
 }
 //#endregion
@@ -854,7 +869,6 @@ function NotificationProvider({ children, userId }) {
 			if (res?.data) setNotifications(res.data);
 		} catch (err) {
 			console.error("Error cargando notificaciones", err);
-			setNotifications([]);
 		}
 	};
 	const unreadCount = notifications.filter((n) => n.read_at === null).length;
@@ -876,14 +890,20 @@ function NotificationProvider({ children, userId }) {
 		if (!userId || !token) return;
 		const echo = getEcho(token);
 		if (!echo) return;
-		echo.private(`user.${userId}`).notification((notification) => {
+		const channelName = `user.${userId}`;
+		echo.private(channelName).notification((notification) => {
+			console.log("WS NOTIFICATION:", notification);
 			setNotifications((prev) => {
 				if (prev.some((n) => n.id === notification.id)) return prev;
-				return [notification, ...prev];
+				return [{
+					id: notification.id,
+					read_at: null,
+					data: notification.data ?? notification
+				}, ...prev];
 			});
 		});
 		return () => {
-			echo.leave(`user.${userId}`);
+			echo.leave(channelName);
 		};
 	}, [userId, token]);
 	return /* @__PURE__ */ jsx(NotificationContext.Provider, {
@@ -948,6 +968,10 @@ function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
 	const { user, logout } = useAuth();
 	const navigate = useNavigate();
 	const { unreadCount } = useGlobalNotifications();
+	function getInitials(name) {
+		if (!name) return "U";
+		return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+	}
 	const effectiveCollapsed = collapsed && !isMobileOpen;
 	return /* @__PURE__ */ jsxs(Fragment, { children: [isMobileOpen && /* @__PURE__ */ jsx("div", {
 		className: "fixed inset-0 bg-black/50 z-40 md:hidden",
@@ -1039,7 +1063,7 @@ function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
 						onClick: () => navigate("/client/profile"),
 						title: user?.name ?? "Usuario",
 						className: "w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all",
-						children: user?.initials ?? "LP"
+						children: getInitials(user?.name)
 					})
 				}) : /* @__PURE__ */ jsxs("div", {
 					className: "flex items-center gap-3 px-3 py-2",
@@ -1051,7 +1075,7 @@ function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
 							},
 							title: "Editar perfil",
 							className: "w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all",
-							children: user?.initials ?? "LP"
+							children: getInitials(user?.name)
 						}),
 						/* @__PURE__ */ jsxs("div", {
 							className: "flex-1 min-w-0",
@@ -1364,7 +1388,7 @@ var dashboard_default$2 = UNSAFE_withComponentProps(function ClientDashboard() {
 		className: "p-4 md:p-8 max-w-5xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
-				className: "flex items-start justify-between mb-8",
+				className: "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8",
 				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h1", {
 					className: "font-display italic text-3xl text-ink",
 					children: ["Hola, ", user?.name]
@@ -1379,7 +1403,7 @@ var dashboard_default$2 = UNSAFE_withComponentProps(function ClientDashboard() {
 					]
 				})] }), /* @__PURE__ */ jsx(Link, {
 					to: "/client/discover",
-					className: "flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors",
+					className: "self-start sm:self-auto flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors",
 					children: "+ Nueva reserva"
 				})]
 			}),
@@ -1903,9 +1927,9 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 									className: "p-4",
 									children: [
 										/* @__PURE__ */ jsxs("div", {
-											className: "flex items-start gap-3 mb-3",
+											className: "flex items-start gap-3 mb-3 relative",
 											children: [/* @__PURE__ */ jsx("div", {
-												className: `w-9 h-9 rounded-full ${colors.avatar} flex items-center justify-center text-white text-xs font-semibold shrink-0 -mt-7 border-2 border-white`,
+												className: `w-9 h-9 rounded-full ${colors.avatar} flex items-center justify-center text-white text-xs font-semibold border-2 border-white`,
 												children: initials
 											}), /* @__PURE__ */ jsxs("div", {
 												className: "min-w-0",
@@ -2365,6 +2389,11 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 	const { token } = useAuth();
 	const [searchParams] = useSearchParams();
 	const compraItemId = searchParams.get("compraItem");
+	const reprogramarId = searchParams.get("reprogramar");
+	const isReprogramando = !!reprogramarId;
+	const [reprogramado, setReprogramado] = useState(false);
+	const [reservaOriginal, setReservaOriginal] = useState(null);
+	const [loadingReserva, setLoadingReserva] = useState(false);
 	const [showModal, setShowModal] = useState(false);
 	const [profile, setProfile] = useState(null);
 	const [loadingProfile, setLoadingProfile] = useState(true);
@@ -2390,7 +2419,8 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 		api.get(`/profesionales/${id}`).then((res) => {
 			if (res.success) {
 				setProfile(res.data);
-				setSelectedService(res.data.profesional?.servicios?.[0] ?? null);
+				const first = res.data.profesional?.servicios?.[0] ?? null;
+				if (!reprogramarId) setSelectedService(first);
 			} else setProfileError("Profesional no encontrado");
 		}).catch((e) => setProfileError(e.message)).finally(() => setLoadingProfile(false));
 	}, [id]);
@@ -2417,6 +2447,36 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 			if (res.success) setSlots(res.data);
 		}).catch((e) => setSlotsError(e.message ?? "Error al cargar horarios")).finally(() => setLoadingSlots(false));
 	}, [selectedDate, selectedService]);
+	useEffect(() => {
+		if (!reprogramarId) return;
+		setLoadingReserva(true);
+		api.get(`/reservas/${reprogramarId}`, token).then((res) => {
+			if (!res.success) return;
+			setReservaOriginal(res.data);
+		}).catch(console.error).finally(() => setLoadingReserva(false));
+	}, [reprogramarId]);
+	useEffect(() => {
+		if (!profile || !reservaOriginal) return;
+		const servicioId = reservaOriginal.servicio_id;
+		const servicio = profile.profesional.servicios.find((s) => Number(s.servicio_id) === Number(servicioId));
+		if (!servicio) return;
+		setSelectedService(servicio);
+		setActiveTab("Servicios");
+	}, [profile, reservaOriginal]);
+	const handleReprogramar = async () => {
+		if (!reprogramarId || !selectedService || !selectedDate || !selectedSlot) return;
+		try {
+			await api.put(`/reservas/${reprogramarId}/reprogramar`, {
+				servicio_id: selectedService.servicio_id,
+				fecha: selectedDate,
+				hora: selectedSlot.hora,
+				modalidad: selectedSlot.modalidad
+			}, token);
+			setReprogramado(true);
+		} catch (e) {
+			console.error(e);
+		}
+	};
 	if (loadingProfile) return /* @__PURE__ */ jsxs("div", {
 		className: "p-6 max-w-6xl mx-auto animate-pulse space-y-4",
 		children: [
@@ -2427,6 +2487,10 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 				children: [/* @__PURE__ */ jsx("div", { className: "lg:col-span-2 h-64 bg-surface border border-border rounded-2xl" }), /* @__PURE__ */ jsx("div", { className: "h-64 bg-surface border border-border rounded-2xl" })]
 			})
 		]
+	});
+	if (loadingReserva) return /* @__PURE__ */ jsx("div", {
+		className: "p-6 max-w-6xl mx-auto flex items-center justify-center py-24 text-sm text-ink-muted",
+		children: "Cargando reserva..."
 	});
 	if (profileError || !profile) return /* @__PURE__ */ jsxs("div", {
 		className: "p-6 flex flex-col items-center justify-center py-24 text-center",
@@ -2644,6 +2708,14 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 							})
 						] }),
 						/* @__PURE__ */ jsx("hr", { className: "border-border" }),
+						isReprogramando && !reprogramado && /* @__PURE__ */ jsx("div", {
+							className: "mb-3 bg-blue-100 text-blue-700 px-3 py-2 rounded-xl text-sm",
+							children: "Estás reprogramando una reserva. Elegí nueva fecha y horario."
+						}),
+						reprogramado && /* @__PURE__ */ jsx("div", {
+							className: "mb-3 bg-green-100 text-green-700 px-3 py-2 rounded-xl text-sm",
+							children: "Reserva reprogramada correctamente ✔"
+						}),
 						/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
 							className: "text-xs font-semibold text-ink-muted uppercase tracking-wide mb-3",
 							children: "Seleccioná una fecha"
@@ -2702,7 +2774,11 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 						})] })] }),
 						/* @__PURE__ */ jsx("button", {
 							disabled: !selectedSlot,
-							onClick: () => selectedSlot && setShowModal(true),
+							onClick: () => {
+								if (!selectedSlot) return;
+								if (isReprogramando) handleReprogramar();
+								else setShowModal(true);
+							},
 							className: `w-full font-medium py-3 rounded-xl transition-colors ${selectedSlot ? "bg-primary hover:bg-primary-hover text-white" : "bg-primary/30 text-white cursor-not-allowed"}`,
 							children: selectedSlot ? "Reservar" : "Seleccioná fecha y horario"
 						})
@@ -2712,7 +2788,7 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 					})
 				}) })]
 			}),
-			showModal && selectedService && selectedDate && selectedSlot && /* @__PURE__ */ jsx(BookingModal, {
+			showModal && !isReprogramando && selectedService && selectedDate && selectedSlot && /* @__PURE__ */ jsx(BookingModal, {
 				service: selectedService,
 				date: selectedDate,
 				slot: selectedSlot,
@@ -3947,7 +4023,7 @@ var messages_default$1 = UNSAFE_withComponentProps(function ClientMessages() {
 //#endregion
 //#region app/routes/client/payments.tsx
 var payments_exports$2 = /* @__PURE__ */ __exportAll({ default: () => payments_default$2 });
-var badgeCls$3 = {
+var badgeCls$2 = {
 	pendiente: "badge badge-pendiente",
 	aprobado: "badge badge-pagada",
 	rechazado: "badge badge-cancelada",
@@ -4162,117 +4238,123 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 					className: "text-lg font-semibold text-ink mb-3",
 					children: "Historial de reservas"
 				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "bg-surface border border-border rounded-2xl overflow-hidden",
-					children: [/* @__PURE__ */ jsxs("div", {
-						className: "grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase",
-						children: [
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2",
-								children: "Fecha"
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-4",
-								children: "Servicio"
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-3",
-								children: "Profesional"
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2",
-								children: "Monto"
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-1",
-								children: "Estado"
-							})
-						]
-					}), conPago.length === 0 ? /* @__PURE__ */ jsx("p", {
-						className: "px-5 py-6 text-sm text-ink-muted",
-						children: "Sin registros"
-					}) : conPago.map((r) => /* @__PURE__ */ jsxs("div", {
-						className: "grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0",
-						children: [
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2 text-sm text-ink-muted",
-								children: r.fecha
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-4 text-sm text-ink",
-								children: r.servicio.nombre
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-3 text-sm text-ink-muted",
-								children: r.servicio.profesional_nombre
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "col-span-2 font-bold text-ink",
-								children: ["$", r.servicio.precio]
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-1",
-								children: /* @__PURE__ */ jsx("span", {
-									className: badgeCls$3[r.pago?.estado ?? "pendiente"],
-									children: (r.pago?.estado ?? "pendiente").toUpperCase()
+				/* @__PURE__ */ jsx("div", {
+					className: "border border-border rounded-2xl overflow-x-auto",
+					children: /* @__PURE__ */ jsxs("div", {
+						style: { minWidth: "520px" },
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase bg-bg",
+							children: [
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-2",
+									children: "Fecha"
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-4",
+									children: "Servicio"
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-3",
+									children: "Profesional"
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-2",
+									children: "Monto"
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-1",
+									children: "Estado"
 								})
-							})
-						]
-					}, r.reserva_id))]
+							]
+						}), conPago.length === 0 ? /* @__PURE__ */ jsx("p", {
+							className: "px-5 py-6 text-sm text-ink-muted bg-surface",
+							children: "Sin registros"
+						}) : conPago.map((r) => /* @__PURE__ */ jsxs("div", {
+							className: "grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0 bg-surface",
+							children: [
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-2 text-sm text-ink-muted",
+									children: r.fecha
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-4 text-sm text-ink",
+									children: r.servicio.nombre
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-3 text-sm text-ink-muted",
+									children: r.servicio.profesional_nombre
+								}),
+								/* @__PURE__ */ jsxs("div", {
+									className: "col-span-2 font-bold text-ink",
+									children: ["$", r.servicio.precio]
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-1",
+									children: /* @__PURE__ */ jsx("span", {
+										className: badgeCls$2[r.pago?.estado ?? "pendiente"],
+										children: (r.pago?.estado ?? "pendiente").toUpperCase()
+									})
+								})
+							]
+						}, r.reserva_id))]
+					})
 				}),
 				/* @__PURE__ */ jsx("h2", {
 					className: "text-lg font-semibold text-ink mb-3 mt-8",
 					children: "Historial de paquetes"
 				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "bg-surface border border-border rounded-2xl overflow-hidden",
-					children: [/* @__PURE__ */ jsxs("div", {
-						className: "grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase",
-						children: [
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-3",
-								children: "Fecha"
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-5",
-								children: "Paquete"
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2",
-								children: "Monto"
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2",
-								children: "Estado"
-							})
-						]
-					}), comprasPaquetes.length === 0 ? /* @__PURE__ */ jsx("p", {
-						className: "px-5 py-6 text-sm text-ink-muted",
-						children: "Sin registros"
-					}) : comprasPaquetes.map((compra) => /* @__PURE__ */ jsxs("div", {
-						className: "grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0",
-						children: [
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-3 text-sm text-ink-muted",
-								children: compra.fecha_compra
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-5 text-sm text-ink",
-								children: compra.paquete.nombre
-							}),
-							/* @__PURE__ */ jsxs("div", {
-								className: "col-span-2 font-bold text-ink",
-								children: ["$", compra.paquete.precio_total]
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2",
-								children: /* @__PURE__ */ jsx("span", {
-									className: badgeCls$3[compra.pago?.estado ?? "pendiente"],
-									children: (compra.pago?.estado ?? "pendiente").toUpperCase()
+				/* @__PURE__ */ jsx("div", {
+					className: "border border-border rounded-2xl overflow-x-auto",
+					children: /* @__PURE__ */ jsxs("div", {
+						style: { minWidth: "400px" },
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase bg-bg",
+							children: [
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-3",
+									children: "Fecha"
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-5",
+									children: "Paquete"
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-2",
+									children: "Monto"
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-2",
+									children: "Estado"
 								})
-							})
-						]
-					}, compra.compra_paquete_id))]
+							]
+						}), comprasPaquetes.length === 0 ? /* @__PURE__ */ jsx("p", {
+							className: "px-5 py-6 text-sm text-ink-muted bg-surface",
+							children: "Sin registros"
+						}) : comprasPaquetes.map((compra) => /* @__PURE__ */ jsxs("div", {
+							className: "grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0 bg-surface",
+							children: [
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-3 text-sm text-ink-muted",
+									children: compra.fecha_compra
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-5 text-sm text-ink",
+									children: compra.paquete.nombre
+								}),
+								/* @__PURE__ */ jsxs("div", {
+									className: "col-span-2 font-bold text-ink",
+									children: ["$", compra.paquete.precio_total]
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-2",
+									children: /* @__PURE__ */ jsx("span", {
+										className: badgeCls$2[compra.pago?.estado ?? "pendiente"],
+										children: (compra.pago?.estado ?? "pendiente").toUpperCase()
+									})
+								})
+							]
+						}, compra.compra_paquete_id))]
+					})
 				})
 			]
 		}),
@@ -4280,7 +4362,7 @@ var payments_default$2 = UNSAFE_withComponentProps(function ClientPayments() {
 			className: "fixed inset-0 bg-black/40 flex items-center justify-center z-50",
 			onClick: () => setSelected(null),
 			children: /* @__PURE__ */ jsxs("div", {
-				className: "bg-surface border border-border rounded-2xl p-6 w-[480px] mx-4 space-y-4",
+				className: "bg-surface border border-border rounded-2xl p-6 w-full max-w-[480px] mx-4 space-y-4",
 				onClick: (e) => e.stopPropagation(),
 				children: [
 					/* @__PURE__ */ jsx("h2", {
@@ -4359,12 +4441,19 @@ var notifications_exports$1 = /* @__PURE__ */ __exportAll({ default: () => notif
 var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPage() {
 	const { notifications, unreadCount, loadNotifications, markAsRead, markAllAsRead } = useGlobalNotifications();
 	useEffect(() => {
-		loadNotifications();
-	}, []);
+		const init = async () => {
+			try {
+				await loadNotifications();
+			} catch (err) {
+				console.error("Error cargando notificaciones", err);
+			}
+		};
+		init();
+	}, [loadNotifications]);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [/* @__PURE__ */ jsxs("div", {
-			className: "flex items-center justify-between mb-6",
+			className: "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6",
 			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
 				className: "font-display text-3xl text-ink",
 				children: "Notificaciones"
@@ -4378,13 +4467,13 @@ var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPa
 				]
 			})] }), /* @__PURE__ */ jsx("button", {
 				onClick: markAllAsRead,
-				className: "text-sm font-semibold border px-4 py-2 rounded bg-surface hover:bg-bg transition",
+				className: "self-start sm:self-auto text-sm font-semibold border px-4 py-2 rounded bg-surface hover:bg-bg transition",
 				children: "✓ Marcar todas como leídas"
 			})]
 		}), /* @__PURE__ */ jsxs("div", {
-			className: "grid grid-cols-3 gap-8",
+			className: "grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8",
 			children: [/* @__PURE__ */ jsx("div", {
-				className: "col-span-2 space-y-3",
+				className: "lg:col-span-2 space-y-3",
 				children: notifications.length === 0 ? /* @__PURE__ */ jsx("div", {
 					className: "border rounded p-6 text-center",
 					children: /* @__PURE__ */ jsx("p", {
@@ -4397,7 +4486,7 @@ var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPa
 						className: "flex gap-3",
 						children: [/* @__PURE__ */ jsx("div", {
 							className: "w-10 h-10 rounded bg-accent/20 flex items-center justify-center",
-							children: "🔔"
+							children: /* @__PURE__ */ jsx(Bell, { className: "w-5 h-5 text-ink" })
 						}), /* @__PURE__ */ jsxs("div", {
 							className: "flex-1",
 							children: [
@@ -4405,7 +4494,7 @@ var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPa
 									className: "flex justify-between",
 									children: [/* @__PURE__ */ jsx("p", {
 										className: "font-semibold text-sm",
-										children: n.data?.type || "Notificación"
+										children: n.data?.type ?? "Notificación"
 									}), !n.read_at && /* @__PURE__ */ jsx("button", {
 										onClick: () => markAsRead(n.id),
 										className: "text-xs text-blue-500",
@@ -4414,7 +4503,7 @@ var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPa
 								}),
 								/* @__PURE__ */ jsx("p", {
 									className: "text-sm text-ink-muted mt-1",
-									children: n.data?.message
+									children: n.data?.message ?? ""
 								}),
 								n.data?.reserva_id && /* @__PURE__ */ jsxs("p", {
 									className: "text-xs text-ink-muted mt-2",
@@ -4455,7 +4544,7 @@ var notifications_default$1 = UNSAFE_withComponentProps(function NotificationsPa
 						className: "py-2 border-b last:border-0",
 						children: /* @__PURE__ */ jsx("p", {
 							className: "text-xs font-semibold truncate",
-							children: n.data?.message
+							children: n.data?.message ?? ""
 						})
 					}, n.id))]
 				})]
@@ -4537,6 +4626,11 @@ var mis_reservas_default = UNSAFE_withComponentProps(function MisReservas() {
 	const [filter, setFilter] = useState("Próximas");
 	const [cancelling, setCancelling] = useState(null);
 	const [confirmingCancel, setConfirmingCancel] = useState(null);
+	const [showCalificacion, setShowCalificacion] = useState(false);
+	const [reservaSeleccionada, setReservaSeleccionada] = useState(null);
+	const [puntuacion, setPuntuacion] = useState(5);
+	const [comentario, setComentario] = useState("");
+	const [cancelSuccess, setCancelSuccess] = useState(false);
 	const today = /* @__PURE__ */ new Date();
 	today.setHours(0, 0, 0, 0);
 	useEffect(() => {
@@ -4558,7 +4652,6 @@ var mis_reservas_default = UNSAFE_withComponentProps(function MisReservas() {
 	const handleCancel = async () => {
 		if (confirmingCancel === null) return;
 		const id = confirmingCancel;
-		setConfirmingCancel(null);
 		setCancelling(id);
 		try {
 			await api.put(`/reservas/${id}/cancelar`, {}, token);
@@ -4566,11 +4659,44 @@ var mis_reservas_default = UNSAFE_withComponentProps(function MisReservas() {
 				...r,
 				estado: "cancelada"
 			} : r));
-			toast.success("Reserva cancelada correctamente");
-		} catch (e) {
-			toast.error(e.message ?? "Error al cancelar la reserva");
-		} finally {
 			setCancelling(null);
+			setCancelSuccess(true);
+			setTimeout(() => {
+				setConfirmingCancel(null);
+				setCancelSuccess(false);
+			}, 6e3);
+		} catch (e) {
+			setCancelling(null);
+			setConfirmingCancel(null);
+		}
+	};
+	const abrirModalCalificacion = (reserva) => {
+		setReservaSeleccionada(reserva);
+		setPuntuacion(5);
+		setComentario("");
+		setShowCalificacion(true);
+	};
+	const guardarCalificacion = async () => {
+		if (!reservaSeleccionada) return;
+		try {
+			const response = await api.post(`/reservas/${reservaSeleccionada.reserva_id}/calificar`, {
+				puntuacion,
+				comentario
+			}, token);
+			if (!response.success) {
+				toast.error(response.message);
+				return;
+			}
+			const nuevaCalificacion = response.data;
+			setReservas((prev) => prev.map((r) => r.reserva_id === reservaSeleccionada.reserva_id ? {
+				...r,
+				calificacion: nuevaCalificacion
+			} : r));
+			console.log("RESPUESTA:", response);
+			toast.success("Calificación enviada");
+			setShowCalificacion(false);
+		} catch (e) {
+			toast.error(e.message ?? "Error al enviar la calificación");
 		}
 	};
 	return /* @__PURE__ */ jsxs(Fragment, { children: [
@@ -4583,11 +4709,36 @@ var mis_reservas_default = UNSAFE_withComponentProps(function MisReservas() {
 		}),
 		confirmingCancel !== null && /* @__PURE__ */ jsx("div", {
 			className: "fixed inset-0 z-50 flex items-center justify-center bg-black/40",
-			onClick: () => setConfirmingCancel(null),
-			children: /* @__PURE__ */ jsxs("div", {
+			onClick: () => {
+				setConfirmingCancel(null);
+				setCancelSuccess(false);
+			},
+			children: /* @__PURE__ */ jsx("div", {
 				className: "bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl border border-border",
 				onClick: (e) => e.stopPropagation(),
-				children: [/* @__PURE__ */ jsxs("div", {
+				children: cancelSuccess ? /* @__PURE__ */ jsxs("div", {
+					className: "text-center space-y-3 py-4",
+					children: [
+						/* @__PURE__ */ jsx("div", {
+							className: "w-12 h-12 mx-auto rounded-full bg-green-100 flex items-center justify-center",
+							children: /* @__PURE__ */ jsx("ion-icon", {
+								name: "checkmark-outline",
+								style: {
+									fontSize: "22px",
+									color: "#22c55e"
+								}
+							})
+						}),
+						/* @__PURE__ */ jsx("h2", {
+							className: "font-semibold text-lg",
+							children: "Reserva cancelada"
+						}),
+						/* @__PURE__ */ jsx("p", {
+							className: "text-sm text-ink-muted",
+							children: "Cancelada correctamente. Contactá al profesional para gestionar el reembolso."
+						})
+					]
+				}) : /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
 					className: "flex flex-col items-center gap-2 mb-5",
 					children: [
 						/* @__PURE__ */ jsx("div", {
@@ -4620,7 +4771,66 @@ var mis_reservas_default = UNSAFE_withComponentProps(function MisReservas() {
 						className: "flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors",
 						children: "Sí, cancelar"
 					})]
-				})]
+				})] })
+			})
+		}),
+		showCalificacion && /* @__PURE__ */ jsx("div", {
+			className: "fixed inset-0 z-50 flex items-center justify-center bg-black/40",
+			onClick: () => setShowCalificacion(false),
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl border border-border",
+				onClick: (e) => e.stopPropagation(),
+				children: [
+					/* @__PURE__ */ jsx("h2", {
+						className: "text-xl font-semibold mb-4",
+						children: "Calificar servicio"
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "mb-4",
+						children: [/* @__PURE__ */ jsx("label", {
+							className: "block text-sm font-medium mb-2",
+							children: "Puntuación"
+						}), /* @__PURE__ */ jsx("div", {
+							className: "flex gap-2",
+							children: [
+								1,
+								2,
+								3,
+								4,
+								5
+							].map((n) => /* @__PURE__ */ jsx("button", {
+								onClick: () => setPuntuacion(n),
+								className: `text-3xl ${n <= puntuacion ? "text-yellow-500" : "text-gray-300"}`,
+								children: "★"
+							}, n))
+						})]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "mb-4",
+						children: [/* @__PURE__ */ jsx("label", {
+							className: "block text-sm font-medium mb-2",
+							children: "Comentario"
+						}), /* @__PURE__ */ jsx("textarea", {
+							value: comentario,
+							onChange: (e) => setComentario(e.target.value),
+							rows: 4,
+							className: "w-full border rounded-lg px-3 py-2",
+							placeholder: "Contanos tu experiencia..."
+						})]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "flex justify-end gap-2",
+						children: [/* @__PURE__ */ jsx("button", {
+							onClick: () => setShowCalificacion(false),
+							className: "px-4 py-2 border rounded-lg",
+							children: "Cancelar"
+						}), /* @__PURE__ */ jsx("button", {
+							onClick: guardarCalificacion,
+							className: "px-4 py-2 bg-primary text-white rounded-lg",
+							children: "Enviar"
+						})]
+					})
+				]
 			})
 		}),
 		/* @__PURE__ */ jsxs("div", {
@@ -4702,6 +4912,8 @@ var mis_reservas_default = UNSAFE_withComponentProps(function MisReservas() {
 					children: filtered.map((r) => {
 						const [ry, rm, rd] = r.fecha.split("-").map(Number);
 						const isPast = new Date(ry, rm - 1, rd) < today;
+						const puedeCalificar = isPast && r.estado === "finalizada" && !r.calificacion;
+						const canReschedule = ["confirmada", "pagada"].includes(r.estado) && !isPast;
 						const isCancelled = r.estado === "cancelada" || r.estado === "no_asistida";
 						const displayEstado = isPast && !TERMINAL.has(r.estado) ? "realizada" : r.estado;
 						const badge = ESTADO_STYLE[displayEstado] ?? {
@@ -4775,18 +4987,30 @@ var mis_reservas_default = UNSAFE_withComponentProps(function MisReservas() {
 										})
 									]
 								}),
-								canCancel && /* @__PURE__ */ jsx("button", {
-									onClick: () => setConfirmingCancel(r.reserva_id),
-									disabled: cancelling === r.reserva_id,
-									title: "Cancelar reserva",
-									className: "shrink-0 w-9 h-9 flex items-center justify-center text-red-400 hover:text-red-600 border border-red-200 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50",
-									children: cancelling === r.reserva_id ? /* @__PURE__ */ jsx("ion-icon", {
-										name: "hourglass-outline",
-										style: { fontSize: "16px" }
-									}) : /* @__PURE__ */ jsx("ion-icon", {
-										name: "trash-outline",
-										style: { fontSize: "16px" }
-									})
+								/* @__PURE__ */ jsxs("div", {
+									className: "shrink-0 flex flex-col gap-2",
+									children: [canReschedule && /* @__PURE__ */ jsx(Link, {
+										to: `/client/professional/${r.servicio.profesional_id}?reprogramar=${r.reserva_id}`,
+										className: "px-3 py-2 text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-lg text-xs",
+										children: "Reprogramar"
+									}), canCancel && /* @__PURE__ */ jsx("button", {
+										onClick: () => setConfirmingCancel(r.reserva_id),
+										disabled: cancelling === r.reserva_id,
+										title: "Cancelar reserva",
+										className: "w-full px-3 py-2 text-red-400 hover:text-red-600 border border-red-200 hover:bg-red-50 rounded-lg text-xs transition-colors disabled:opacity-50",
+										children: cancelling === r.reserva_id ? /* @__PURE__ */ jsx("ion-icon", {
+											name: "hourglass-outline",
+											style: { fontSize: "16px" }
+										}) : /* @__PURE__ */ jsx("ion-icon", {
+											name: "trash-outline",
+											style: { fontSize: "16px" }
+										})
+									})]
+								}),
+								puedeCalificar && /* @__PURE__ */ jsx("button", {
+									onClick: () => abrirModalCalificacion(r),
+									className: "px-3 py-2 bg-yellow-500 text-white rounded-lg text-xs",
+									children: "Calificar"
 								})
 							]
 						}, r.reserva_id);
@@ -4819,7 +5043,7 @@ var profile_default$1 = UNSAFE_withComponentProps(function ClientProfile() {
 		setSaving(true);
 		setInfoMsg(null);
 		try {
-			await api.put("/profile", {
+			await api.put("/client/profile", {
 				name: name.trim(),
 				email: email.trim()
 			}, token);
@@ -5581,6 +5805,8 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 	const [selectedReserva, setSelectedReserva] = useState(null);
 	const [updatingId, setUpdatingId] = useState(null);
 	const [actionMode, setActionMode] = useState("none");
+	const [mobileStartDay, setMobileStartDay] = useState(0);
+	const touchStartX = useRef(0);
 	const fetchAgenda = () => {
 		if (!token) return;
 		setAgendaLoading(true);
@@ -5588,6 +5814,9 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 			if (res.success) setReservas(res.data);
 		}).catch(() => {}).finally(() => setAgendaLoading(false));
 	};
+	useEffect(() => {
+		setMobileStartDay(0);
+	}, [weekStart]);
 	useEffect(() => {
 		if (!token) return;
 		fetchAgenda();
@@ -5611,6 +5840,9 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 		} finally {
 			setUpdatingId(null);
 		}
+	};
+	const cancelarReserva = async (reservaId) => {
+		await api.put(`/reservas/${reservaId}/cancelar`, {}, token);
 	};
 	const weekDates = getWeekDates(weekStart);
 	const todayStr = toDateStr(/* @__PURE__ */ new Date());
@@ -5653,6 +5885,17 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 		setSelectedClient(null);
 		setSelectedReserva(null);
 	};
+	const prevMobileDays = () => setMobileStartDay((d) => Math.max(0, d - 1));
+	const nextMobileDays = () => setMobileStartDay((d) => Math.min(4, d + 1));
+	const handleTouchStart = (e) => {
+		touchStartX.current = e.touches[0].clientX;
+	};
+	const handleTouchEnd = (e) => {
+		const delta = touchStartX.current - e.changedTouches[0].clientX;
+		if (delta > 40) nextMobileDays();
+		else if (delta < -40) prevMobileDays();
+	};
+	const mobileDays = weekDates.slice(mobileStartDay, mobileStartDay + 3);
 	const panelOpen = !!selectedClient;
 	const panelClientColor = selectedClient ? CLIENT_COLORS[Math.max(clients.findIndex((c) => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length] : CLIENT_COLORS[0];
 	return /* @__PURE__ */ jsxs("div", {
@@ -5667,9 +5910,9 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 				children: "Hacé click en un turno o cliente para ver detalles y gestionar reservas"
 			})]
 		}), /* @__PURE__ */ jsxs("div", {
-			className: "grid grid-cols-4 gap-6 items-start",
+			className: "grid grid-cols-1 lg:grid-cols-4 gap-6 items-start",
 			children: [/* @__PURE__ */ jsxs("div", {
-				className: "col-span-3 min-w-0 space-y-6",
+				className: "lg:col-span-3 min-w-0 space-y-6",
 				children: [/* @__PURE__ */ jsxs("section", { children: [/* @__PURE__ */ jsxs("div", {
 					className: "flex items-center justify-between mb-3 flex-wrap gap-2",
 					children: [/* @__PURE__ */ jsxs("h2", {
@@ -5706,105 +5949,225 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 							})
 						]
 					})]
-				}), agendaLoading ? /* @__PURE__ */ jsx("div", { className: "bg-surface border border-border rounded h-64 animate-pulse" }) : /* @__PURE__ */ jsxs("div", {
-					className: "bg-surface border border-border rounded overflow-auto",
-					children: [/* @__PURE__ */ jsxs("div", {
-						className: "grid border-b border-border",
-						style: { gridTemplateColumns: "52px repeat(7, 1fr)" },
-						children: [/* @__PURE__ */ jsx("div", { className: "border-r border-border" }), weekDates.map((d, i) => {
-							const str = toDateStr(d);
-							const isToday = str === todayStr;
-							return /* @__PURE__ */ jsxs("div", {
-								className: `border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[56px] ${isToday ? "bg-accent/10" : i >= 5 ? "bg-border/10" : ""}`,
-								children: [
-									/* @__PURE__ */ jsx("p", {
-										className: "text-xs text-ink-muted uppercase tracking-wide font-semibold",
-										children: DOW_LABELS[i]
-									}),
-									isToday ? /* @__PURE__ */ jsx("span", {
-										className: "inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink text-white text-xs font-bold",
-										children: d.getDate()
-									}) : /* @__PURE__ */ jsx("p", {
-										className: "text-sm font-bold text-ink mt-0.5",
-										children: d.getDate()
-									}),
-									reservasByDay[str]?.length > 0 && /* @__PURE__ */ jsxs("p", {
-										className: "text-xs text-ink-muted mt-0.5",
-										children: [reservasByDay[str].length, "t"]
-									})
-								]
-							}, str);
-						})]
-					}), /* @__PURE__ */ jsxs("div", {
-						className: "relative grid",
-						style: { gridTemplateColumns: "52px repeat(7, 1fr)" },
-						children: [/* @__PURE__ */ jsx("div", {
-							className: "border-r border-border",
-							children: HOURS$1.map((h) => /* @__PURE__ */ jsx("div", {
-								className: "border-b border-border/30 flex items-center justify-center px-1",
-								style: { height: CELL },
-								children: /* @__PURE__ */ jsx("span", {
-									className: "text-xs text-ink-muted",
-									children: h
-								})
-							}, h))
-						}), weekDates.map((d, i) => {
-							const str = toDateStr(d);
-							const isToday = str === todayStr;
-							const isWeekend = i >= 5;
-							const dayRes = reservasByDay[str] ?? [];
-							return /* @__PURE__ */ jsxs("div", {
-								className: `relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : isWeekend ? "bg-border/10" : ""}`,
-								children: [HOURS$1.map((_, hi) => /* @__PURE__ */ jsx("div", {
-									className: "border-b border-border/20",
-									style: { height: CELL }
-								}, hi)), dayRes.map((r) => {
-									const [hh, mm] = r.hora.split(":").map(Number);
-									const topH = hh + mm / 60 - GRID_START$1;
-									const durH = (r.servicio?.duracion ?? 60) / 60;
-									const color = clientColorMap[r.cliente_nombre]?.block ?? ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border";
-									const isSelected = selectedReserva?.reserva_id === r.reserva_id;
-									return /* @__PURE__ */ jsxs("div", {
-										onClick: () => handleReservaClick(r),
-										title: `${r.cliente_nombre} · ${r.servicio?.nombre}`,
-										className: `absolute left-0.5 right-0.5 ${color} rounded-r px-2 py-1 overflow-hidden cursor-pointer transition-all ${isSelected ? "ring-2 ring-ink ring-offset-1 brightness-95" : "hover:brightness-95"}`,
-										style: {
-											top: topH * CELL,
-											height: Math.max(durH * CELL - 2, 22)
-										},
-										children: [/* @__PURE__ */ jsx("p", {
-											className: "text-xs font-bold text-ink truncate leading-tight",
-											children: r.cliente_nombre
-										}), durH * CELL > 36 && /* @__PURE__ */ jsx("p", {
-											className: "text-xs text-ink-muted truncate",
-											children: r.servicio?.nombre
-										})]
-									}, r.reserva_id);
-								})]
-							}, str);
-						})]
-					})]
-				})] }), /* @__PURE__ */ jsxs("section", { children: [/* @__PURE__ */ jsxs("div", {
-					className: "flex items-center gap-3 mb-3",
+				}), agendaLoading ? /* @__PURE__ */ jsx("div", { className: "bg-surface border border-border rounded h-64 animate-pulse" }) : /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
+					className: "lg:hidden",
 					children: [
-						/* @__PURE__ */ jsxs("h2", {
-							className: "font-display text-xl text-ink shrink-0",
-							children: ["Clientes", /* @__PURE__ */ jsx("span", {
-								className: "ml-2 text-sm font-normal text-ink-muted",
-								children: !clientsLoading && `${clients.length} activos`
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex items-center justify-between mb-2 px-1",
+							children: [
+								/* @__PURE__ */ jsx("button", {
+									onClick: prevMobileDays,
+									disabled: mobileStartDay === 0,
+									className: "w-8 h-8 rounded border border-border flex items-center justify-center text-ink-muted disabled:opacity-30 hover:bg-bg transition-colors",
+									children: /* @__PURE__ */ jsx(ChevronLeftIcon, {})
+								}),
+								/* @__PURE__ */ jsxs("span", {
+									className: "text-sm font-medium text-ink",
+									children: [
+										DOW_LABELS[mobileDays[0].getDay() === 0 ? 6 : mobileDays[0].getDay() - 1],
+										" ",
+										mobileDays[0].getDate(),
+										" – ",
+										DOW_LABELS[mobileDays[2].getDay() === 0 ? 6 : mobileDays[2].getDay() - 1],
+										" ",
+										mobileDays[2].getDate()
+									]
+								}),
+								/* @__PURE__ */ jsx("button", {
+									onClick: nextMobileDays,
+									disabled: mobileStartDay >= 4,
+									className: "w-8 h-8 rounded border border-border flex items-center justify-center text-ink-muted disabled:opacity-30 hover:bg-bg transition-colors",
+									children: /* @__PURE__ */ jsx(ChevronRightIcon, {})
+								})
+							]
+						}),
+						/* @__PURE__ */ jsxs("div", {
+							className: "bg-surface border border-border rounded overflow-hidden",
+							onTouchStart: handleTouchStart,
+							onTouchEnd: handleTouchEnd,
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "grid border-b border-border",
+								style: { gridTemplateColumns: "48px repeat(3, 1fr)" },
+								children: [/* @__PURE__ */ jsx("div", { className: "border-r border-border" }), mobileDays.map((d, i) => {
+									const str = toDateStr(d);
+									const isToday = str === todayStr;
+									const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
+									return /* @__PURE__ */ jsxs("div", {
+										className: `border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[52px] ${isToday ? "bg-accent/10" : ""}`,
+										children: [
+											/* @__PURE__ */ jsx("p", {
+												className: "text-xs text-ink-muted uppercase tracking-wide font-semibold",
+												children: DOW_LABELS[dow]
+											}),
+											isToday ? /* @__PURE__ */ jsx("span", {
+												className: "inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink text-white text-xs font-bold",
+												children: d.getDate()
+											}) : /* @__PURE__ */ jsx("p", {
+												className: "text-sm font-bold text-ink mt-0.5",
+												children: d.getDate()
+											}),
+											reservasByDay[str]?.length > 0 && /* @__PURE__ */ jsxs("p", {
+												className: "text-xs text-ink-muted mt-0.5",
+												children: [reservasByDay[str].length, "t"]
+											})
+										]
+									}, str);
+								})]
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "relative grid",
+								style: { gridTemplateColumns: "48px repeat(3, 1fr)" },
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "border-r border-border",
+									children: HOURS$1.map((h) => /* @__PURE__ */ jsx("div", {
+										className: "border-b border-border/30 flex items-center justify-center px-1",
+										style: { height: CELL },
+										children: /* @__PURE__ */ jsx("span", {
+											className: "text-xs text-ink-muted",
+											children: h
+										})
+									}, h))
+								}), mobileDays.map((d) => {
+									const str = toDateStr(d);
+									const isToday = str === todayStr;
+									const dayRes = reservasByDay[str] ?? [];
+									return /* @__PURE__ */ jsxs("div", {
+										className: `relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : ""}`,
+										children: [HOURS$1.map((_, hi) => /* @__PURE__ */ jsx("div", {
+											className: "border-b border-border/20",
+											style: { height: CELL }
+										}, hi)), dayRes.map((r) => {
+											const [hh, mm] = r.hora.split(":").map(Number);
+											const topH = hh + mm / 60 - GRID_START$1;
+											const durH = (r.servicio?.duracion ?? 60) / 60;
+											return /* @__PURE__ */ jsx("div", {
+												onClick: () => handleReservaClick(r),
+												className: `absolute left-0.5 right-0.5 ${clientColorMap[r.cliente_nombre]?.block ?? ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border"} rounded-r px-1 py-1 overflow-hidden cursor-pointer transition-all ${selectedReserva?.reserva_id === r.reserva_id ? "ring-2 ring-ink ring-offset-1 brightness-95" : "hover:brightness-95"}`,
+												style: {
+													top: topH * CELL,
+													height: Math.max(durH * CELL - 2, 22)
+												},
+												children: /* @__PURE__ */ jsx("p", {
+													className: "text-xs font-bold text-ink truncate leading-tight",
+													children: r.cliente_nombre
+												})
+											}, r.reserva_id);
+										})]
+									}, str);
+								})]
 							})]
 						}),
-						/* @__PURE__ */ jsx("input", {
-							className: "flex-1 border border-border rounded px-3 py-1.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink",
-							placeholder: "Buscar...",
-							value: search,
-							onChange: (e) => setSearch(e.target.value)
-						}),
-						/* @__PURE__ */ jsxs("button", {
-							className: "bg-ink text-white px-3 py-1.5 rounded hover:bg-primary text-sm font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0",
-							children: [/* @__PURE__ */ jsx(UserPlusIcon, {}), "Agregar"]
+						/* @__PURE__ */ jsx("div", {
+							className: "flex justify-center gap-1.5 mt-3",
+							children: [
+								0,
+								1,
+								2,
+								3,
+								4
+							].map((i) => /* @__PURE__ */ jsx("button", {
+								onClick: () => setMobileStartDay(i),
+								className: `w-1.5 h-1.5 rounded-full transition-colors ${i === mobileStartDay ? "bg-ink" : "bg-border"}`
+							}, i))
 						})
 					]
+				}), /* @__PURE__ */ jsx("div", {
+					className: "hidden lg:block",
+					children: /* @__PURE__ */ jsx("div", {
+						className: "bg-surface border border-border rounded overflow-x-auto",
+						children: /* @__PURE__ */ jsxs("div", {
+							style: { minWidth: "520px" },
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "grid border-b border-border",
+								style: { gridTemplateColumns: "52px repeat(7, 1fr)" },
+								children: [/* @__PURE__ */ jsx("div", { className: "border-r border-border" }), weekDates.map((d, i) => {
+									const str = toDateStr(d);
+									const isToday = str === todayStr;
+									return /* @__PURE__ */ jsxs("div", {
+										className: `border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[56px] ${isToday ? "bg-accent/10" : i >= 5 ? "bg-border/10" : ""}`,
+										children: [
+											/* @__PURE__ */ jsx("p", {
+												className: "text-xs text-ink-muted uppercase tracking-wide font-semibold",
+												children: DOW_LABELS[i]
+											}),
+											isToday ? /* @__PURE__ */ jsx("span", {
+												className: "inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink text-white text-xs font-bold",
+												children: d.getDate()
+											}) : /* @__PURE__ */ jsx("p", {
+												className: "text-sm font-bold text-ink mt-0.5",
+												children: d.getDate()
+											}),
+											reservasByDay[str]?.length > 0 && /* @__PURE__ */ jsxs("p", {
+												className: "text-xs text-ink-muted mt-0.5",
+												children: [reservasByDay[str].length, "t"]
+											})
+										]
+									}, str);
+								})]
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "relative grid",
+								style: { gridTemplateColumns: "52px repeat(7, 1fr)" },
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "border-r border-border",
+									children: HOURS$1.map((h) => /* @__PURE__ */ jsx("div", {
+										className: "border-b border-border/30 flex items-center justify-center px-1",
+										style: { height: CELL },
+										children: /* @__PURE__ */ jsx("span", {
+											className: "text-xs text-ink-muted",
+											children: h
+										})
+									}, h))
+								}), weekDates.map((d, i) => {
+									const str = toDateStr(d);
+									const isToday = str === todayStr;
+									const isWeekend = i >= 5;
+									const dayRes = reservasByDay[str] ?? [];
+									return /* @__PURE__ */ jsxs("div", {
+										className: `relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : isWeekend ? "bg-border/10" : ""}`,
+										children: [HOURS$1.map((_, hi) => /* @__PURE__ */ jsx("div", {
+											className: "border-b border-border/20",
+											style: { height: CELL }
+										}, hi)), dayRes.map((r) => {
+											const [hh, mm] = r.hora.split(":").map(Number);
+											const topH = hh + mm / 60 - GRID_START$1;
+											const durH = (r.servicio?.duracion ?? 60) / 60;
+											const color = clientColorMap[r.cliente_nombre]?.block ?? ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border";
+											const isSelected = selectedReserva?.reserva_id === r.reserva_id;
+											return /* @__PURE__ */ jsxs("div", {
+												onClick: () => handleReservaClick(r),
+												title: `${r.cliente_nombre} · ${r.servicio?.nombre}`,
+												className: `absolute left-0.5 right-0.5 ${color} rounded-r px-2 py-1 overflow-hidden cursor-pointer transition-all ${isSelected ? "ring-2 ring-ink ring-offset-1 brightness-95" : "hover:brightness-95"}`,
+												style: {
+													top: topH * CELL,
+													height: Math.max(durH * CELL - 2, 22)
+												},
+												children: [/* @__PURE__ */ jsx("p", {
+													className: "text-xs font-bold text-ink truncate leading-tight",
+													children: r.cliente_nombre
+												}), durH * CELL > 36 && /* @__PURE__ */ jsx("p", {
+													className: "text-xs text-ink-muted truncate",
+													children: r.servicio?.nombre
+												})]
+											}, r.reserva_id);
+										})]
+									}, str);
+								})]
+							})]
+						})
+					})
+				})] })] }), /* @__PURE__ */ jsxs("section", { children: [/* @__PURE__ */ jsxs("div", {
+					className: "flex items-center gap-3 mb-3",
+					children: [/* @__PURE__ */ jsxs("h2", {
+						className: "font-display text-xl text-ink shrink-0",
+						children: ["Clientes", /* @__PURE__ */ jsx("span", {
+							className: "ml-2 text-sm font-normal text-ink-muted",
+							children: !clientsLoading && `${clients.length} activos`
+						})]
+					}), /* @__PURE__ */ jsx("input", {
+						className: "flex-1 border border-border rounded px-3 py-1.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink",
+						placeholder: "Buscar...",
+						value: search,
+						onChange: (e) => setSearch(e.target.value)
+					})]
 				}), clientsLoading ? /* @__PURE__ */ jsx("div", {
 					className: "bg-surface border border-border rounded p-8 text-center text-ink-muted text-sm",
 					children: "Cargando clientes..."
@@ -5833,7 +6196,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 									},
 									{
 										label: "SESIONES",
-										span: "col-span-1"
+										span: "col-span-2 flex items-center justify-center"
 									},
 									{
 										label: "PRÓXIMA SESIÓN",
@@ -5841,7 +6204,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 									},
 									{
 										label: "ESTADO",
-										span: "col-span-2"
+										span: "col-span-1 flex items-center justify-center"
 									}
 								].map((h) => /* @__PURE__ */ jsx("div", {
 									className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
@@ -5872,7 +6235,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 											})
 										}),
 										/* @__PURE__ */ jsx("div", {
-											className: "col-span-1",
+											className: "col-span-2 flex justify-center",
 											children: /* @__PURE__ */ jsx("span", {
 												className: "text-sm font-semibold text-ink",
 												children: c.sesiones_restantes
@@ -5890,7 +6253,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 											})
 										}),
 										/* @__PURE__ */ jsx("div", {
-											className: "col-span-2",
+											className: "col-span-1 flex justify-center",
 											children: /* @__PURE__ */ jsx("span", {
 												className: `badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`,
 												children: c.estado
@@ -5903,7 +6266,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 					})
 				})] })]
 			}), /* @__PURE__ */ jsx("div", {
-				className: "sticky top-8 space-y-3",
+				className: "lg:sticky lg:top-8 space-y-3",
 				children: panelOpen && selectedClient ? /* @__PURE__ */ jsxs("div", {
 					className: "bg-surface border border-border rounded overflow-hidden",
 					children: [
@@ -5981,6 +6344,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 									reserva: selectedReserva,
 									updatingId,
 									onCambiarEstado: cambiarEstado,
+									onCancelarReserva: cancelarReserva,
 									highlight: true
 								}),
 								(selectedReserva.estado === "en_curso" || selectedReserva.estado === "finalizada") && /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
@@ -6045,7 +6409,8 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 								children: [clientReservas.filter((r) => r.reserva_id !== selectedReserva?.reserva_id).map((r) => /* @__PURE__ */ jsx(ReservaCard, {
 									reserva: r,
 									updatingId,
-									onCambiarEstado: cambiarEstado
+									onCambiarEstado: cambiarEstado,
+									onCancelarReserva: cancelarReserva
 								}, r.reserva_id)), clientReservas.filter((r) => r.reserva_id !== selectedReserva?.reserva_id).length === 0 && /* @__PURE__ */ jsx("p", {
 									className: "text-xs text-ink-muted",
 									children: "Sin otros turnos"
@@ -6064,7 +6429,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 		})]
 	});
 });
-function ReservaCard({ reserva, updatingId, onCambiarEstado, highlight = false }) {
+function ReservaCard({ reserva, updatingId, onCambiarEstado, onCancelarReserva, highlight = false }) {
 	const canConfirm = reserva.estado === "pendiente";
 	const canCancel = [
 		"pendiente",
@@ -6113,7 +6478,10 @@ function ReservaCard({ reserva, updatingId, onCambiarEstado, highlight = false }
 				children: isUpdating ? "..." : "Confirmar"
 			}), canCancel && /* @__PURE__ */ jsx("button", {
 				disabled: isUpdating,
-				onClick: () => onCambiarEstado(reserva.reserva_id, "cancelada"),
+				onClick: () => {
+					if (reserva.estado === "confirmada") onCancelarReserva(reserva.reserva_id);
+					else onCambiarEstado(reserva.reserva_id, "cancelada");
+				},
 				className: `py-1 text-xs font-semibold border border-border rounded hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-ink-muted transition-colors disabled:opacity-50 ${canConfirm ? "px-2" : "flex-1"}`,
 				children: isUpdating ? "..." : "Cancelar"
 			})]
@@ -6161,36 +6529,6 @@ function CloseIcon$2() {
 			x2: "18",
 			y2: "18"
 		})]
-	});
-}
-function UserPlusIcon() {
-	return /* @__PURE__ */ jsxs("svg", {
-		width: "14",
-		height: "14",
-		viewBox: "0 0 24 24",
-		fill: "none",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		children: [
-			/* @__PURE__ */ jsx("path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }),
-			/* @__PURE__ */ jsx("circle", {
-				cx: "9",
-				cy: "7",
-				r: "4"
-			}),
-			/* @__PURE__ */ jsx("line", {
-				x1: "19",
-				y1: "8",
-				x2: "19",
-				y2: "14"
-			}),
-			/* @__PURE__ */ jsx("line", {
-				x1: "22",
-				y1: "11",
-				x2: "16",
-				y2: "11"
-			})
-		]
 	});
 }
 //#endregion
@@ -6319,7 +6657,7 @@ function DashboardSkeleton() {
 				})]
 			}),
 			/* @__PURE__ */ jsx("div", {
-				className: "grid grid-cols-4 gap-4 mb-8",
+				className: "grid grid-cols-2 md:grid-cols-4 gap-4 mb-8",
 				children: Array.from({ length: 4 }).map((_, i) => /* @__PURE__ */ jsxs("div", {
 					className: "bg-surface border border-border rounded p-5 space-y-2",
 					children: [
@@ -6330,7 +6668,7 @@ function DashboardSkeleton() {
 				}, i))
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "grid grid-cols-3 gap-6",
+				className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
 				children: [/* @__PURE__ */ jsxs("div", {
 					className: "col-span-2",
 					children: [/* @__PURE__ */ jsx(Skeleton, { className: "h-6 w-64 mb-4" }), /* @__PURE__ */ jsx("div", {
@@ -6380,10 +6718,23 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 	const [loading, setLoading] = useState(true);
 	const [openSolicitudes, setOpenSolicitudes] = useState(false);
 	const [loadingId, setLoadingId] = useState(null);
+	const [calificaciones, setCalificaciones] = useState([]);
+	const [promedio, setPromedio] = useState(0);
+	const [openCalificaciones, setOpenCalificaciones] = useState(false);
+	const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
 	useEffect(() => {
-		if (!token) return;
-		Promise.all([api.get("/mi-agenda", token).then((res) => setAllReservas(res.data ?? [])).catch(() => {}), api.get("/reservas/pendientes", token).then((res) => setPendientes(res.data ?? [])).catch(() => {})]).finally(() => setLoading(false));
-	}, [token]);
+		if (!token || !user?.id) return;
+		Promise.all([
+			api.get("/mi-agenda", token).then((res) => setAllReservas(res.data ?? [])).catch(() => {}),
+			api.get("/reservas/pendientes", token).then((res) => setPendientes(res.data ?? [])).catch(() => {}),
+			api.get(`/profesionales/${user.id}/calificaciones`, token).then((res) => {
+				const payload = res;
+				setCalificaciones(payload.data ?? []);
+				setPromedio(payload.promedio ?? 0);
+				setCantidadCalificaciones(payload.cantidad ?? 0);
+			}).catch(() => {})
+		]).finally(() => setLoading(false));
+	}, [token, user?.id]);
 	const hoy = todayStr();
 	const semanaDesde = startOfWeekStr();
 	const agendaHoy = useMemo(() => allReservas.filter((r) => r.fecha === hoy).sort((a, b) => a.hora.localeCompare(b.hora)), [allReservas, hoy]);
@@ -6407,8 +6758,8 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 		},
 		{
 			label: "CALIFICACIÓN",
-			value: "—",
-			sub: "Próximamente"
+			value: promedio > 0 ? promedio.toString() : "—",
+			sub: `${cantidadCalificaciones} reseñas`
 		}
 	];
 	const cambiarEstado = async (id, estado) => {
@@ -6427,7 +6778,7 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [
 			/* @__PURE__ */ jsxs("div", {
-				className: "flex items-start justify-between mb-8",
+				className: "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8",
 				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h1", {
 					className: "font-display text-3xl text-ink",
 					children: ["Buenos días, ", firstName]
@@ -6435,31 +6786,22 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 					className: "text-ink-muted mt-1",
 					children: sesionesHoy > 0 ? `Tenés ${sesionesHoy} sesión${sesionesHoy !== 1 ? "es" : ""} hoy` : "Sin sesiones hoy"
 				})] }), /* @__PURE__ */ jsxs("div", {
-					className: "flex items-center gap-3",
-					children: [
-						/* @__PURE__ */ jsxs("button", {
-							className: "relative p-2 border border-border rounded bg-surface hover:bg-bg",
-							children: [/* @__PURE__ */ jsx(BellIcon, {}), pendientes.length > 0 && /* @__PURE__ */ jsx("span", {
-								className: "absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold",
-								children: pendientes.length
-							})]
-						}),
-						/* @__PURE__ */ jsxs(Link, {
-							to: "/professional/services",
-							className: "flex items-center gap-2 border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink",
-							children: [/* @__PURE__ */ jsx(PlusIcon, {}), "Nuevo servicio"]
-						}),
-						/* @__PURE__ */ jsxs("button", {
-							disabled: true,
-							title: "Próximamente",
-							className: "flex items-center gap-2 bg-ink/40 text-white/60 px-4 py-2 rounded text-sm font-semibold cursor-not-allowed select-none",
-							children: [/* @__PURE__ */ jsx(LockIcon, {}), "Bloquear agenda"]
-						})
-					]
+					className: "flex flex-wrap items-center gap-2 sm:gap-3",
+					children: [/* @__PURE__ */ jsxs("button", {
+						className: "relative p-2 border border-border rounded bg-surface hover:bg-bg",
+						children: [/* @__PURE__ */ jsx(BellIcon, {}), pendientes.length > 0 && /* @__PURE__ */ jsx("span", {
+							className: "absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold",
+							children: pendientes.length
+						})]
+					}), /* @__PURE__ */ jsxs(Link, {
+						to: "/professional/services",
+						className: "flex items-center gap-2 border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink",
+						children: [/* @__PURE__ */ jsx(PlusIcon, {}), "Nuevo servicio"]
+					})]
 				})]
 			}),
 			/* @__PURE__ */ jsx("div", {
-				className: "grid grid-cols-4 gap-4 mb-8",
+				className: "grid grid-cols-2 md:grid-cols-4 gap-4 mb-8",
 				children: kpis.map((k) => /* @__PURE__ */ jsxs("div", {
 					className: "bg-surface border border-border rounded p-5",
 					children: [
@@ -6479,9 +6821,9 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 				}, k.label))
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "grid grid-cols-3 gap-6",
+				className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
 				children: [/* @__PURE__ */ jsxs("div", {
-					className: "col-span-2",
+					className: "lg:col-span-2",
 					children: [/* @__PURE__ */ jsx("div", {
 						className: "flex items-center justify-between mb-4",
 						children: /* @__PURE__ */ jsxs("h2", {
@@ -6508,10 +6850,10 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 							const estado = item.estado;
 							const duracion = item.servicio?.duracion ? `${item.servicio.duracion}min` : "";
 							return /* @__PURE__ */ jsxs("div", {
-								className: `flex items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 ${estado === "en_curso" ? "bg-accent/10" : ""}`,
+								className: `flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-4 border-b border-border last:border-b-0 ${estado === "en_curso" ? "bg-accent/10" : ""}`,
 								children: [
 									/* @__PURE__ */ jsxs("div", {
-										className: "w-16 shrink-0",
+										className: "w-12 sm:w-16 shrink-0",
 										children: [/* @__PURE__ */ jsx("p", {
 											className: "text-sm font-semibold text-ink",
 											children: hora
@@ -6542,8 +6884,11 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 										}), item.modalidad === "virtual" && puedeEntrar(item) && /* @__PURE__ */ jsx(Link, {
 											to: `/videollamada/${item.reserva_id}`,
 											children: /* @__PURE__ */ jsxs("button", {
-												className: "flex items-center gap-2 bg-ink text-white text-sm font-semibold px-4 py-2 rounded hover:bg-primary transition-colors",
-												children: [/* @__PURE__ */ jsx(VideoIcon, {}), "Iniciar videollamada"]
+												className: "flex items-center gap-1 bg-ink text-white text-sm font-semibold px-2 sm:px-4 py-2 rounded hover:bg-primary transition-colors",
+												children: [/* @__PURE__ */ jsx(VideoIcon, {}), /* @__PURE__ */ jsx("span", {
+													className: "hidden sm:inline",
+													children: "Iniciar videollamada"
+												})]
 											})
 										})]
 									})
@@ -6621,7 +6966,8 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 									/* @__PURE__ */ jsx(ChevronIcon, { open: openSolicitudes })
 								]
 							}), /* @__PURE__ */ jsxs("div", {
-								className: "flex items-center gap-3 p-3 bg-bg rounded border border-border opacity-50 cursor-not-allowed select-none",
+								className: "flex items-center gap-3 p-3 bg-bg rounded border border-border hover:bg-border/50 cursor-pointer transition-colors",
+								onClick: () => setOpenCalificaciones(true),
 								children: [
 									/* @__PURE__ */ jsx("span", {
 										className: "shrink-0 text-ink-muted",
@@ -6629,18 +6975,23 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 									}),
 									/* @__PURE__ */ jsxs("div", {
 										className: "flex-1 min-w-0",
-										children: [/* @__PURE__ */ jsx("p", {
+										children: [/* @__PURE__ */ jsxs("p", {
 											className: "text-sm font-semibold text-ink",
-											children: "Reseñas"
-										}), /* @__PURE__ */ jsx("p", {
+											children: [
+												"Reseñas (",
+												cantidadCalificaciones,
+												")"
+											]
+										}), /* @__PURE__ */ jsxs("p", {
 											className: "text-xs text-ink-muted",
-											children: "Próximamente"
+											children: [
+												"Promedio: ",
+												promedio,
+												"/5"
+											]
 										})]
 									}),
-									/* @__PURE__ */ jsx("span", {
-										className: "text-ink-muted/40",
-										children: /* @__PURE__ */ jsx(ChevronIcon, { open: false })
-									})
+									/* @__PURE__ */ jsx(ChevronIcon, { open: openCalificaciones })
 								]
 							})]
 						})]
@@ -6703,6 +7054,52 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 						}, r.reserva_id))
 					})]
 				})
+			}),
+			openCalificaciones && /* @__PURE__ */ jsx("div", {
+				className: "fixed inset-0 bg-black/40 flex items-center justify-center z-50",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "bg-surface w-full max-w-lg rounded border border-border p-4",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "flex justify-between items-center mb-4",
+						children: [/* @__PURE__ */ jsx("h3", {
+							className: "text-sm font-semibold text-ink",
+							children: "Reseñas recibidas"
+						}), /* @__PURE__ */ jsx("button", {
+							onClick: () => setOpenCalificaciones(false),
+							className: "text-ink-muted hover:text-ink",
+							children: /* @__PURE__ */ jsx(XIcon, {})
+						})]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "space-y-3 max-h-[400px] overflow-y-auto",
+						children: calificaciones.length === 0 ? /* @__PURE__ */ jsx("p", {
+							className: "text-sm text-ink-muted",
+							children: "Aún no tenés reseñas."
+						}) : calificaciones.map((c) => /* @__PURE__ */ jsxs("div", {
+							className: "p-3 border rounded bg-bg",
+							children: [
+								/* @__PURE__ */ jsx("div", {
+									className: "flex justify-between items-center",
+									children: /* @__PURE__ */ jsxs("span", {
+										className: "text-amber-500 font-bold",
+										children: [
+											"⭐ ",
+											c.puntuacion,
+											"/5"
+										]
+									})
+								}),
+								c.comentario && /* @__PURE__ */ jsx("p", {
+									className: "text-sm text-ink-muted mt-2",
+									children: c.comentario
+								}),
+								/* @__PURE__ */ jsx("p", {
+									className: "text-xs text-ink-muted mt-2",
+									children: c.reserva?.servicio?.nombre
+								})
+							]
+						}, c.calificacion_id))
+					})]
+				})
 			})
 		]
 	});
@@ -6740,25 +7137,6 @@ function PlusIcon() {
 			x2: "19",
 			y2: "12"
 		})]
-	});
-}
-function LockIcon() {
-	return /* @__PURE__ */ jsxs("svg", {
-		width: "15",
-		height: "15",
-		viewBox: "0 0 24 24",
-		fill: "none",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		strokeLinecap: "round",
-		strokeLinejoin: "round",
-		children: [/* @__PURE__ */ jsx("rect", {
-			x: "3",
-			y: "11",
-			width: "18",
-			height: "11",
-			rx: "2"
-		}), /* @__PURE__ */ jsx("path", { d: "M7 11V7a5 5 0 0 1 10 0v4" })]
 	});
 }
 function VideoIcon() {
@@ -7050,138 +7428,142 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 					})
 				]
 			}),
-			!loading && services.length > 0 && /* @__PURE__ */ jsxs("div", {
-				className: "bg-surface border border-border rounded overflow-hidden",
-				children: [/* @__PURE__ */ jsx("div", {
-					className: "grid px-5 py-2 border-b border-border bg-bg",
-					style: { gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" },
-					children: [
-						"Servicio",
-						"Duración",
-						"Modalidad",
-						"Precio",
-						"Reservas",
-						""
-					].map((h) => /* @__PURE__ */ jsx("div", {
-						className: "text-xs font-bold text-ink-muted uppercase tracking-widest",
-						children: h
-					}, h))
-				}), services.map((s, idx) => {
-					const activo = s.activo ?? true;
-					const isEditing = editingId === s.servicio_id;
-					const isDeleting = deletingId === s.servicio_id;
-					const isDimmed = typeof editingId === "number" && !isEditing;
-					const modalidad = s.modalidad?.toLowerCase();
-					return /* @__PURE__ */ jsxs("div", {
-						className: `${idx > 0 ? "border-t border-border" : ""} ${isDimmed ? "opacity-40 pointer-events-none" : "transition-opacity"}`,
+			!loading && services.length > 0 && /* @__PURE__ */ jsx("div", {
+				className: "border border-border rounded overflow-x-auto",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "bg-surface",
+					style: { minWidth: "640px" },
+					children: [/* @__PURE__ */ jsx("div", {
+						className: "grid px-5 py-2 border-b border-border bg-bg",
+						style: { gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" },
 						children: [
-							/* @__PURE__ */ jsxs("div", {
-								className: `grid px-5 py-4 items-center ${isEditing || isDeleting ? "bg-accent/10" : ""}`,
-								style: { gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" },
-								children: [
-									/* @__PURE__ */ jsxs("div", {
-										className: "flex items-center gap-3 min-w-0",
-										children: [/* @__PURE__ */ jsx(Toggle$1, {
-											checked: activo,
-											onChange: () => toggleActivo(s)
-										}), /* @__PURE__ */ jsxs("div", {
-											className: "min-w-0",
-											children: [/* @__PURE__ */ jsx("p", {
-												className: `text-sm font-semibold truncate ${activo ? "text-ink" : "text-ink-muted"}`,
-												children: s.nombre
-											}), s.ubicacion && /* @__PURE__ */ jsxs("p", {
-												className: "text-xs text-ink-muted truncate flex items-center gap-1 mt-0.5",
-												children: [
-													/* @__PURE__ */ jsx(PinIcon, {}),
-													" ",
-													s.ubicacion
-												]
-											})]
-										})]
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "text-sm text-ink",
-										children: [s.duracion, " min"]
-									}),
-									/* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx("span", {
-										className: `text-xs font-semibold px-2 py-0.5 rounded ${MODALIDAD_CLS[modalidad] ?? "bg-gray-100 text-gray-700"}`,
-										children: s.modalidad
-									}) }),
-									/* @__PURE__ */ jsxs("div", {
-										className: "font-display text-sm font-bold text-ink",
-										children: ["$", s.precio]
-									}),
-									/* @__PURE__ */ jsx("div", {
-										className: "text-sm text-ink-muted",
-										children: s.reservas_count != null ? `${s.reservas_count} este año` : "—"
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "flex items-center justify-end gap-1",
-										children: [/* @__PURE__ */ jsx("button", {
-											onClick: () => {
-												setDeletingId(null);
-												openEdit(s);
-											},
-											title: "Editar",
-											className: `p-1.5 rounded transition-colors cursor-pointer ${isEditing ? "bg-ink text-white" : "hover:bg-border/40 text-ink-muted hover:text-ink"}`,
-											children: /* @__PURE__ */ jsx(EditIcon$1, {})
-										}), /* @__PURE__ */ jsx("button", {
-											onClick: () => {
-												setEditingId(null);
-												setDeletingId(isDeleting ? null : s.servicio_id);
-											},
-											title: "Eliminar",
-											className: `p-1.5 rounded transition-colors cursor-pointer ${isDeleting ? "bg-red-500 text-white" : "hover:bg-border/40 text-ink-muted hover:text-red-500"}`,
-											children: /* @__PURE__ */ jsx(TrashIcon$1, {})
-										})]
-									})
-								]
-							}),
-							isDeleting && /* @__PURE__ */ jsxs("div", {
-								className: "px-5 py-4 border-t border-border bg-red-50 flex items-center justify-between gap-4",
-								children: [/* @__PURE__ */ jsxs("p", {
-									className: "text-sm text-red-700",
+							"Servicio",
+							"Duración",
+							"Modalidad",
+							"Precio",
+							"Reservas",
+							""
+						].map((h) => /* @__PURE__ */ jsx("div", {
+							className: "text-xs font-bold text-ink-muted uppercase tracking-widest",
+							children: h
+						}, h))
+					}), services.map((s, idx) => {
+						const activo = s.activo ?? true;
+						const isEditing = editingId === s.servicio_id;
+						const isDeleting = deletingId === s.servicio_id;
+						const isDimmed = typeof editingId === "number" && !isEditing;
+						const modalidad = s.modalidad?.toLowerCase();
+						return /* @__PURE__ */ jsxs("div", {
+							className: `${idx > 0 ? "border-t border-border" : ""} ${isDimmed ? "opacity-40 pointer-events-none" : "transition-opacity"}`,
+							children: [
+								/* @__PURE__ */ jsxs("div", {
+									className: `grid px-5 py-4 items-center ${isEditing || isDeleting ? "bg-accent/10" : ""}`,
+									style: { gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" },
 									children: [
-										"¿Eliminar ",
-										/* @__PURE__ */ jsxs("span", {
-											className: "font-semibold",
-											children: [
-												"\"",
-												s.nombre,
-												"\""
-											]
+										/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center gap-3 min-w-0",
+											children: [/* @__PURE__ */ jsx(Toggle$1, {
+												checked: activo,
+												onChange: () => toggleActivo(s)
+											}), /* @__PURE__ */ jsxs("div", {
+												className: "min-w-0",
+												children: [/* @__PURE__ */ jsx("p", {
+													className: `text-sm font-semibold truncate ${activo ? "text-ink" : "text-ink-muted"}`,
+													children: s.nombre
+												}), s.ubicacion && /* @__PURE__ */ jsxs("p", {
+													className: "text-xs text-ink-muted truncate flex items-center gap-1 mt-0.5",
+													children: [
+														/* @__PURE__ */ jsx(PinIcon, {}),
+														" ",
+														s.ubicacion
+													]
+												})]
+											})]
 										}),
-										"? Esta acción no se puede deshacer."
+										/* @__PURE__ */ jsxs("div", {
+											className: "text-sm text-ink",
+											children: [s.duracion, " min"]
+										}),
+										/* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx("span", {
+											className: `text-xs font-semibold px-2 py-0.5 rounded ${MODALIDAD_CLS[modalidad] ?? "bg-gray-100 text-gray-700"}`,
+											children: s.modalidad
+										}) }),
+										/* @__PURE__ */ jsxs("div", {
+											className: "font-display text-sm font-bold text-ink",
+											children: ["$", s.precio]
+										}),
+										/* @__PURE__ */ jsx("div", {
+											className: "text-sm text-ink-muted",
+											children: s.reservas_count != null ? `${s.reservas_count} totales` : "—"
+										}),
+										/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center justify-end gap-1",
+											children: [/* @__PURE__ */ jsx("button", {
+												onClick: () => {
+													setDeletingId(null);
+													openEdit(s);
+												},
+												title: "Editar",
+												className: `p-1.5 rounded transition-colors cursor-pointer ${isEditing ? "bg-ink text-white" : "hover:bg-border/40 text-ink-muted hover:text-ink"}`,
+												children: /* @__PURE__ */ jsx(EditIcon$1, {})
+											}), /* @__PURE__ */ jsx("button", {
+												onClick: () => {
+													setEditingId(null);
+													setDeletingId(isDeleting ? null : s.servicio_id);
+												},
+												title: "Eliminar",
+												className: `p-1.5 rounded transition-colors cursor-pointer ${isDeleting ? "bg-red-500 text-white" : "hover:bg-border/40 text-ink-muted hover:text-red-500"}`,
+												children: /* @__PURE__ */ jsx(TrashIcon$1, {})
+											})]
+										})
 									]
-								}), /* @__PURE__ */ jsxs("div", {
-									className: "flex gap-2 shrink-0",
-									children: [/* @__PURE__ */ jsx("button", {
-										onClick: () => setDeletingId(null),
-										className: "px-3 py-1.5 rounded border border-border bg-white text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer",
-										children: "Cancelar"
-									}), /* @__PURE__ */ jsx("button", {
-										onClick: () => handleDelete(s.servicio_id),
-										disabled: saving,
-										className: "px-3 py-1.5 rounded bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer",
-										children: saving ? "Eliminando..." : "Eliminar"
+								}),
+								isDeleting && /* @__PURE__ */ jsxs("div", {
+									className: "px-5 py-4 border-t border-border bg-red-50 flex items-center justify-between gap-4",
+									children: [/* @__PURE__ */ jsxs("p", {
+										className: "text-sm text-red-700",
+										children: [
+											"¿Eliminar ",
+											/* @__PURE__ */ jsxs("span", {
+												className: "font-semibold",
+												children: [
+													"\"",
+													s.nombre,
+													"\""
+												]
+											}),
+											"? Esta acción no se puede deshacer."
+										]
+									}), /* @__PURE__ */ jsxs("div", {
+										className: "flex gap-2 shrink-0",
+										children: [/* @__PURE__ */ jsx("button", {
+											onClick: () => setDeletingId(null),
+											className: "px-3 py-1.5 rounded border border-border bg-white text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer",
+											children: "Cancelar"
+										}), /* @__PURE__ */ jsx("button", {
+											onClick: () => handleDelete(s.servicio_id),
+											disabled: saving,
+											className: "px-3 py-1.5 rounded bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer",
+											children: saving ? "Eliminando..." : "Eliminar"
+										})]
 									})]
-								})]
-							}),
-							isEditing && /* @__PURE__ */ jsx("div", {
-								className: "border-t border-border",
-								children: /* @__PURE__ */ jsx(ServiceForm, {
-									form,
-									setF,
-									saving,
-									isEdit: true,
-									onSave: handleSave,
-									onCancel: closeAll,
-									needsLocation
+								}),
+								isEditing && /* @__PURE__ */ jsx("div", {
+									className: "border-t border-border",
+									children: /* @__PURE__ */ jsx(ServiceForm, {
+										form,
+										setF,
+										saving,
+										isEdit: true,
+										onSave: handleSave,
+										onCancel: closeAll,
+										needsLocation
+									})
 								})
-							})
-						]
-					}, s.servicio_id);
-				})]
+							]
+						}, s.servicio_id);
+					})]
+				})
 			})
 		]
 	});
@@ -8091,18 +8473,21 @@ function AvailabilitySkeleton() {
 			}),
 			/* @__PURE__ */ jsx("div", { className: "h-12 bg-surface border border-border rounded-xl mb-5" }),
 			/* @__PURE__ */ jsxs("div", {
-				className: "grid grid-cols-3 gap-6",
-				children: [/* @__PURE__ */ jsxs("div", {
-					className: "col-span-2 bg-surface border border-border rounded-2xl overflow-hidden",
-					children: [/* @__PURE__ */ jsxs("div", {
-						className: "grid h-16 border-b border-border",
-						style: { gridTemplateColumns: "56px repeat(7, 1fr)" },
-						children: [/* @__PURE__ */ jsx("div", { className: "border-r border-border" }), DAYS.map((d) => /* @__PURE__ */ jsx("div", { className: "border-r border-border last:border-r-0" }, d))]
-					}), Array.from({ length: 10 }).map((_, i) => /* @__PURE__ */ jsxs("div", {
-						className: "grid border-b border-border/30",
-						style: { gridTemplateColumns: "56px repeat(7, 1fr)" },
-						children: [/* @__PURE__ */ jsx("div", { className: "h-10 border-r border-border/40" }), DAYS.map((d) => /* @__PURE__ */ jsx("div", { className: "h-10 border-r border-border/20 last:border-r-0" }, d))]
-					}, i))]
+				className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
+				children: [/* @__PURE__ */ jsx("div", {
+					className: "lg:col-span-2 bg-surface border border-border rounded-2xl overflow-x-auto",
+					children: /* @__PURE__ */ jsxs("div", {
+						style: { minWidth: "520px" },
+						children: [/* @__PURE__ */ jsxs("div", {
+							className: "grid h-16 border-b border-border",
+							style: { gridTemplateColumns: "56px repeat(7, 1fr)" },
+							children: [/* @__PURE__ */ jsx("div", { className: "border-r border-border" }), DAYS.map((d) => /* @__PURE__ */ jsx("div", { className: "border-r border-border last:border-r-0" }, d))]
+						}), Array.from({ length: 10 }).map((_, i) => /* @__PURE__ */ jsxs("div", {
+							className: "grid border-b border-border/30",
+							style: { gridTemplateColumns: "56px repeat(7, 1fr)" },
+							children: [/* @__PURE__ */ jsx("div", { className: "h-10 border-r border-border/40" }), DAYS.map((d) => /* @__PURE__ */ jsx("div", { className: "h-10 border-r border-border/20 last:border-r-0" }, d))]
+						}, i))]
+					})
 				}), /* @__PURE__ */ jsxs("div", {
 					className: "space-y-4",
 					children: [/* @__PURE__ */ jsx("div", { className: "bg-surface border border-border rounded-2xl h-96" }), /* @__PURE__ */ jsx("div", { className: "bg-surface border border-border rounded-2xl h-24" })]
@@ -8410,7 +8795,7 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 	const isDragging = drag !== null;
 	if (loadingServicios) return /* @__PURE__ */ jsx(AvailabilitySkeleton, {});
 	return /* @__PURE__ */ jsxs("div", {
-		className: `p-8 max-w-6xl mx-auto ${isDragging ? "select-none" : ""}`,
+		className: `p-4 md:p-8 max-w-6xl mx-auto ${isDragging ? "select-none" : ""}`,
 		style: { cursor: isDragging ? drag.mode === "move" ? "grabbing" : "ns-resize" : void 0 },
 		children: [
 			/* @__PURE__ */ jsx("nav", {
@@ -8420,13 +8805,13 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 			/* @__PURE__ */ jsxs("div", {
 				className: "mb-4",
 				children: [/* @__PURE__ */ jsxs("div", {
-					className: "flex justify-between items-center",
+					className: "flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center",
 					children: [/* @__PURE__ */ jsx("h1", {
 						className: "font-display text-3xl text-ink",
 						children: "Disponibilidad"
 					}), /* @__PURE__ */ jsx("button", {
 						onClick: () => setShowExcepciones(true),
-						className: "px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200",
+						className: "self-start sm:self-auto px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200",
 						children: "Excepciones"
 					})]
 				}), /* @__PURE__ */ jsx("p", {
@@ -8639,107 +9024,111 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 				children: error
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "grid grid-cols-3 gap-6",
+				className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
 				children: [/* @__PURE__ */ jsx("div", {
-					className: "col-span-2 bg-surface border border-border rounded-2xl overflow-hidden",
+					className: "lg:col-span-2 bg-surface border border-border rounded-2xl overflow-x-auto",
 					children: loadingDisp ? /* @__PURE__ */ jsx("div", {
 						className: "flex items-center justify-center h-64",
+						style: { minWidth: "520px" },
 						children: /* @__PURE__ */ jsx("span", { className: "w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" })
-					}) : /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
-						className: "grid border-b border-border",
-						style: { gridTemplateColumns: "56px repeat(7, 1fr)" },
-						children: [/* @__PURE__ */ jsx("div", { className: "border-r border-border" }), DAYS.map((day) => /* @__PURE__ */ jsxs("div", {
-							className: "py-3 px-1 border-r border-border last:border-r-0 flex flex-col items-center gap-1",
-							children: [
-								/* @__PURE__ */ jsx("p", {
-									className: "text-xs font-bold text-ink-muted uppercase tracking-wide",
-									children: day
-								}),
-								/* @__PURE__ */ jsx(Toggle, {
-									checked: slots[day].active,
-									onChange: () => toggleDay(day)
-								}),
-								/* @__PURE__ */ jsx("p", {
-									className: "text-xs text-ink-muted",
-									children: slots[day].active ? "Activo" : "Off"
-								})
-							]
-						}, day))]
-					}), /* @__PURE__ */ jsxs("div", {
-						className: "grid",
-						style: { gridTemplateColumns: "56px repeat(7, 1fr)" },
-						children: [/* @__PURE__ */ jsx("div", {
-							className: "border-r border-border",
-							children: HOURS.map((h) => /* @__PURE__ */ jsx("div", {
-								className: "h-10 border-b border-border/50 flex items-center justify-center px-2",
-								children: /* @__PURE__ */ jsx("span", {
-									className: "text-xs text-ink-muted",
-									children: h
-								})
-							}, h))
-						}), DAYS.map((day) => /* @__PURE__ */ jsxs("div", {
-							className: "relative border-r border-border last:border-r-0 overflow-hidden",
-							children: [HOURS.map((_, i) => /* @__PURE__ */ jsx("div", {
-								className: "h-10 border-b border-border/30 relative",
-								children: /* @__PURE__ */ jsx("div", {
-									className: "absolute inset-x-0 border-b border-border/15",
-									style: { top: "50%" }
-								})
-							}, i)), slots[day].active && slots[day].blocks.map((block, bi) => {
-								const top = (block.start - GRID_START) * HOUR_PX;
-								const height = (block.end - block.start) * HOUR_PX;
-								const isThis = isDragging && drag?.day === day && drag?.blockIdx === bi;
-								const isSel = selectedBlock?.day === day && selectedBlock?.bi === bi;
-								const turnos = selectedServicio ? calcTurnos(block, selectedServicio.duracion, selectedServicio.pausa) : null;
-								return /* @__PURE__ */ jsxs("div", {
-									className: `absolute left-1 right-1 rounded-xl flex flex-col items-center justify-center overflow-hidden transition-shadow ${isSel ? "bg-accent/30 border-2 border-accent shadow-md" : "bg-accent/20 border border-accent/60"}`,
-									style: {
-										top,
-										height,
-										cursor: isThis && drag.mode === "move" ? "grabbing" : "grab",
-										zIndex: isThis || isSel ? 10 : 1
-									},
-									onMouseDown: (e) => startDrag(e, day, bi, "move"),
-									onClick: () => {
-										if (!dragMoved.current) setSelectedBlock({
-											day,
-											bi
-										});
-									},
-									children: [
-										/* @__PURE__ */ jsx("div", {
-											className: "absolute top-0 left-0 right-0 h-2.5 cursor-ns-resize hover:bg-accent/30 transition-colors rounded-t-xl",
-											onMouseDown: (e) => startDrag(e, day, bi, "resize-top")
-										}),
-										height >= 28 && /* @__PURE__ */ jsxs("span", {
-											className: "text-xs font-bold text-ink pointer-events-none leading-tight text-center px-2",
-											children: [
-												hourToTime(block.start),
-												" — ",
-												hourToTime(block.end)
-											]
-										}),
-										height >= 48 && /* @__PURE__ */ jsx("span", {
-											className: "text-xs text-ink-muted pointer-events-none mt-0.5",
-											children: getPeriod(block.start)
-										}),
-										height >= 64 && turnos !== null && /* @__PURE__ */ jsxs("span", {
-											className: "text-xs text-ink-muted/70 pointer-events-none mt-0.5",
-											children: [
-												turnos,
-												" turno",
-												turnos !== 1 ? "s" : ""
-											]
-										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "absolute bottom-0 left-0 right-0 h-2.5 cursor-ns-resize hover:bg-accent/30 transition-colors rounded-b-xl",
-											onMouseDown: (e) => startDrag(e, day, bi, "resize-bottom")
-										})
-									]
-								}, bi);
-							})]
-						}, day))]
-					})] })
+					}) : /* @__PURE__ */ jsx("div", {
+						style: { minWidth: "520px" },
+						children: /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsxs("div", {
+							className: "grid border-b border-border",
+							style: { gridTemplateColumns: "56px repeat(7, 1fr)" },
+							children: [/* @__PURE__ */ jsx("div", { className: "border-r border-border" }), DAYS.map((day) => /* @__PURE__ */ jsxs("div", {
+								className: "py-3 px-1 border-r border-border last:border-r-0 flex flex-col items-center gap-1",
+								children: [
+									/* @__PURE__ */ jsx("p", {
+										className: "text-xs font-bold text-ink-muted uppercase tracking-wide",
+										children: day
+									}),
+									/* @__PURE__ */ jsx(Toggle, {
+										checked: slots[day].active,
+										onChange: () => toggleDay(day)
+									}),
+									/* @__PURE__ */ jsx("p", {
+										className: "text-xs text-ink-muted",
+										children: slots[day].active ? "Activo" : "Off"
+									})
+								]
+							}, day))]
+						}), /* @__PURE__ */ jsxs("div", {
+							className: "grid",
+							style: { gridTemplateColumns: "56px repeat(7, 1fr)" },
+							children: [/* @__PURE__ */ jsx("div", {
+								className: "border-r border-border",
+								children: HOURS.map((h) => /* @__PURE__ */ jsx("div", {
+									className: "h-10 border-b border-border/50 flex items-center justify-center px-2",
+									children: /* @__PURE__ */ jsx("span", {
+										className: "text-xs text-ink-muted",
+										children: h
+									})
+								}, h))
+							}), DAYS.map((day) => /* @__PURE__ */ jsxs("div", {
+								className: "relative border-r border-border last:border-r-0 overflow-hidden",
+								children: [HOURS.map((_, i) => /* @__PURE__ */ jsx("div", {
+									className: "h-10 border-b border-border/30 relative",
+									children: /* @__PURE__ */ jsx("div", {
+										className: "absolute inset-x-0 border-b border-border/15",
+										style: { top: "50%" }
+									})
+								}, i)), slots[day].active && slots[day].blocks.map((block, bi) => {
+									const top = (block.start - GRID_START) * HOUR_PX;
+									const height = (block.end - block.start) * HOUR_PX;
+									const isThis = isDragging && drag?.day === day && drag?.blockIdx === bi;
+									const isSel = selectedBlock?.day === day && selectedBlock?.bi === bi;
+									const turnos = selectedServicio ? calcTurnos(block, selectedServicio.duracion, selectedServicio.pausa) : null;
+									return /* @__PURE__ */ jsxs("div", {
+										className: `absolute left-1 right-1 rounded-xl flex flex-col items-center justify-center overflow-hidden transition-shadow ${isSel ? "bg-accent/30 border-2 border-accent shadow-md" : "bg-accent/20 border border-accent/60"}`,
+										style: {
+											top,
+											height,
+											cursor: isThis && drag.mode === "move" ? "grabbing" : "grab",
+											zIndex: isThis || isSel ? 10 : 1
+										},
+										onMouseDown: (e) => startDrag(e, day, bi, "move"),
+										onClick: () => {
+											if (!dragMoved.current) setSelectedBlock({
+												day,
+												bi
+											});
+										},
+										children: [
+											/* @__PURE__ */ jsx("div", {
+												className: "absolute top-0 left-0 right-0 h-2.5 cursor-ns-resize hover:bg-accent/30 transition-colors rounded-t-xl",
+												onMouseDown: (e) => startDrag(e, day, bi, "resize-top")
+											}),
+											height >= 28 && /* @__PURE__ */ jsxs("span", {
+												className: "text-xs font-bold text-ink pointer-events-none leading-tight text-center px-2",
+												children: [
+													hourToTime(block.start),
+													" — ",
+													hourToTime(block.end)
+												]
+											}),
+											height >= 48 && /* @__PURE__ */ jsx("span", {
+												className: "text-xs text-ink-muted pointer-events-none mt-0.5",
+												children: getPeriod(block.start)
+											}),
+											height >= 64 && turnos !== null && /* @__PURE__ */ jsxs("span", {
+												className: "text-xs text-ink-muted/70 pointer-events-none mt-0.5",
+												children: [
+													turnos,
+													" turno",
+													turnos !== 1 ? "s" : ""
+												]
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "absolute bottom-0 left-0 right-0 h-2.5 cursor-ns-resize hover:bg-accent/30 transition-colors rounded-b-xl",
+												onMouseDown: (e) => startDrag(e, day, bi, "resize-bottom")
+											})
+										]
+									}, bi);
+								})]
+							}, day))]
+						})] })
+					})
 				}), /* @__PURE__ */ jsxs("div", {
 					className: "space-y-4",
 					children: [
@@ -9108,7 +9497,7 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 //#endregion
 //#region app/routes/professional/payments.tsx
 var payments_exports$1 = /* @__PURE__ */ __exportAll({ default: () => payments_default$1 });
-var transactions$1 = [
+var transactions = [
 	{
 		date: "22 may",
 		client: "Lucía Pérez",
@@ -9145,7 +9534,7 @@ var transactions$1 = [
 		status: "pendiente"
 	}
 ];
-var badgeCls$2 = {
+var badgeCls$1 = {
 	liquidado: "badge badge-confirmada",
 	pendiente: "badge badge-pendiente"
 };
@@ -9167,7 +9556,7 @@ var payments_default$1 = UNSAFE_withComponentProps(function Payments() {
 				})]
 			}),
 			/* @__PURE__ */ jsx("div", {
-				className: "grid grid-cols-3 gap-4 mb-8",
+				className: "grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8",
 				children: [
 					{
 						label: "INGRESOS DEL MES",
@@ -9202,60 +9591,63 @@ var payments_default$1 = UNSAFE_withComponentProps(function Payments() {
 					]
 				}, c.label))
 			}),
-			/* @__PURE__ */ jsxs("div", {
-				className: "bg-surface border border-border rounded overflow-hidden",
-				children: [/* @__PURE__ */ jsx("div", {
-					className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
-					children: [
-						"FECHA",
-						"CLIENTE",
-						"SERVICIO",
-						"MONTO",
-						"ESTADO"
-					].map((h, i) => /* @__PURE__ */ jsx("div", {
-						className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-1" : i === 1 ? "col-span-3" : i === 2 ? "col-span-4" : i === 3 ? "col-span-2" : "col-span-2"}`,
-						children: h
-					}, i))
-				}), transactions$1.map((t, i) => /* @__PURE__ */ jsxs("div", {
-					className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors",
-					children: [
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-1",
-							children: /* @__PURE__ */ jsx("span", {
-								className: "text-sm text-ink-muted",
-								children: t.date
+			/* @__PURE__ */ jsx("div", {
+				className: "border border-border rounded overflow-x-auto",
+				children: /* @__PURE__ */ jsxs("div", {
+					style: { minWidth: "520px" },
+					children: [/* @__PURE__ */ jsx("div", {
+						className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
+						children: [
+							"FECHA",
+							"CLIENTE",
+							"SERVICIO",
+							"MONTO",
+							"ESTADO"
+						].map((h, i) => /* @__PURE__ */ jsx("div", {
+							className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-1" : i === 1 ? "col-span-3" : i === 2 ? "col-span-4" : i === 3 ? "col-span-2" : "col-span-2"}`,
+							children: h
+						}, i))
+					}), transactions.map((t, i) => /* @__PURE__ */ jsxs("div", {
+						className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-1",
+								children: /* @__PURE__ */ jsx("span", {
+									className: "text-sm text-ink-muted",
+									children: t.date
+								})
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-3",
+								children: /* @__PURE__ */ jsx("span", {
+									className: "text-sm font-semibold text-ink",
+									children: t.client
+								})
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-4",
+								children: /* @__PURE__ */ jsx("span", {
+									className: "text-sm text-ink-muted",
+									children: t.service
+								})
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-2",
+								children: /* @__PURE__ */ jsxs("span", {
+									className: "font-display text-lg font-bold text-ink",
+									children: ["€", t.amount]
+								})
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "col-span-2",
+								children: /* @__PURE__ */ jsx("span", {
+									className: badgeCls$1[t.status],
+									children: t.status.toUpperCase()
+								})
 							})
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-3",
-							children: /* @__PURE__ */ jsx("span", {
-								className: "text-sm font-semibold text-ink",
-								children: t.client
-							})
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-4",
-							children: /* @__PURE__ */ jsx("span", {
-								className: "text-sm text-ink-muted",
-								children: t.service
-							})
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-2",
-							children: /* @__PURE__ */ jsxs("span", {
-								className: "font-display text-lg font-bold text-ink",
-								children: ["€", t.amount]
-							})
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-2",
-							children: /* @__PURE__ */ jsx("span", {
-								className: badgeCls$2[t.status],
-								children: t.status.toUpperCase()
-							})
-						})
-					]
-				}, i))]
+						]
+					}, i))]
+				})
 			})
 		]
 	});
@@ -9420,6 +9812,7 @@ var profile_default = UNSAFE_withComponentProps(function ProfessionalProfile() {
 	const { user, token, updateUser } = useAuth();
 	const [name, setName] = useState(user?.name ?? "");
 	const [email, setEmail] = useState(user?.email ?? "");
+	const [descripcion, setDescripcion] = useState(user?.descripcion ?? "");
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
@@ -9433,14 +9826,16 @@ var profile_default = UNSAFE_withComponentProps(function ProfessionalProfile() {
 		setSaving(true);
 		setInfoMsg(null);
 		try {
-			await api.put("/profile", {
+			await api.put("/profesional/profile", {
 				name: name.trim(),
-				email: email.trim()
+				email: email.trim(),
+				descripcion: descripcion.trim()
 			}, token);
 			updateUser({
 				name: name.trim(),
 				email: email.trim(),
-				initials: getInitials(name.trim())
+				initials: getInitials(name.trim()),
+				descripcion: descripcion.trim()
 			});
 			setInfoMsg({
 				type: "ok",
@@ -9540,6 +9935,15 @@ var profile_default = UNSAFE_withComponentProps(function ProfessionalProfile() {
 						})] }),
 						/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
 							className: "block text-xs font-bold text-ink-muted uppercase mb-1",
+							children: "Descripción"
+						}), /* @__PURE__ */ jsx("input", {
+							type: "text",
+							value: descripcion,
+							onChange: (e) => setDescripcion(e.target.value),
+							className: "w-full border border-border rounded px-3 py-2 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+						})] }),
+						/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+							className: "block text-xs font-bold text-ink-muted uppercase mb-1",
 							children: "Correo electrónico"
 						}), /* @__PURE__ */ jsx("input", {
 							type: "email",
@@ -9628,12 +10032,19 @@ var notifications_exports = /* @__PURE__ */ __exportAll({ default: () => notific
 var notifications_default = UNSAFE_withComponentProps(function NotificationsPage() {
 	const { notifications, unreadCount, loadNotifications, markAsRead, markAllAsRead } = useGlobalNotifications();
 	useEffect(() => {
-		loadNotifications();
-	}, []);
+		const init = async () => {
+			try {
+				await loadNotifications();
+			} catch (err) {
+				console.error("Error cargando notificaciones", err);
+			}
+		};
+		init();
+	}, [loadNotifications]);
 	return /* @__PURE__ */ jsxs("div", {
-		className: "p-8 max-w-6xl mx-auto",
+		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [/* @__PURE__ */ jsxs("div", {
-			className: "flex items-center justify-between mb-6",
+			className: "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6",
 			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
 				className: "font-display text-3xl text-ink",
 				children: "Notificaciones"
@@ -9647,13 +10058,13 @@ var notifications_default = UNSAFE_withComponentProps(function NotificationsPage
 				]
 			})] }), /* @__PURE__ */ jsx("button", {
 				onClick: markAllAsRead,
-				className: "text-sm font-semibold border px-4 py-2 rounded bg-surface hover:bg-bg transition",
+				className: "self-start sm:self-auto text-sm font-semibold border px-4 py-2 rounded bg-surface hover:bg-bg transition",
 				children: "✓ Marcar todas como leídas"
 			})]
 		}), /* @__PURE__ */ jsxs("div", {
-			className: "grid grid-cols-3 gap-8",
+			className: "grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8",
 			children: [/* @__PURE__ */ jsx("div", {
-				className: "col-span-2 space-y-3",
+				className: "lg:col-span-2 space-y-3",
 				children: notifications.length === 0 ? /* @__PURE__ */ jsx("div", {
 					className: "border rounded p-6 text-center",
 					children: /* @__PURE__ */ jsx("p", {
@@ -9666,7 +10077,7 @@ var notifications_default = UNSAFE_withComponentProps(function NotificationsPage
 						className: "flex gap-3",
 						children: [/* @__PURE__ */ jsx("div", {
 							className: "w-10 h-10 rounded bg-accent/20 flex items-center justify-center",
-							children: "🔔"
+							children: /* @__PURE__ */ jsx(Bell, { className: "w-5 h-5 text-ink" })
 						}), /* @__PURE__ */ jsxs("div", {
 							className: "flex-1",
 							children: [
@@ -9674,7 +10085,7 @@ var notifications_default = UNSAFE_withComponentProps(function NotificationsPage
 									className: "flex justify-between",
 									children: [/* @__PURE__ */ jsx("p", {
 										className: "font-semibold text-sm",
-										children: n.data?.type || "Notificación"
+										children: n.data?.type ?? "Notificación"
 									}), !n.read_at && /* @__PURE__ */ jsx("button", {
 										onClick: () => markAsRead(n.id),
 										className: "text-xs text-blue-500",
@@ -9683,7 +10094,7 @@ var notifications_default = UNSAFE_withComponentProps(function NotificationsPage
 								}),
 								/* @__PURE__ */ jsx("p", {
 									className: "text-sm text-ink-muted mt-1",
-									children: n.data?.message
+									children: n.data?.message ?? ""
 								}),
 								n.data?.reserva_id && /* @__PURE__ */ jsxs("p", {
 									className: "text-xs text-ink-muted mt-2",
@@ -9724,7 +10135,7 @@ var notifications_default = UNSAFE_withComponentProps(function NotificationsPage
 						className: "py-2 border-b last:border-0",
 						children: /* @__PURE__ */ jsx("p", {
 							className: "text-xs font-semibold truncate",
-							children: n.data?.message
+							children: n.data?.message ?? ""
 						})
 					}, n.id))]
 				})]
@@ -9913,165 +10324,111 @@ var _layout_default = UNSAFE_withComponentProps(function AdminLayout() {
 //#endregion
 //#region app/routes/admin/dashboard.tsx
 var dashboard_exports = /* @__PURE__ */ __exportAll({ default: () => dashboard_default });
-var kpis = [
+var defaultKpis = [
 	{
 		label: "USUARIOS TOTALES",
-		value: "14.328",
-		delta: "+3.2%",
-		sub: "↑ 442 esta semana"
+		value: "-",
+		delta: "",
+		sub: ""
 	},
 	{
-		label: "PROFESIONALES ACTIVOS",
-		value: "2.187",
-		delta: "+18",
-		sub: "91% verificados"
+		label: "CLIENTES REGISTRADOS",
+		value: "-",
+		delta: "",
+		sub: ""
 	},
 	{
-		label: "RESERVAS (MES)",
-		value: "38.412",
-		delta: "+11%",
-		sub: "€1.84M en GMV"
+		label: "PROFESIONALES REGISTRADOS",
+		value: "-",
+		delta: "",
+		sub: ""
 	},
 	{
-		label: "TASA DE CANCELACIÓN",
-		value: "4.2%",
-		delta: "-0.6%",
-		sub: "bajo el target de 5%"
-	},
-	{
-		label: "REPORTES ABIERTOS",
-		value: "3",
-		delta: "−2",
-		sub: "2 alta prioridad"
+		label: "RESERVAS TOTALES",
+		value: "-",
+		delta: "",
+		sub: ""
 	}
 ];
-var recentActivity = [
-	{
-		time: "09:42",
-		text: "Pedro Yáñez creó cuenta de profesional",
-		status: "PENDIENTE VERIFICACIÓN",
-		cls: "badge badge-pendiente"
-	},
-	{
-		time: "09:38",
-		text: "Carolina A. reportó a Roberto M. por no presentarse",
-		status: "ALTA PRIORIDAD",
-		cls: "badge badge-cancelada"
-	},
-	{
-		time: "09:21",
-		text: "Sistema liquidó €38.420 a 142 profesionales",
-		status: "PROCESADO",
-		cls: "badge badge-confirmada"
-	},
-	{
-		time: "09:14",
-		text: "Tomás Riveiro editó su perfil y agregó 2 servicios",
-		status: "OK",
-		cls: "text-xs text-ink-muted font-semibold"
-	}
-];
-var pending = [
-	{
-		initials: "PY",
-		name: "Pedro Yáñez",
-		sub: "Consultoría legal · Hoy 09:42",
-		dot: false,
-		color: "bg-orange-500"
-	},
-	{
-		initials: "SM",
-		name: "Sofía Mendiluce",
-		sub: "Coaching · Ayer",
-		dot: true,
-		color: "bg-purple-500"
-	},
-	{
-		initials: "LC",
-		name: "Luis Carmona",
-		sub: "Fisioterapia · Hace 2 días",
-		dot: false,
-		color: "bg-teal-500"
-	}
-];
-var categories = [
-	{
-		name: "Salud y bienestar",
-		count: 842
-	},
-	{
-		name: "Consultoría",
-		count: 487
-	},
-	{
-		name: "Entrenamiento",
-		count: 364
-	},
-	{
-		name: "Educación",
-		count: 268
-	},
-	{
-		name: "Otros",
-		count: 226
-	}
-];
-var maxCat = 842;
-var barData = Array.from({ length: 30 }, (_, i) => ({
-	confirmed: Math.floor(80 + Math.random() * 120),
-	paid: Math.floor(70 + Math.random() * 110),
-	cancelled: Math.floor(5 + Math.random() * 15)
-}));
 var dashboard_default = UNSAFE_withComponentProps(function AdminDashboard() {
+	const { token } = useAuth();
+	const [kpis, setKpis] = useState(defaultKpis);
+	const [recentActivity, setRecentActivity] = useState([]);
+	const [barData, setBarData] = useState([]);
+	const [tooltip, setTooltip] = useState(null);
+	const [serviceByType, setServiceByType] = useState([]);
+	const [topServices, setTopServices] = useState([]);
+	useEffect(() => {
+		if (!token) return;
+		const loadKpis = async () => {
+			try {
+				const res = await api.get("/admin/dashboard", token);
+				if (!res.success) return;
+				setKpis([
+					{
+						label: "USUARIOS TOTALES",
+						value: res.data.kpis.users,
+						delta: "",
+						sub: ""
+					},
+					{
+						label: "CLIENTES TOTALES",
+						value: res.data.kpis.clients,
+						delta: "",
+						sub: ""
+					},
+					{
+						label: "PROFESIONALES ACTIVOS",
+						value: res.data.kpis.professionals,
+						delta: "",
+						sub: ""
+					},
+					{
+						label: "RESERVAS TOTALES",
+						value: res.data.kpis.reservas,
+						delta: "",
+						sub: ""
+					}
+				]);
+				setRecentActivity(res.data.recent_activity);
+				setBarData(res.data.reservas_por_dia);
+				setServiceByType(res.data.servicios_por_tipo);
+				setTopServices(res.data.servicios_mas_reservados);
+			} catch (e) {
+				console.error("Error KPIs:", e);
+			}
+		};
+		loadKpis();
+	}, [token]);
+	const maxService = Math.max(...serviceByType.map((s) => Number(s.total || 0)), 1);
+	Math.max(...barData.map((d) => Number(d.finalizadas || 0) + Number(d.no_asistidas || 0) + Number(d.canceladas || 0)), 1);
+	const rawMax = Math.max(...barData.map((d) => Number(d.finalizadas || 0) + Number(d.no_asistidas || 0) + Number(d.canceladas || 0)), 1);
+	const step = Math.ceil(rawMax / 4);
+	const maxScale = step * 4;
+	const ESTADO_STYLE = {
+		pendiente: "bg-amber-50 text-amber-700 border-amber-200",
+		confirmada: "bg-blue-50 text-blue-700 border-blue-200",
+		pagada: "bg-green-50 text-green-700 border-green-200",
+		cancelada: "bg-red-50 text-red-500 border-red-200",
+		finalizada: "bg-gray-100 text-gray-700 border-gray-200"
+	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8 max-w-7xl mx-auto",
 		children: [
-			/* @__PURE__ */ jsxs("div", {
-				className: "flex items-center justify-between mb-8",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
+			/* @__PURE__ */ jsx("div", {
+				className: "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8",
+				children: /* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx("h1", {
 					className: "font-display text-3xl text-ink",
 					children: "Panel administrativo"
-				}), /* @__PURE__ */ jsx("p", {
-					className: "text-ink-muted mt-1",
-					children: "Última actualización: hace 2 min · 1.247 usuarios activos hoy"
-				})] }), /* @__PURE__ */ jsxs("div", {
-					className: "flex items-center gap-4",
-					children: [
-						/* @__PURE__ */ jsxs("div", {
-							className: "flex items-center gap-2 border border-border rounded bg-surface px-4 py-2",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "text-ink-muted text-sm",
-								children: "🔍"
-							}), /* @__PURE__ */ jsx("input", {
-								className: "bg-transparent text-sm text-ink placeholder-ink-muted outline-none w-52",
-								placeholder: "Buscar usuarios, reservas..."
-							})]
-						}),
-						/* @__PURE__ */ jsxs("button", {
-							className: "relative p-2 border border-border rounded bg-surface hover:bg-bg",
-							children: ["🔔", /* @__PURE__ */ jsx("span", {
-								className: "absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold",
-								children: "3"
-							})]
-						}),
-						/* @__PURE__ */ jsx("button", {
-							className: "border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink",
-							children: "Exportar"
-						}),
-						/* @__PURE__ */ jsx("button", {
-							className: "bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors",
-							children: "Reporte mensual"
-						})
-					]
-				})]
+				}) })
 			}),
 			/* @__PURE__ */ jsx("div", {
-				className: "grid grid-cols-5 gap-4 mb-8",
+				className: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8",
 				children: kpis.map((k) => /* @__PURE__ */ jsxs("div", {
 					className: "bg-surface border border-border rounded p-4",
 					children: [
 						/* @__PURE__ */ jsx("p", {
-							className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2",
+							className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2 min-h-[32px]",
 							children: k.label
 						}),
 						/* @__PURE__ */ jsxs("div", {
@@ -10079,12 +10436,12 @@ var dashboard_default = UNSAFE_withComponentProps(function AdminDashboard() {
 							children: [/* @__PURE__ */ jsx("span", {
 								className: "font-display text-2xl text-ink font-bold",
 								children: k.value
-							}), /* @__PURE__ */ jsx("span", {
-								className: `text-xs font-bold px-1.5 py-0.5 rounded ${k.delta.startsWith("-") ? "bg-red-100 text-red-700" : "bg-accent text-ink"}`,
+							}), k.delta && /* @__PURE__ */ jsx("span", {
+								className: "text-xs text-green-500 font-semibold",
 								children: k.delta
 							})]
 						}),
-						/* @__PURE__ */ jsx("p", {
+						k.sub && /* @__PURE__ */ jsx("p", {
 							className: "text-xs text-ink-muted mt-1",
 							children: k.sub
 						})
@@ -10092,189 +10449,197 @@ var dashboard_default = UNSAFE_withComponentProps(function AdminDashboard() {
 				}, k.label))
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "grid grid-cols-3 gap-6",
+				className: "grid grid-cols-1 lg:grid-cols-3 gap-6",
 				children: [/* @__PURE__ */ jsxs("div", {
-					className: "col-span-2 bg-surface border border-border rounded p-6",
+					className: "lg:col-span-2 bg-surface border border-border rounded p-6",
 					children: [
-						/* @__PURE__ */ jsxs("div", {
-							className: "flex items-center justify-between mb-4",
-							children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h2", {
-								className: "font-display text-xl text-ink",
-								children: "Volumen de reservas"
-							}), /* @__PURE__ */ jsx("p", {
-								className: "text-xs text-ink-muted",
-								children: "Últimos 30 días · todas las modalidades"
-							})] }), /* @__PURE__ */ jsx("div", {
-								className: "flex gap-1",
-								children: [
-									"7d",
-									"30d",
-									"90d",
-									"YTD"
-								].map((v) => /* @__PURE__ */ jsx("button", {
-									className: `text-xs px-3 py-1.5 rounded font-semibold transition-colors ${v === "30d" ? "bg-ink text-white" : "border border-border text-ink-muted hover:bg-bg"}`,
-									children: v
-								}, v))
-							})]
+						/* @__PURE__ */ jsx("h2", {
+							className: "font-display text-xl text-ink",
+							children: "Volumen de reservas del último mes"
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "h-48 flex items-end gap-0.5",
-							children: barData.map((d, i) => {
-								const total = d.confirmed + d.paid + d.cancelled;
-								return /* @__PURE__ */ jsxs("div", {
-									className: "flex-1 flex flex-col justify-end gap-0.5",
-									style: { height: `${total / 250 * 100}%` },
+							className: "mt-4",
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "flex",
+								children: [/* @__PURE__ */ jsxs("div", {
+									className: "w-10 h-56 flex flex-col justify-between text-xs text-ink-muted pr-2",
 									children: [
-										/* @__PURE__ */ jsx("div", {
-											className: "bg-red-400",
+										/* @__PURE__ */ jsx("span", { children: maxScale }),
+										/* @__PURE__ */ jsx("span", { children: step * 3 }),
+										/* @__PURE__ */ jsx("span", { children: step * 2 }),
+										/* @__PURE__ */ jsx("span", { children: step }),
+										/* @__PURE__ */ jsx("span", { children: "0" })
+									]
+								}), /* @__PURE__ */ jsxs("div", {
+									className: "flex-1",
+									children: [
+										/* @__PURE__ */ jsxs("div", {
+											className: "relative h-56 border-l border-b border-border",
+											children: [/* @__PURE__ */ jsx("div", {
+												className: "absolute inset-0 flex flex-col justify-between pointer-events-none",
+												children: [
+													1,
+													2,
+													3,
+													4
+												].map((n) => /* @__PURE__ */ jsx("div", { className: "border-t border-dashed border-border" }, n))
+											}), /* @__PURE__ */ jsx("div", {
+												className: "absolute inset-0 flex items-end gap-1 px-1",
+												children: barData.map((d, i) => {
+													const finalizadas = Number(d.finalizadas || 0);
+													const no_asistidas = Number(d.no_asistidas || 0);
+													const canceladas = Number(d.canceladas || 0);
+													finalizadas + no_asistidas + canceladas;
+													const hFinalizadas = finalizadas / maxScale * 100;
+													const hNo = no_asistidas / maxScale * 100;
+													const hCanceladas = canceladas / maxScale * 100;
+													return /* @__PURE__ */ jsx("div", {
+														className: "flex-1 h-full flex items-end cursor-pointer relative",
+														onMouseEnter: (e) => {
+															setTooltip({
+																x: e.clientX,
+																y: e.clientY,
+																data: d
+															});
+														},
+														onMouseLeave: () => setTooltip(null),
+														children: /* @__PURE__ */ jsxs("div", {
+															className: "w-full flex flex-col justify-end h-full",
+															children: [
+																canceladas > 0 && /* @__PURE__ */ jsx("div", {
+																	className: "bg-red-500 w-full",
+																	style: { height: `${hCanceladas}%` }
+																}),
+																no_asistidas > 0 && /* @__PURE__ */ jsx("div", {
+																	className: "bg-orange-400 w-full",
+																	style: { height: `${hNo}%` }
+																}),
+																finalizadas > 0 && /* @__PURE__ */ jsx("div", {
+																	className: "bg-green-500 w-full",
+																	style: { height: `${hFinalizadas}%` }
+																})
+															]
+														})
+													}, i);
+												})
+											})]
+										}),
+										tooltip && /* @__PURE__ */ jsxs("div", {
+											className: "fixed z-50 bg-black text-white text-xs p-3 rounded shadow-lg pointer-events-none",
 											style: {
-												height: `${d.cancelled / total * 100}%`,
-												minHeight: 2
-											}
+												left: tooltip.x + 10,
+												top: tooltip.y + 10
+											},
+											children: [
+												/* @__PURE__ */ jsx("div", {
+													className: "font-bold mb-1",
+													children: tooltip.data.fecha
+												}),
+												/* @__PURE__ */ jsxs("div", { children: ["✔ Finalizadas: ", tooltip.data.finalizadas] }),
+												/* @__PURE__ */ jsxs("div", { children: ["⚠ No asistieron: ", tooltip.data.no_asistidas] }),
+												/* @__PURE__ */ jsxs("div", { children: ["✖ Canceladas: ", tooltip.data.canceladas] })
+											]
 										}),
 										/* @__PURE__ */ jsx("div", {
-											className: "bg-accent",
-											style: { height: `${d.paid / total * 100}%` }
+											className: "flex mt-2 text-[10px] text-ink-muted",
+											children: barData.map((d, i) => /* @__PURE__ */ jsx("div", {
+												className: "flex-1 flex flex-col justify-end",
+												children: i % 5 === 0 ? new Date(d.fecha).toLocaleDateString("es-UY", {
+													day: "2-digit",
+													month: "2-digit"
+												}) : ""
+											}, i))
 										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "bg-ink",
-											style: { height: `${d.confirmed / total * 100}%` }
+										/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center gap-5 mt-4 text-xs text-ink-muted",
+											children: [
+												/* @__PURE__ */ jsxs("span", {
+													className: "flex items-center gap-1",
+													children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-green-500 rounded-sm" }), "Finalizadas"]
+												}),
+												/* @__PURE__ */ jsxs("span", {
+													className: "flex items-center gap-1",
+													children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-orange-400 rounded-sm" }), "No asistieron"]
+												}),
+												/* @__PURE__ */ jsxs("span", {
+													className: "flex items-center gap-1",
+													children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-red-500 rounded-sm" }), "Canceladas"]
+												})
+											]
 										})
 									]
-								}, i);
+								})]
 							})
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "flex items-center gap-6 mt-3 text-xs",
-							children: [
-								/* @__PURE__ */ jsxs("span", {
-									className: "flex items-center gap-1.5",
-									children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-ink rounded-sm" }), "Confirmadas 34.812"]
-								}),
-								/* @__PURE__ */ jsxs("span", {
-									className: "flex items-center gap-1.5",
-									children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-accent rounded-sm" }), "Pagadas 32.144"]
-								}),
-								/* @__PURE__ */ jsxs("span", {
-									className: "flex items-center gap-1.5",
-									children: [/* @__PURE__ */ jsx("span", { className: "w-3 h-3 bg-red-400 rounded-sm" }), "Canceladas 1.612"]
-								})
-							]
 						}),
 						/* @__PURE__ */ jsxs("div", {
 							className: "mt-6 border-t border-border pt-4",
 							children: [/* @__PURE__ */ jsx("p", {
-								className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-3",
-								children: "ACTIVIDAD RECIENTE DEL SISTEMA"
-							}), /* @__PURE__ */ jsx("div", {
-								className: "space-y-2",
-								children: recentActivity.map((a, i) => /* @__PURE__ */ jsxs("div", {
-									className: "flex items-center gap-4 text-sm",
+								className: "text-xs font-bold text-ink-muted uppercase mb-3",
+								children: "RESERVAS RECIENTES"
+							}), recentActivity.map((a, i) => /* @__PURE__ */ jsxs("div", {
+								className: "flex items-center justify-between py-2 border-b border-border last:border-b-0",
+								children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
+									className: "text-sm font-medium text-ink",
+									children: a.texto
+								}), /* @__PURE__ */ jsxs("p", {
+									className: "text-xs text-ink-muted",
 									children: [
-										/* @__PURE__ */ jsx("span", {
-											className: "text-ink-muted w-12 shrink-0",
-											children: a.time
-										}),
-										/* @__PURE__ */ jsx("span", {
-											className: "text-ink flex-1",
-											children: a.text
-										}),
-										/* @__PURE__ */ jsx("span", {
-											className: a.cls,
-											children: a.status
-										})
+										a.fecha,
+										" · ",
+										a.hora
 									]
-								}, i))
-							})]
+								})] }), /* @__PURE__ */ jsx("span", {
+									className: `px-2 py-0.5 rounded-full border text-xs font-medium ${ESTADO_STYLE[a.estado] ?? "bg-gray-100 text-gray-600 border-gray-200"}`,
+									children: a.estado
+								})]
+							}, i))]
 						})
 					]
 				}), /* @__PURE__ */ jsxs("div", {
 					className: "space-y-5",
-					children: [
-						/* @__PURE__ */ jsxs("div", {
-							className: "bg-surface border border-border rounded p-5",
-							children: [
-								/* @__PURE__ */ jsxs("div", {
-									className: "flex items-center justify-between mb-4",
-									children: [/* @__PURE__ */ jsx("h3", {
-										className: "font-display text-lg text-ink",
-										children: "Verificaciones pendientes"
-									}), /* @__PURE__ */ jsx("span", {
-										className: "w-7 h-7 rounded-full bg-accent flex items-center justify-center text-ink text-sm font-bold",
-										children: "7"
-									})]
-								}),
-								/* @__PURE__ */ jsx("div", {
-									className: "space-y-3",
-									children: pending.map((p) => /* @__PURE__ */ jsxs("div", {
-										className: "flex items-center gap-3 hover:bg-bg rounded p-2 -mx-2 cursor-pointer transition-colors",
-										children: [
-											/* @__PURE__ */ jsx("div", {
-												className: `w-9 h-9 rounded-lg ${p.color} flex items-center justify-center text-white text-xs font-bold shrink-0`,
-												children: p.initials
-											}),
-											/* @__PURE__ */ jsxs("div", {
-												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ jsxs("div", {
-													className: "flex items-center gap-1.5",
-													children: [/* @__PURE__ */ jsx("p", {
-														className: "text-sm font-semibold text-ink",
-														children: p.name
-													}), p.dot && /* @__PURE__ */ jsx("span", { className: "w-2 h-2 rounded-full bg-red-500" })]
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted",
-													children: p.sub
-												})]
-											}),
-											/* @__PURE__ */ jsx("span", {
-												className: "text-ink-muted",
-												children: "›"
-											})
-										]
-									}, p.name))
-								}),
-								/* @__PURE__ */ jsx("button", {
-									className: "w-full text-sm text-ink-muted font-semibold text-center mt-3 hover:text-ink transition-colors",
-									children: "Ver todos →"
-								})
-							]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "bg-surface border border-border rounded p-5",
-							children: [/* @__PURE__ */ jsx("h3", {
-								className: "font-display text-lg text-ink mb-4",
-								children: "Top categorías"
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded p-5",
+						children: [/* @__PURE__ */ jsx("h3", {
+							className: "font-display text-lg mb-4",
+							children: "Categorias más reservadas"
+						}), serviceByType.map((s, i) => /* @__PURE__ */ jsxs("div", {
+							className: "mb-3",
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "flex justify-between text-sm",
+								children: [/* @__PURE__ */ jsx("span", { children: s.tipo }), /* @__PURE__ */ jsx("span", {
+									className: "font-semibold",
+									children: s.total
+								})]
 							}), /* @__PURE__ */ jsx("div", {
-								className: "space-y-3",
-								children: categories.map((c) => /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
-									className: "flex items-center justify-between mb-1",
-									children: [/* @__PURE__ */ jsx("span", {
-										className: "text-sm text-ink",
-										children: c.name
-									}), /* @__PURE__ */ jsx("span", {
-										className: "text-sm font-semibold text-ink",
-										children: c.count
-									})]
-								}), /* @__PURE__ */ jsx("div", {
-									className: "h-1.5 bg-border rounded-full",
-									children: /* @__PURE__ */ jsx("div", {
-										className: "h-full bg-ink rounded-full",
-										style: { width: `${c.count / maxCat * 100}%` }
-									})
-								})] }, c.name))
+								className: "h-1.5 bg-border rounded",
+								children: /* @__PURE__ */ jsx("div", {
+									className: "h-full bg-ink rounded",
+									style: { width: `${s.total / maxService * 100}%` }
+								})
 							})]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "bg-surface border border-border rounded p-4 flex items-center justify-between",
-							children: [/* @__PURE__ */ jsx("span", {
-								className: "text-sm font-semibold text-ink",
-								children: "Estado del sistema"
-							}), /* @__PURE__ */ jsx("span", {
-								className: "badge badge-confirmada",
-								children: "OPERATIVO"
+						}, i))]
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded p-5",
+						children: [/* @__PURE__ */ jsx("h3", {
+							className: "font-display text-lg mb-4",
+							children: "Servicios más reservados"
+						}), topServices.map((s, i) => /* @__PURE__ */ jsxs("div", {
+							className: "mb-3",
+							children: [/* @__PURE__ */ jsxs("div", {
+								className: "flex justify-between text-sm",
+								children: [/* @__PURE__ */ jsx("span", { children: s.nombre }), /* @__PURE__ */ jsx("span", {
+									className: "font-semibold",
+									children: s.total
+								})]
+							}), /* @__PURE__ */ jsx("div", {
+								className: "h-1.5 bg-border rounded",
+								children: /* @__PURE__ */ jsx("div", {
+									className: "h-full bg-ink rounded",
+									style: { width: `${s.total / Math.max(...topServices.map((x) => x.total), 1) * 100}%` }
+								})
 							})]
-						})
-					]
+						}, i))]
+					})]
 				})]
 			})
 		]
@@ -10283,297 +10648,260 @@ var dashboard_default = UNSAFE_withComponentProps(function AdminDashboard() {
 //#endregion
 //#region app/routes/admin/users.tsx
 var users_exports = /* @__PURE__ */ __exportAll({ default: () => users_default });
-var users = [
-	{
-		initials: "LP",
-		name: "Lucía Pérez",
-		email: "lucia@gmail.com",
-		role: "Cliente",
-		sessions: 14,
-		joined: "15 mar 2026",
-		status: "activo",
-		color: "bg-violet-500"
-	},
-	{
-		initials: "MO",
-		name: "María Ortiz",
-		email: "maria.ortiz@cita.pro",
-		role: "Profesional",
-		sessions: 234,
-		joined: "10 ene 2025",
-		status: "verificado",
-		color: "bg-orange-400"
-	},
-	{
-		initials: "PY",
-		name: "Pedro Yáñez",
-		email: "pedro@gmail.com",
-		role: "Profesional",
-		sessions: 0,
-		joined: "hoy",
-		status: "pendiente",
-		color: "bg-teal-500"
-	},
-	{
-		initials: "CR",
-		name: "Carlos Ruiz",
-		email: "carlos@gmail.com",
-		role: "Cliente",
-		sessions: 3,
-		joined: "20 abr 2026",
-		status: "activo",
-		color: "bg-purple-400"
-	}
-];
-var badgeCls$1 = {
-	activo: "badge badge-confirmada",
-	verificado: "badge badge-pagada",
-	pendiente: "badge badge-pendiente"
-};
 var users_default = UNSAFE_withComponentProps(function AdminUsers() {
+	const { token } = useAuth();
+	const [clients, setClients] = useState([]);
+	const [professionals, setProfessionals] = useState([]);
+	useEffect(() => {
+		if (!token) return;
+		const loadUsers = async () => {
+			try {
+				const [resClients, resPros] = await Promise.all([api.get("/admin/clients", token), api.get("/admin/professionals", token)]);
+				if (resClients.success) setClients(resClients.data);
+				if (resPros.success) setProfessionals(resPros.data);
+			} catch (e) {
+				console.error("Error loading users:", e);
+			}
+		};
+		loadUsers();
+	}, [token]);
+	const getInitials = (name) => name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+	const Table = ({ title, data }) => /* @__PURE__ */ jsxs("div", {
+		className: "mb-10",
+		children: [/* @__PURE__ */ jsx("h2", {
+			className: "text-xl font-bold text-ink mb-3",
+			children: title
+		}), /* @__PURE__ */ jsx("div", {
+			className: "border border-border rounded overflow-x-auto",
+			children: /* @__PURE__ */ jsxs("div", {
+				style: { minWidth: "500px" },
+				children: [/* @__PURE__ */ jsx("div", {
+					className: "grid grid-cols-24 px-5 py-3 border-b border-border bg-bg",
+					children: [
+						"USUARIO",
+						"EMAIL",
+						"SESIONES",
+						"DESDE",
+						""
+					].map((h, i) => /* @__PURE__ */ jsx("div", {
+						className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-7" : i === 1 ? "col-span-7" : i === 2 ? "col-span-3 text-center" : i === 3 ? "col-span-5 text-center" : "col-span-2"}`,
+						children: h
+					}, i))
+				}), data.map((u) => /* @__PURE__ */ jsxs("div", {
+					className: "grid grid-cols-24 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "col-span-7 flex items-center gap-3",
+							children: [/* @__PURE__ */ jsx("div", {
+								className: "w-9 h-9 rounded-lg bg-violet-500 flex items-center justify-center text-white text-xs font-bold",
+								children: getInitials(u.name)
+							}), /* @__PURE__ */ jsx("span", {
+								className: "text-sm font-semibold text-ink",
+								children: u.name
+							})]
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "col-span-7 min-w-0",
+							children: /* @__PURE__ */ jsx("span", {
+								className: "text-sm text-ink-muted block truncate sm:truncate-none sm:break-words",
+								children: u.email
+							})
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "col-span-3 text-center",
+							children: /* @__PURE__ */ jsx("span", {
+								className: "text-sm text-ink",
+								children: u.sessions
+							})
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "col-span-5 text-center",
+							children: /* @__PURE__ */ jsx("span", {
+								className: "text-sm text-ink-muted justify items-center",
+								children: u.joined
+							})
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "col-span-1",
+							children: /* @__PURE__ */ jsx("button", {
+								className: "text-ink-muted hover:text-ink p-1",
+								children: "⋯"
+							})
+						})
+					]
+				}, u.email))]
+			})
+		})]
+	});
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8 max-w-5xl mx-auto",
-		children: [/* @__PURE__ */ jsxs("div", {
-			className: "flex items-center justify-between mb-6",
-			children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
-				className: "font-display text-3xl text-ink",
-				children: "Usuarios"
-			}), /* @__PURE__ */ jsx("p", {
-				className: "text-ink-muted mt-1",
-				children: "14.328 usuarios totales"
-			})] }), /* @__PURE__ */ jsxs("div", {
-				className: "flex items-center gap-3",
-				children: [/* @__PURE__ */ jsx("input", {
-					className: "border border-border rounded px-4 py-2 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink w-56",
-					placeholder: "Buscar usuario..."
-				}), /* @__PURE__ */ jsxs("select", {
-					className: "border border-border rounded px-4 py-2 text-sm bg-surface text-ink focus:outline-none",
-					children: [
-						/* @__PURE__ */ jsx("option", { children: "Todos los roles" }),
-						/* @__PURE__ */ jsx("option", { children: "Cliente" }),
-						/* @__PURE__ */ jsx("option", { children: "Profesional" })
-					]
+		children: [
+			/* @__PURE__ */ jsxs("div", {
+				className: "mb-6",
+				children: [/* @__PURE__ */ jsx("h1", {
+					className: "font-display text-3xl text-ink",
+					children: "Usuarios"
+				}), /* @__PURE__ */ jsx("p", {
+					className: "text-ink-muted mt-1",
+					children: "Gestión de clientes y profesionales"
 				})]
-			})]
-		}), /* @__PURE__ */ jsxs("div", {
-			className: "bg-surface border border-border rounded overflow-hidden",
-			children: [/* @__PURE__ */ jsx("div", {
-				className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
-				children: [
-					"USUARIO",
-					"EMAIL",
-					"ROL",
-					"SESIONES",
-					"DESDE",
-					"ESTADO",
-					""
-				].map((h, i) => /* @__PURE__ */ jsx("div", {
-					className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-3" : i === 1 ? "col-span-3" : i === 2 ? "col-span-1" : i === 3 ? "col-span-1" : i === 4 ? "col-span-2" : i === 5 ? "col-span-1" : "col-span-1"}`,
-					children: h
-				}, i))
-			}), users.map((u) => /* @__PURE__ */ jsxs("div", {
-				className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors",
-				children: [
-					/* @__PURE__ */ jsxs("div", {
-						className: "col-span-3 flex items-center gap-3",
-						children: [/* @__PURE__ */ jsx("div", {
-							className: `w-9 h-9 rounded-lg ${u.color} flex items-center justify-center text-white text-xs font-bold shrink-0`,
-							children: u.initials
-						}), /* @__PURE__ */ jsx("span", {
-							className: "text-sm font-semibold text-ink",
-							children: u.name
-						})]
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "col-span-3",
-						children: /* @__PURE__ */ jsx("span", {
-							className: "text-sm text-ink-muted",
-							children: u.email
-						})
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "col-span-1",
-						children: /* @__PURE__ */ jsx("span", {
-							className: "text-xs font-bold text-ink-muted uppercase",
-							children: u.role
-						})
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "col-span-1",
-						children: /* @__PURE__ */ jsx("span", {
-							className: "text-sm text-ink",
-							children: u.sessions
-						})
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "col-span-2",
-						children: /* @__PURE__ */ jsx("span", {
-							className: "text-sm text-ink-muted",
-							children: u.joined
-						})
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "col-span-1",
-						children: /* @__PURE__ */ jsx("span", {
-							className: badgeCls$1[u.status],
-							children: u.status.toUpperCase()
-						})
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "col-span-1",
-						children: /* @__PURE__ */ jsx("button", {
-							className: "text-ink-muted hover:text-ink p-1",
-							children: "⋯"
-						})
-					})
-				]
-			}, u.name))]
-		})]
+			}),
+			/* @__PURE__ */ jsx(Table, {
+				title: "Clientes",
+				data: clients
+			}),
+			/* @__PURE__ */ jsx(Table, {
+				title: "Profesionales",
+				data: professionals
+			})
+		]
 	});
 });
 //#endregion
 //#region app/routes/admin/payments.tsx
 var payments_exports = /* @__PURE__ */ __exportAll({ default: () => payments_default });
-var transactions = [
-	{
-		date: "22 may",
-		from: "Lucía Pérez",
-		to: "María Ortiz",
-		service: "Sesión individual",
-		amount: 48,
-		fee: 4.8,
-		net: 43.2,
-		status: "liquidado"
-	},
-	{
-		date: "21 may",
-		from: "Carlos Ruiz",
-		to: "Andrés Calleja",
-		service: "Entrenamiento",
-		amount: 35,
-		fee: 3.5,
-		net: 31.5,
-		status: "pendiente"
-	},
-	{
-		date: "20 may",
-		from: "Lucía Pérez",
-		to: "Liana Souza",
-		service: "Paquete 8 sesiones",
-		amount: 320,
-		fee: 32,
-		net: 288,
-		status: "liquidado"
-	}
-];
 var badgeCls = {
-	liquidado: "badge badge-confirmada",
+	aprobado: "badge badge-confirmada",
 	pendiente: "badge badge-pendiente"
 };
 var payments_default = UNSAFE_withComponentProps(function AdminPayments() {
+	const { token } = useAuth();
+	const [summary, setSummary] = useState(null);
+	const [transactions, setTransactions] = useState([]);
+	useEffect(() => {
+		if (!token) return;
+		const loadPayments = async () => {
+			try {
+				const [res, resSummary] = await Promise.all([api.get("/admin/pagos", token), api.get("/admin/pagosTotales", token)]);
+				if (res.success) setTransactions(res.data);
+				if (resSummary.success) setSummary(resSummary.data);
+			} catch (e) {
+				console.error("Error loading payments:", e);
+			}
+		};
+		loadPayments();
+	}, [token]);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [
-			/* @__PURE__ */ jsxs("div", {
+			/* @__PURE__ */ jsx("div", {
 				className: "flex items-center justify-between mb-6",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
+				children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
 					className: "font-display text-3xl text-ink",
 					children: "Pagos"
 				}), /* @__PURE__ */ jsx("p", {
 					className: "text-ink-muted mt-1",
 					children: "Todas las transacciones de la plataforma"
-				})] }), /* @__PURE__ */ jsx("button", {
-					className: "border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink",
-					children: "Exportar CSV"
-				})]
-			}),
-			/* @__PURE__ */ jsx("div", {
-				className: "grid grid-cols-4 gap-4 mb-8",
-				children: [
-					{
-						label: "GMV DEL MES",
-						value: "€1.84M"
-					},
-					{
-						label: "COMISIONES",
-						value: "€184K"
-					},
-					{
-						label: "LIQUIDACIONES PENDIENTES",
-						value: "€890"
-					},
-					{
-						label: "DISPUTAS ABIERTAS",
-						value: "3"
-					}
-				].map((c) => /* @__PURE__ */ jsxs("div", {
-					className: "bg-surface border border-border rounded p-5",
-					children: [/* @__PURE__ */ jsx("p", {
-						className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2",
-						children: c.label
-					}), /* @__PURE__ */ jsx("p", {
-						className: "font-display text-2xl text-ink font-bold",
-						children: c.value
-					})]
-				}, c.label))
+				})] })
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "bg-surface border border-border rounded overflow-hidden",
-				children: [/* @__PURE__ */ jsx("div", {
-					className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
-					children: [
-						"FECHA",
-						"DE",
-						"PARA",
-						"SERVICIO",
-						"TOTAL",
-						"COMISIÓN",
-						"NETO",
-						"ESTADO"
-					].map((h, i) => /* @__PURE__ */ jsx("div", {
-						className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-1" : i === 1 ? "col-span-2" : i === 2 ? "col-span-2" : i === 3 ? "col-span-2" : "col-span-1"}`,
-						children: h
-					}, i))
-				}), transactions.map((t, i) => /* @__PURE__ */ jsxs("div", {
-					className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors text-sm",
-					children: [
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-1 text-ink-muted",
-							children: t.date
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-2 text-ink font-semibold",
-							children: t.from
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-2 text-ink font-semibold",
-							children: t.to
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-2 text-ink-muted",
-							children: t.service
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "col-span-1 font-bold text-ink",
-							children: ["€", t.amount]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "col-span-1 text-ink-muted",
-							children: ["€", t.fee]
-						}),
-						/* @__PURE__ */ jsxs("div", {
-							className: "col-span-1 font-bold text-ink",
-							children: ["€", t.net]
-						}),
-						/* @__PURE__ */ jsx("div", {
-							className: "col-span-1",
-							children: /* @__PURE__ */ jsx("span", {
-								className: badgeCls[t.status],
-								children: t.status.toUpperCase()
+				className: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-8",
+				children: [
+					/* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded p-5",
+						children: [/* @__PURE__ */ jsx("p", {
+							className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2",
+							children: "TOTAL"
+						}), /* @__PURE__ */ jsxs("p", {
+							className: "font-display text-2xl text-ink font-bold",
+							children: ["€", summary?.total ?? 0]
+						})]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded p-5",
+						children: [/* @__PURE__ */ jsx("p", {
+							className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2",
+							children: "PAGADO"
+						}), /* @__PURE__ */ jsxs("p", {
+							className: "font-display text-2xl text-ink font-bold text-green-600",
+							children: ["€", summary?.pagado ?? 0]
+						})]
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "bg-surface border border-border rounded p-5",
+						children: [/* @__PURE__ */ jsx("p", {
+							className: "text-xs font-bold text-ink-muted uppercase tracking-widest mb-2",
+							children: "PENDIENTE"
+						}), /* @__PURE__ */ jsxs("p", {
+							className: "font-display text-2xl text-ink font-bold text-yellow-600",
+							children: ["€", summary?.pendiente ?? 0]
+						})]
+					})
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "border border-border rounded overflow-x-auto",
+				children: /* @__PURE__ */ jsxs("div", {
+					style: { minWidth: "640px" },
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "flex px-5 py-3 border-b border-border bg-bg text-xs font-bold text-ink-muted uppercase tracking-widest",
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "w-24",
+								children: "FECHA"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "flex-[2]",
+								children: "DE"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "flex-[2]",
+								children: "PARA"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "flex-[3]",
+								children: "SERVICIO"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "w-20 text-left",
+								children: "TOTAL"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "w-24 text-center",
+								children: "MÉTODO"
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "w-28 text-center",
+								children: "ESTADO"
 							})
-						})
-					]
-				}, i))]
+						]
+					}), transactions.map((t, i) => /* @__PURE__ */ jsxs("div", {
+						className: "flex px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors text-sm bg-surface",
+						children: [
+							/* @__PURE__ */ jsx("div", {
+								className: "w-24 text-ink-muted",
+								children: t.fecha
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "flex-[2] text-ink font-semibold truncate pr-2",
+								children: t.de
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "flex-[2] text-ink font-semibold truncate pr-2",
+								children: t.para
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "flex-[3] text-ink-muted truncate pr-2",
+								children: t.servicio
+							}),
+							/* @__PURE__ */ jsxs("div", {
+								className: "w-20 text-left font-bold text-ink",
+								children: ["$", t.total]
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "w-24 text-center text-ink-muted uppercase text-xs",
+								children: t.metodo
+							}),
+							/* @__PURE__ */ jsx("div", {
+								className: "w-28 text-center",
+								children: /* @__PURE__ */ jsx("span", {
+									className: badgeCls[t.estado],
+									children: t.estado?.toUpperCase()
+								})
+							})
+						]
+					}))]
+				})
 			})
 		]
 	});
@@ -10588,8 +10916,8 @@ var videollamada_default = UNSAFE_withComponentProps(function Videollamada() {
 	const localVideoRef = useRef(null);
 	const remoteVideoRef = useRef(null);
 	const roomRef = useRef(null);
-	const [micOn, setMicOn] = useState(true);
-	const [camOn, setCamOn] = useState(true);
+	const [micOn, setMicOn] = useState(false);
+	const [camOn, setCamOn] = useState(false);
 	const [participants, setParticipants] = useState(1);
 	const salir = async () => {
 		try {
@@ -10610,37 +10938,25 @@ var videollamada_default = UNSAFE_withComponentProps(function Videollamada() {
 		if (!id || !token) return;
 		const room = new Room();
 		roomRef.current = room;
-		const attachLocalVideo = () => {
-			room.localParticipant.videoTrackPublications.forEach((pub) => {
-				if (pub.track && localVideoRef.current) pub.track.attach(localVideoRef.current);
-			});
-		};
 		const join = async () => {
 			try {
 				const { token: livekitToken, url } = (await api.get(`/videollamada/token/${id}`, token)).data;
 				room.on("trackSubscribed", (track) => {
-					console.log("SUBSCRIBED", track.kind);
 					if (track.kind === Track.Kind.Video && remoteVideoRef.current) track.attach(remoteVideoRef.current);
 					if (track.kind === Track.Kind.Audio) track.attach();
 				});
 				await room.connect(url, livekitToken);
-				await api.post(`/videollamada/${id}/estado`, { estado: "en_curso" }, token);
-				await room.localParticipant.setCameraEnabled(true);
-				await room.localParticipant.setMicrophoneEnabled(true);
-				attachLocalVideo();
-				room.localParticipant.on("trackPublished", attachLocalVideo);
-				room.remoteParticipants.forEach((participant) => {
-					participant.trackPublications.forEach((pub) => {
-						if (pub.track && pub.track.kind === Track.Kind.Video && remoteVideoRef.current) {
-							console.log("VIDEO EXISTENTE");
-							pub.track.attach(remoteVideoRef.current);
-						}
-						if (pub.track && pub.track.kind === Track.Kind.Audio) {
-							console.log("AUDIO EXISTENTE");
-							pub.track.attach();
-						}
+				api.post(`/videollamada/${id}/estado`, { estado: "en_curso" }, token).catch(() => {});
+				await Promise.all([room.localParticipant.setCameraEnabled(true), room.localParticipant.setMicrophoneEnabled(true)]);
+				setCamOn(true);
+				setMicOn(true);
+				const attachLocal = () => {
+					room.localParticipant.videoTrackPublications.forEach((pub) => {
+						if (pub.track && localVideoRef.current) pub.track.attach(localVideoRef.current);
 					});
-				});
+				};
+				attachLocal();
+				room.localParticipant.on("trackPublished", attachLocal);
 				setParticipants(room.numParticipants);
 				room.on("participantConnected", () => {
 					setParticipants(room.numParticipants);
@@ -11083,9 +11399,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-BazQ-Afz.js",
+			"module": "/assets/root-Dtx0gCyo.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
-			"css": ["/assets/root-CPQA-ywX.css"],
+			"css": ["/assets/root-DFPc2p_x.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -11188,11 +11504,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-BvcAQ6-T.js",
+			"module": "/assets/_layout-BI2HZE8D.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-BYEu_8z6.js"
+				"/assets/NotificationContext-DJ39hRro.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11213,7 +11529,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-B2Tj5bSM.js",
+			"module": "/assets/dashboard-nQ-iQGHH.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11234,7 +11550,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/discover-DumwXBiE.js",
+			"module": "/assets/discover-Dle6i-Ul.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11255,7 +11571,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/professional._id-Chx5wsUV.js",
+			"module": "/assets/professional._id-CEJcnmTT.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11381,7 +11697,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-CrxVNHJS.js",
+			"module": "/assets/payments-CxyeqdLc.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
@@ -11406,10 +11722,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-7a7b7r0n.js",
+			"module": "/assets/notifications-D4MNgO-S.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/NotificationContext-BYEu_8z6.js",
+				"/assets/NotificationContext-DJ39hRro.js",
+				"/assets/bell-B_0dwYTY.js",
 				"/assets/AuthContext-DzGty-Aa.js"
 			],
 			"css": [],
@@ -11431,7 +11748,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/mis-reservas-CkzJlEa5.js",
+			"module": "/assets/mis-reservas-BRGXzagT.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
@@ -11456,7 +11773,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-DPH8vFbk.js",
+			"module": "/assets/profile-BsMrt6hg.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11477,11 +11794,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-yshKi_o8.js",
+			"module": "/assets/_layout-BbIdu2a1.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
 				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-BYEu_8z6.js"
+				"/assets/NotificationContext-DJ39hRro.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11502,7 +11819,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/clients-DOzvhNSZ.js",
+			"module": "/assets/clients-DuA52wGB.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11523,7 +11840,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-DA7BcdBJ.js",
+			"module": "/assets/dashboard-4PaDtDbU.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11544,7 +11861,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/services-eYj63uXY.js",
+			"module": "/assets/services-CWNrNP8T.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11586,7 +11903,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-Doecj-nC.js",
+			"module": "/assets/availability-CrpxNiGO.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11607,7 +11924,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-BZ-CHMBZ.js",
+			"module": "/assets/payments-lBwLL4Rd.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11649,7 +11966,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-DnyyCR4O.js",
+			"module": "/assets/profile-BSZI_Fun.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11670,10 +11987,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-DCLQHYhM.js",
+			"module": "/assets/notifications-BGXg4K2W.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/NotificationContext-BYEu_8z6.js",
+				"/assets/NotificationContext-DJ39hRro.js",
+				"/assets/bell-B_0dwYTY.js",
 				"/assets/AuthContext-DzGty-Aa.js"
 			],
 			"css": [],
@@ -11716,8 +12034,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-CZm5Z1Va.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
+			"module": "/assets/dashboard-B6uF7RTo.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11737,8 +12055,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/users-lmmyoUcp.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
+			"module": "/assets/users-BfExO8CR.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11758,8 +12076,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-DaOgg-ls.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
+			"module": "/assets/payments-CZPjdXSL.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11779,7 +12097,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/videollamada-Dquwgr-6.js",
+			"module": "/assets/videollamada-7TRJu2nm.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11830,8 +12148,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-a4b29fd5.js",
-	"version": "a4b29fd5",
+	"url": "/assets/manifest-e1cc3276.js",
+	"version": "e1cc3276",
 	"sri": void 0
 };
 //#endregion
