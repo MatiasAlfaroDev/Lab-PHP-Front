@@ -1,182 +1,390 @@
-const kpis = [
-  { label: "USUARIOS TOTALES", value: "14.328", delta: "+3.2%", sub: "↑ 442 esta semana" },
-  { label: "PROFESIONALES ACTIVOS", value: "2.187", delta: "+18", sub: "91% verificados" },
-  { label: "RESERVAS (MES)", value: "38.412", delta: "+11%", sub: "€1.84M en GMV" },
-  { label: "TASA DE CANCELACIÓN", value: "4.2%", delta: "-0.6%", sub: "bajo el target de 5%" },
-  { label: "REPORTES ABIERTOS", value: "3", delta: "−2", sub: "2 alta prioridad" },
+import { useEffect, useState } from "react"; 
+import { api } from "~/lib/api";
+import { useAuth } from "~/context/AuthContext";
+
+/* =========================
+   KPIs (ahora dinámicos)
+========================= */
+const defaultKpis = [
+  { label: "USUARIOS TOTALES", value: "-", delta: "", sub: "" },
+  { label: "CLIENTES REGISTRADOS", value: "-", delta: "", sub: "" },
+  { label: "PROFESIONALES REGISTRADOS", value: "-", delta: "", sub: "" },
+  { label: "RESERVAS TOTALES", value: "-", delta: "", sub: "" },
 ];
-
-const recentActivity = [
-  { time: "09:42", text: "Pedro Yáñez creó cuenta de profesional", status: "PENDIENTE VERIFICACIÓN", cls: "badge badge-pendiente" },
-  { time: "09:38", text: "Carolina A. reportó a Roberto M. por no presentarse", status: "ALTA PRIORIDAD", cls: "badge badge-cancelada" },
-  { time: "09:21", text: "Sistema liquidó €38.420 a 142 profesionales", status: "PROCESADO", cls: "badge badge-confirmada" },
-  { time: "09:14", text: "Tomás Riveiro editó su perfil y agregó 2 servicios", status: "OK", cls: "text-xs text-ink-muted font-semibold" },
-];
-
-const pending = [
-  { initials: "PY", name: "Pedro Yáñez", sub: "Consultoría legal · Hoy 09:42", dot: false, color: "bg-orange-500" },
-  { initials: "SM", name: "Sofía Mendiluce", sub: "Coaching · Ayer", dot: true, color: "bg-purple-500" },
-  { initials: "LC", name: "Luis Carmona", sub: "Fisioterapia · Hace 2 días", dot: false, color: "bg-teal-500" },
-];
-
-const categories = [
-  { name: "Salud y bienestar", count: 842 },
-  { name: "Consultoría", count: 487 },
-  { name: "Entrenamiento", count: 364 },
-  { name: "Educación", count: 268 },
-  { name: "Otros", count: 226 },
-];
-
-const maxCat = 842;
-
-const barData = Array.from({ length: 30 }, (_, i) => ({
-  confirmed: Math.floor(80 + Math.random() * 120),
-  paid: Math.floor(70 + Math.random() * 110),
-  cancelled: Math.floor(5 + Math.random() * 15),
-}));
 
 export default function AdminDashboard() {
+  const { token } = useAuth();
+  const [kpis, setKpis] = useState(defaultKpis);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [barData, setBarData] = useState<any[]>([]);
+  const [tooltip, setTooltip] = useState<null | {
+    x: number;
+    y: number;
+    data: any;
+  }>(null);
+  const [serviceByType, setServiceByType] = useState<any[]>([]);
+  const [topServices, setTopServices] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const loadKpis = async () => {
+      try {
+        const res: any = await api.get("/admin/dashboard", token);
+
+        if (!res.success) return;
+
+        setKpis([
+          {
+            label: "USUARIOS TOTALES",
+            value: res.data.kpis.users,
+            delta: "",
+            sub: "",
+          },
+          {
+            label: "CLIENTES TOTALES",
+            value: res.data.kpis.clients,  
+            delta: "",
+            sub: "",
+          },
+          {
+            label: "PROFESIONALES ACTIVOS",
+            value: res.data.kpis.professionals,
+            delta: "",
+            sub: "",
+          },
+          {
+            label: "RESERVAS TOTALES",
+            value: res.data.kpis.reservas,
+            delta: "",
+            sub: "",
+          },
+        ]);
+        setRecentActivity(res.data.recent_activity);
+        setBarData(res.data.reservas_por_dia);
+        setServiceByType(res.data.servicios_por_tipo);
+        setTopServices(res.data.servicios_mas_reservados);
+      } catch (e) {
+        console.error("Error KPIs:", e);
+      }
+    };
+
+    loadKpis();
+  }, [token]);
+
+  const maxService = Math.max(
+  ...serviceByType.map((s) => Number(s.total || 0)),
+  1
+);
+  const maxValue = Math.max(
+    ...barData.map(
+      (d) =>
+        Number(d.finalizadas || 0) +
+        Number(d.no_asistidas || 0) +
+        Number(d.canceladas || 0)
+    ),
+    1
+  );
+  const rawMax = Math.max(
+  ...barData.map(
+    (d) =>
+      Number(d.finalizadas || 0) +
+      Number(d.no_asistidas || 0) +
+      Number(d.canceladas || 0)
+  ),
+  1
+);
+
+const step = Math.ceil(rawMax / 4);
+const maxScale = step * 4;
+  const ESTADO_STYLE: Record<string, string> = {
+    pendiente: "bg-amber-50 text-amber-700 border-amber-200",
+    confirmada: "bg-blue-50 text-blue-700 border-blue-200",
+    pagada: "bg-green-50 text-green-700 border-green-200",
+    cancelada: "bg-red-50 text-red-500 border-red-200",
+    finalizada: "bg-gray-100 text-gray-700 border-gray-200",
+  };
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      {/* Header */}
+
+      {/* HEADER */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
           <h1 className="font-display text-3xl text-ink">Panel administrativo</h1>
-          <p className="text-ink-muted mt-1">Última actualización: hace 2 min · 1.247 usuarios activos hoy</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 border border-border rounded bg-surface px-4 py-2 w-full sm:w-auto">
-            <span className="text-ink-muted text-sm">🔍</span>
-            <input className="bg-transparent text-sm text-ink placeholder-ink-muted outline-none w-full sm:w-44" placeholder="Buscar usuarios, reservas..." />
-          </div>
-          <button className="relative p-2 border border-border rounded bg-surface hover:bg-bg">
-            🔔
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold">3</span>
-          </button>
-          <button className="border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink">Exportar</button>
-          <button className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors">Reporte mensual</button>
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* =========================
+          KPIs (AHORA BACKEND)
+      ========================= */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         {kpis.map((k) => (
           <div key={k.label} className="bg-surface border border-border rounded p-4">
-            <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-2">{k.label}</p>
+
+            <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-2 min-h-[32px]">
+              {k.label}
+            </p>
+
             <div className="flex items-baseline gap-2">
-              <span className="font-display text-2xl text-ink font-bold">{k.value}</span>
-              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${k.delta.startsWith("-") ? "bg-red-100 text-red-700" : "bg-accent text-ink"}`}>
-                {k.delta}
+              <span className="font-display text-2xl text-ink font-bold">
+                {k.value}
               </span>
+
+              {k.delta && (
+                <span className="text-xs text-green-500 font-semibold">
+                  {k.delta}
+                </span>
+              )}
             </div>
-            <p className="text-xs text-ink-muted mt-1">{k.sub}</p>
+
+            {k.sub && (
+              <p className="text-xs text-ink-muted mt-1">
+                {k.sub}
+              </p>
+            )}
+
           </div>
         ))}
       </div>
 
+      {/* =========================
+          TODO LO DEMÁS IGUAL
+      ========================= */}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart */}
+
+        {/* CHART */}
         <div className="lg:col-span-2 bg-surface border border-border rounded p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="font-display text-xl text-ink">Volumen de reservas</h2>
-              <p className="text-xs text-ink-muted">Últimos 30 días · todas las modalidades</p>
-            </div>
-            <div className="flex gap-1">
-              {["7d", "30d", "90d", "YTD"].map((v) => (
-                <button key={v} className={`text-xs px-3 py-1.5 rounded font-semibold transition-colors ${v === "30d" ? "bg-ink text-white" : "border border-border text-ink-muted hover:bg-bg"}`}>
-                  {v}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* Bar chart */}
-          <div className="h-48 flex items-end gap-0.5">
-            {barData.map((d, i) => {
-              const total = d.confirmed + d.paid + d.cancelled;
-              const max = 250;
-              const h = (total / max) * 100;
-              return (
-                <div key={i} className="flex-1 flex flex-col justify-end gap-0.5" style={{ height: `${h}%` }}>
-                  <div className="bg-red-400" style={{ height: `${(d.cancelled / total) * 100}%`, minHeight: 2 }} />
-                  <div className="bg-accent" style={{ height: `${(d.paid / total) * 100}%` }} />
-                  <div className="bg-ink" style={{ height: `${(d.confirmed / total) * 100}%` }} />
+          <h2 className="font-display text-xl text-ink">Volumen de reservas del último mes</h2>
+
+          <div className="mt-4">
+            <div className="flex">
+
+              {/* EJE Y */}
+              <div className="w-10 h-56 flex flex-col justify-between text-xs text-ink-muted pr-2">
+                <span>{maxScale}</span>
+                <span>{step * 3}</span>
+                <span>{step * 2}</span>
+                <span>{step}</span>
+                <span>0</span>
+              </div>
+
+              {/* GRAFICA */}
+              <div className="flex-1">
+
+                <div className="relative h-56 border-l border-b border-border">
+
+                  {/* líneas horizontales */}
+                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                    {[1,2,3,4].map((n) => (
+                      <div
+                        key={n}
+                        className="border-t border-dashed border-border"
+                      />
+                    ))}
+                  </div>
+
+                  {/* barras */}
+                  <div className="absolute inset-0 flex items-end gap-1 px-1">
+                    {barData.map((d, i) => {
+                      const finalizadas = Number(d.finalizadas || 0);
+                      const no_asistidas = Number(d.no_asistidas || 0);
+                      const canceladas = Number(d.canceladas || 0);
+
+                      const total = finalizadas + no_asistidas + canceladas;
+
+                      const hFinalizadas = (finalizadas / maxScale) * 100;
+                      const hNo = (no_asistidas / maxScale) * 100;
+                      const hCanceladas = (canceladas / maxScale) * 100;
+
+                      return (
+                        <div
+                          key={i}
+                          className="flex-1 h-full flex items-end cursor-pointer relative"
+                          onMouseEnter={(e) => {
+                            setTooltip({
+                              x: e.clientX,
+                              y: e.clientY,
+                              data: d,
+                            });
+                          }}
+                          onMouseLeave={() => setTooltip(null)}
+                        >
+
+                          <div className="w-full flex flex-col justify-end h-full">
+
+                            {canceladas > 0 && (
+                              <div
+                                className="bg-red-500 w-full"
+                                style={{ height: `${hCanceladas}%` }}
+                              />
+                            )}
+
+                            {no_asistidas > 0 && (
+                              <div
+                                className="bg-orange-400 w-full"
+                                style={{ height: `${hNo}%` }}
+                              />
+                            )}
+
+                            {finalizadas > 0 && (
+                              <div
+                                className="bg-green-500 w-full"
+                                style={{ height: `${hFinalizadas}%` }}
+                              />
+                            )}
+
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
                 </div>
-              );
-            })}
-          </div>
-          <div className="flex items-center gap-6 mt-3 text-xs">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-ink rounded-sm" />Confirmadas 34.812</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-accent rounded-sm" />Pagadas 32.144</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-red-400 rounded-sm" />Canceladas 1.612</span>
+                {tooltip && (
+                  <div
+                    className="fixed z-50 bg-black text-white text-xs p-3 rounded shadow-lg pointer-events-none"
+                    style={{
+                      left: tooltip.x + 10,
+                      top: tooltip.y + 10,
+                    }}
+                  >
+                    <div className="font-bold mb-1">
+                      {tooltip.data.fecha}
+                    </div>
+
+                    <div>✔ Finalizadas: {tooltip.data.finalizadas}</div>
+                    <div>⚠ No asistieron: {tooltip.data.no_asistidas}</div>
+                    <div>✖ Canceladas: {tooltip.data.canceladas}</div>
+                  </div>
+                )}
+                {/* FECHAS */}
+                <div className="flex mt-2 text-[10px] text-ink-muted">
+                  {barData.map((d, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 flex flex-col justify-end"
+                    >
+                      {i % 5 === 0
+                        ? new Date(d.fecha)
+                            .toLocaleDateString("es-UY", {
+                              day: "2-digit",
+                              month: "2-digit",
+                            })
+                        : ""}
+                    </div>
+                  ))}
+                </div>
+                {/* LEYENDA */}
+                <div className="flex items-center gap-5 mt-4 text-xs text-ink-muted">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-green-500 rounded-sm" />
+                    Finalizadas
+                  </span>
+
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-orange-400 rounded-sm" />
+                    No asistieron
+                  </span>
+
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 bg-red-500 rounded-sm" />
+                    Canceladas
+                  </span>
+                </div>
+
+              </div>
+            </div>
           </div>
 
-          {/* Recent activity */}
+          {/* ACTIVITY */}
           <div className="mt-6 border-t border-border pt-4">
-            <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-3">ACTIVIDAD RECIENTE DEL SISTEMA</p>
-            <div className="space-y-2">
-              {recentActivity.map((a, i) => (
-                <div key={i} className="flex items-center gap-4 text-sm">
-                  <span className="text-ink-muted w-12 shrink-0">{a.time}</span>
-                  <span className="text-ink flex-1">{a.text}</span>
-                  <span className={a.cls}>{a.status}</span>
+            <p className="text-xs font-bold text-ink-muted uppercase mb-3">
+              RESERVAS RECIENTES
+            </p>
+
+            {recentActivity.map((a, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between py-2 border-b border-border last:border-b-0"
+              >
+                <div>
+                  <p className="text-sm font-medium text-ink">
+                    {a.texto}
+                  </p>
+
+                  <p className="text-xs text-ink-muted">
+                    {a.fecha} · {a.hora}
+                  </p>
                 </div>
-              ))}
-            </div>
+
+                <span
+                  className={`px-2 py-0.5 rounded-full border text-xs font-medium ${
+                    ESTADO_STYLE[a.estado] ??
+                    "bg-gray-100 text-gray-600 border-gray-200"
+                  }`}
+                >
+                  {a.estado}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Right column */}
+        {/* RIGHT */}
         <div className="space-y-5">
-          {/* Pending verifications */}
-          <div className="bg-surface border border-border rounded p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display text-lg text-ink">Verificaciones pendientes</h3>
-              <span className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-ink text-sm font-bold">7</span>
-            </div>
-            <div className="space-y-3">
-              {pending.map((p) => (
-                <div key={p.name} className="flex items-center gap-3 hover:bg-bg rounded p-2 -mx-2 cursor-pointer transition-colors">
-                  <div className={`w-9 h-9 rounded-lg ${p.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}>{p.initials}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-semibold text-ink">{p.name}</p>
-                      {p.dot && <span className="w-2 h-2 rounded-full bg-red-500" />}
-                    </div>
-                    <p className="text-xs text-ink-muted">{p.sub}</p>
-                  </div>
-                  <span className="text-ink-muted">›</span>
-                </div>
-              ))}
-            </div>
-            <button className="w-full text-sm text-ink-muted font-semibold text-center mt-3 hover:text-ink transition-colors">
-              Ver todos →
-            </button>
-          </div>
 
-          {/* Top categories */}
+          {/* CATEGORIES */}
           <div className="bg-surface border border-border rounded p-5">
-            <h3 className="font-display text-lg text-ink mb-4">Top categorías</h3>
-            <div className="space-y-3">
-              {categories.map((c) => (
-                <div key={c.name}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-ink">{c.name}</span>
-                    <span className="text-sm font-semibold text-ink">{c.count}</span>
-                  </div>
-                  <div className="h-1.5 bg-border rounded-full">
-                    <div className="h-full bg-ink rounded-full" style={{ width: `${(c.count / maxCat) * 100}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+            <h3 className="font-display text-lg mb-4">Categorias más reservadas</h3>
 
-          {/* System status */}
-          <div className="bg-surface border border-border rounded p-4 flex items-center justify-between">
-            <span className="text-sm font-semibold text-ink">Estado del sistema</span>
-            <span className="badge badge-confirmada">OPERATIVO</span>
+            {serviceByType.map((s, i) => (
+              <div key={i} className="mb-3">
+
+                <div className="flex justify-between text-sm">
+                  <span>{s.tipo}</span>
+                  <span className="font-semibold">{s.total}</span>
+                </div>
+
+                <div className="h-1.5 bg-border rounded">
+                  <div
+                    className="h-full bg-ink rounded"
+                    style={{
+                      width: `${(s.total / maxService) * 100}%`
+                    }}
+                  />
+                </div>
+
+              </div>
+            ))}
+          </div>
+          
+          <div className="bg-surface border border-border rounded p-5">
+            <h3 className="font-display text-lg mb-4">
+              Servicios más reservados
+            </h3>
+
+            {topServices.map((s, i) => (
+              <div key={i} className="mb-3">
+
+                <div className="flex justify-between text-sm">
+                  <span>{s.nombre}</span>
+                  <span className="font-semibold">{s.total}</span>
+                </div>
+
+                <div className="h-1.5 bg-border rounded">
+                  <div
+                    className="h-full bg-ink rounded"
+                    style={{
+                      width: `${(s.total / Math.max(...topServices.map(x => x.total), 1)) * 100}%`
+                    }}
+                  />
+                </div>
+
+              </div>
+            ))}
           </div>
         </div>
       </div>
