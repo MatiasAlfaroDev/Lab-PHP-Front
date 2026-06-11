@@ -31,5 +31,29 @@ export function getEcho(token?: string) {
     });
   }
 
+  echo = new Echo({
+  broadcaster: "reverb",
+  key: import.meta.env.VITE_REVERB_APP_KEY,
+
+  wsHost: import.meta.env.VITE_REVERB_HOST,
+  wsPort: Number(import.meta.env.VITE_REVERB_PORT),
+
+  forceTLS: false,
+
+  enabledTransports: ["ws", "wss"],
+
+  authEndpoint: "http://localhost:8000/broadcasting/auth",
+
+  auth: {
+    headers: {
+      Authorization: token ? `Bearer ${token}` : "",
+      Accept: "application/json",
+    },
+  },
+
+  // 👇 ESTO TE FALTABA MUCHAS VECES
+  withCredentials: true,
+});
+
   return echo;
 }

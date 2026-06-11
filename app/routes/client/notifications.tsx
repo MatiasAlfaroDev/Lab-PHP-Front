@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useGlobalNotifications } from "~/context/NotificationContext";
+import { Bell } from "lucide-react";
 
 export default function NotificationsPage() {
   const {
@@ -12,8 +13,16 @@ export default function NotificationsPage() {
 
   // 📌 cargar desde backend al entrar
   useEffect(() => {
-    loadNotifications();
-  }, []);
+    const init = async () => {
+      try {
+        await loadNotifications();
+      } catch (err) {
+        console.error("Error cargando notificaciones", err);
+      }
+    };
+
+    init();
+  }, [loadNotifications]);
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
@@ -57,14 +66,14 @@ export default function NotificationsPage() {
                 <div className="flex gap-3">
 
                   <div className="w-10 h-10 rounded bg-accent/20 flex items-center justify-center">
-                    🔔
+                    <Bell className="w-5 h-5 text-ink" />
                   </div>
 
                   <div className="flex-1">
 
                     <div className="flex justify-between">
                       <p className="font-semibold text-sm">
-                        {n.data?.type || "Notificación"}
+                        {n.data?.type ?? "Notificación"}
                       </p>
 
                       {/* marcar individual */}
@@ -79,7 +88,7 @@ export default function NotificationsPage() {
                     </div>
 
                     <p className="text-sm text-ink-muted mt-1">
-                      {n.data?.message}
+                      {n.data?.message ?? ""}
                     </p>
 
                     {n.data?.reserva_id && (
@@ -128,7 +137,7 @@ export default function NotificationsPage() {
             {notifications.slice(0, 5).map((n) => (
               <div key={n.id} className="py-2 border-b last:border-0">
                 <p className="text-xs font-semibold truncate">
-                  {n.data?.message}
+                  {n.data?.message ?? ""}
                 </p>
               </div>
             ))}

@@ -26,39 +26,46 @@ type NotificationsResponse = {
   data: NotificationType[];
 };
 
-const NotificationContext = createContext<NotificationContextType | null>(null);
+const NotificationContext =
+  createContext<NotificationContextType | null>(null);
 
-export function NotificationProvider({ children, userId }: { children: ReactNode; userId?: number }) {
+export function NotificationProvider({
+  children,
+  userId,
+}: {
+  children: ReactNode;
+  userId?: number;
+}) {
   const { token } = useAuth();
-
   const [notifications, setNotifications] = useState<NotificationType[]>([]);
 
-  // 🔵 LOAD (BACKEND REAL)
+  // 🔵 LOAD
   const loadNotifications = async () => {
     try {
       const res = await api.get<NotificationsResponse>(
-  "/notificaciones",
-  token
-);
+        "/notificaciones",
+        token
+      );
 
       if (res?.data) {
         setNotifications(res.data);
       }
     } catch (err) {
       console.error("Error cargando notificaciones", err);
-      setNotifications([]);
     }
   };
 
   const unreadCount = notifications.filter((n) => n.read_at === null).length;
 
-  // 🔵 MARK AS READ
+  // 🔵 MARK ONE
   const markAsRead = async (id: string) => {
     await api.post(`/notificaciones/${id}/leer`, {}, token);
 
     setNotifications((prev) =>
       prev.map((n) =>
-        n.id === id ? { ...n, read_at: new Date().toISOString() } : n
+        n.id === id
+          ? { ...n, read_at: new Date().toISOString() }
+          : n
       )
     );
   };
@@ -68,30 +75,45 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
     await api.post("/notificaciones/leer-todas", {}, token);
 
     setNotifications((prev) =>
-      prev.map((n) => ({ ...n, read_at: new Date().toISOString() }))
+      prev.map((n) => ({
+        ...n,
+        read_at: new Date().toISOString(),
+      }))
     );
   };
 
-  // 🔵 WEBSOCKET
+  // 🔵 WEBSOCKET (CORRECTO)
   useEffect(() => {
     if (!userId || !token) return;
 
     const echo = getEcho(token);
     if (!echo) return;
 
-    const channel = echo.private(`user.${userId}`);
+    const channelName = `user.${userId}`;
+    const channel = echo.private(channelName);
 
     channel.notification((notification: any) => {
-  setNotifications((prev) => {
-    const exists = prev.some(n => n.id === notification.id);
-    if (exists) return prev;
+      console.log("WS NOTIFICATION:", notification);
 
-    return [notification, ...prev];
-  });
-});
+ 
+
+      setNotifications((prev) => {
+        const exists = prev.some((n) => n.id === notification.id);
+        if (exists) return prev;
+
+        return [
+          {
+            id: notification.id,
+            read_at: null,
+            data: notification.data ?? notification,
+          },
+          ...prev,
+        ];
+      });
+    });
 
     return () => {
-      echo.leave(`user.${userId}`);
+      echo.leave(channelName);
     };
   }, [userId, token]);
 
@@ -114,7 +136,9 @@ export function useGlobalNotifications() {
   const ctx = useContext(NotificationContext);
 
   if (!ctx) {
-    throw new Error("useGlobalNotifications debe usarse dentro del Provider");
+    throw new Error(
+      "useGlobalNotifications debe usarse dentro del Provider"
+    );
   }
 
   return ctx;
