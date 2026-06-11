@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "~/context/AuthContext";
-import { api } from "~/lib/api";
+import { api, APP_BASE_URL } from "~/lib/api";
 
 type Role = "professional" | "client";
 
@@ -168,7 +168,7 @@ export default function Login() {
             <button
             onClick={() => {
               window.location.href =
-                `http://localhost:8000/auth/google/redirect?role=${role}`;
+                `${APP_BASE_URL}/auth/google/redirect?role=${role}`;
             }}
             className="flex-1 flex items-center justify-center gap-2 border border-border rounded py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink"
           >

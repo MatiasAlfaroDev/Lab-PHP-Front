@@ -1,5 +1,9 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
 
+// Root URL of the backend (without the /api suffix), for non-API routes
+// like OAuth redirects and broadcasting auth.
+export const APP_BASE_URL = BASE_URL.replace(/\/api\/?$/, "");
+
 // Simple in-memory GET cache with 60s TTL
 const cache = new Map<string, { data: unknown; expires: number }>();
 const TTL = 60_000;
