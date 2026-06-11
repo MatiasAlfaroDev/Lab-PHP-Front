@@ -15,7 +15,7 @@ export default function Packages() {
 
     const loadPackages = async () => {
       try {
-        const misCompras = await api.get(
+        const misCompras = await api.get<any[]>(
           "/mis-compras-paquetes",
           token
         );
