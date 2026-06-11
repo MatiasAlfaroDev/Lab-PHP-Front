@@ -5,7 +5,7 @@ import { ProfessionalSidebar } from "~/components/ProfessionalSidebar";
 import { NotificationProvider } from "~/context/NotificationContext";
 
 export default function ProfessionalLayout() {
-  const { user, token, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   const navigate = useNavigate();
 
@@ -34,7 +34,6 @@ export default function ProfessionalLayout() {
   return (
   <NotificationProvider
     userId={user?.id}
-    token={token ?? undefined}
   >
     <div className="flex min-h-screen bg-bg">
       <ProfessionalSidebar

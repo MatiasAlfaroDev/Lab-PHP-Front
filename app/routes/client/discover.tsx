@@ -3,14 +3,6 @@ import { useNavigate, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "ion-icon": React.HTMLAttributes<HTMLElement> & { name?: string; size?: string };
-    }
-  }
-}
-
 interface Profesional {
   user_id: number;
   descripcion: string | null;

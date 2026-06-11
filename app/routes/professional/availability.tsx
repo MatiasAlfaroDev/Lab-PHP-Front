@@ -2,14 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "ion-icon": React.HTMLAttributes<HTMLElement> & { name?: string };
-    }
-  }
-}
-
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Servicio {
   servicio_id: number;
