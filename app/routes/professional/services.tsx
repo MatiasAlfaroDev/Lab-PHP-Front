@@ -24,6 +24,7 @@ type FormState = {
   descripcion: string;
   modalidad: string;
   tipo: string;
+  tipoPersonalizado: string;
   precio: string;
   duracion: string;
   pausa: string;
@@ -36,6 +37,7 @@ const EMPTY_FORM: FormState = {
   descripcion: "",
   modalidad: "presencial",
   tipo: "",
+  tipoPersonalizado: "",
   precio: "",
   duracion: "",
   pausa: "",
@@ -48,6 +50,26 @@ const MODALIDAD_CLS: Record<string, string> = {
   virtual:    "bg-orange-100  text-orange-700",
   hibrido:    "bg-amber-100   text-amber-800",
 };
+
+const TIPOS_SERVICIO = [
+  "Psicología",
+  "Nutrición",
+  "Tarot",
+  "Astrología",
+  "Entrenamiento Personal",
+  "Yoga",
+  "Pilates",
+  "Fisioterapia",
+  "Masoterapia",
+  "Clases Particulares",
+  "Idiomas",
+  "Música",
+  "Consultoría",
+  "Asesoría Legal",
+  "Belleza y Estética",
+  "Fotografía",
+  "Otro",
+];
 
 const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 const labelCls = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
@@ -117,7 +139,8 @@ export default function Services() {
       nombre:          s.nombre,
       descripcion:     s.descripcion,
       modalidad:       s.modalidad,
-      tipo:            s.tipo,
+      tipo: TIPOS_SERVICIO.includes(s.tipo) ? s.tipo : "Otro",
+      tipoPersonalizado: TIPOS_SERVICIO.includes(s.tipo) ? "" : s.tipo,
       precio:          String(s.precio),
       duracion:        String(s.duracion),
       pausa:           String(s.pausa),
@@ -138,10 +161,15 @@ export default function Services() {
   const needsLocation = ["presencial", "hibrido"].includes(form.modalidad.toLowerCase());
 
   // ── Save / Delete ──────────────────────────────────────────────────────────
-
+    
+    
   const handleSave = async () => {
+    const tipoFinal =
+      form.tipo === "Otro"
+        ? form.tipoPersonalizado.trim()
+        : form.tipo;
     if (!form.nombre.trim())   return showToast("El nombre es requerido", false);
-    if (!form.tipo.trim())     return showToast("El tipo es requerido", false);
+    if (!tipoFinal.trim())     return showToast("El tipo es requerido", false);
     if (!form.precio)          return showToast("El precio es requerido", false);
     if (!form.duracion)        return showToast("La duración es requerida", false);
     setSaving(true);
@@ -150,7 +178,7 @@ export default function Services() {
         nombre:          form.nombre,
         descripcion:     form.descripcion,
         modalidad:       form.modalidad.toLowerCase(),
-        tipo:            form.tipo,
+        tipo: tipoFinal,
         precio:          Number(form.precio),
         duracion:        Number(form.duracion),
         pausa:           Number(form.pausa),
@@ -418,8 +446,32 @@ function ServiceForm({
         </div>
         <div>
           <label className={labelCls}>Tipo</label>
-          <input className={inputCls} placeholder="Ej. Consulta, Terapia..."
-            value={form.tipo} onChange={(e) => setF({ tipo: e.target.value })} />
+            <select
+              className={inputCls}
+              value={form.tipo}
+              onChange={(e) =>
+                setF({
+                  tipo: e.target.value,
+                  tipoPersonalizado: "",
+                })
+              }
+            >
+              <option value="">Seleccionar tipo</option>
+
+              {TIPOS_SERVICIO.map((tipo) => (
+                <option key={tipo} value={tipo}>
+                  {tipo}
+                </option>
+              ))}
+            </select>
+            {form.tipo === "Otro" && (
+              <input
+                className={`${inputCls} mt-2`}
+                placeholder="Especifique el tipo de servicio"
+                value={form.tipoPersonalizado}
+                onChange={(e) => setF({ tipoPersonalizado: e.target.value })}
+              />
+            )}
         </div>
       </div>
 
