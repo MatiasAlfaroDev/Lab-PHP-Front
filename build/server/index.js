@@ -8493,11 +8493,6 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 		reservas: "60",
 		cancelacion: "24"
 	});
-	const [toggles, setToggles] = useState({
-		aceptacionAuto: true,
-		enFeriados: false,
-		horaCompleta: true
-	});
 	const [showExcepciones, setShowExcepciones] = useState(false);
 	const [showNuevaExcepcion, setShowNuevaExcepcion] = useState(false);
 	const [nuevaExcepcion, setNuevaExcepcion] = useState({
@@ -8524,6 +8519,16 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 		api.get(`/servicios/${selectedId}/disponibilidad`).then((res) => {
 			setSlots(res.success && res.data.length > 0 ? dispsToSlots(res.data) : structuredClone(DEFAULT_SLOTS));
 		}).catch(() => setSlots(structuredClone(DEFAULT_SLOTS))).finally(() => setLoadingDisp(false));
+	}, [selectedId, servicios]);
+	useEffect(() => {
+		const servicio = servicios.find((s) => s.servicio_id === selectedId);
+		if (!servicio) return;
+		setRules({
+			aviso: String(servicio.min_aviso ?? 24),
+			buffer: String(servicio.pausa ?? 15),
+			reservas: String(servicio.max_anticipacion_dias ?? 60),
+			cancelacion: String(servicio.min_cancelacion ?? 24)
+		});
 	}, [selectedId, servicios]);
 	useEffect(() => {
 		if (!showExcepciones) return;
@@ -8735,7 +8740,12 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 		setSaving(true);
 		setError(null);
 		try {
-			const res = await api.put(`/servicios/${selectedId}/disponibilidad`, { disponibilidades: slotsToDisps(slots) }, token);
+			const res = await api.put(`/servicios/${selectedId}/disponibilidad`, {
+				disponibilidades: slotsToDisps(slots),
+				min_aviso: Number(rules.aviso),
+				min_cancelacion: Number(rules.cancelacion),
+				max_anticipacion_dias: Number(rules.reservas)
+			}, token);
 			if (res.success) {
 				setSaved(true);
 				setTimeout(() => setSaved(false), 3e3);
@@ -9263,202 +9273,177 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 						})(),
 						/* @__PURE__ */ jsxs("div", {
 							className: "bg-surface border border-border rounded-2xl p-5",
-							children: [
-								/* @__PURE__ */ jsx("h3", {
-									className: "text-sm font-bold text-ink mb-4",
-									children: "Reglas de la agenda"
-								}),
-								/* @__PURE__ */ jsxs("div", {
-									className: "space-y-4",
-									children: [
-										/* @__PURE__ */ jsxs("div", {
-											className: "flex items-start justify-between gap-3",
-											children: [/* @__PURE__ */ jsxs("div", {
-												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ jsx("p", {
-													className: "text-sm font-semibold text-ink",
-													children: "Duración mínima de aviso"
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted mt-0.5",
-													children: "¿Cuánta anticipación al reservar?"
-												})]
-											}), /* @__PURE__ */ jsxs("select", {
-												value: rules.aviso,
-												onChange: (e) => setRules((r) => ({
-													...r,
-													aviso: e.target.value
-												})),
-												className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
-												children: [
-													/* @__PURE__ */ jsx("option", {
-														value: "1",
-														children: "1 hora"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "2",
-														children: "2 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "12",
-														children: "12 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "24",
-														children: "24 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "48",
-														children: "48 horas"
-													})
-												]
+							children: [/* @__PURE__ */ jsx("h3", {
+								className: "text-sm font-bold text-ink mb-4",
+								children: "Reglas de la agenda"
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "space-y-4",
+								children: [
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex items-start justify-between gap-3",
+										children: [/* @__PURE__ */ jsxs("div", {
+											className: "flex-1 min-w-0",
+											children: [/* @__PURE__ */ jsx("p", {
+												className: "text-sm font-semibold text-ink",
+												children: "Duración mínima de aviso"
+											}), /* @__PURE__ */ jsx("p", {
+												className: "text-xs text-ink-muted mt-0.5",
+												children: "¿Cuánta anticipación al reservar?"
 											})]
-										}),
-										/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
-										/* @__PURE__ */ jsxs("div", {
-											className: "flex items-start justify-between gap-3",
-											children: [/* @__PURE__ */ jsxs("div", {
-												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ jsx("p", {
-													className: "text-sm font-semibold text-ink",
-													children: "Buffer entre Sesiones"
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted mt-0.5",
-													children: "Tiempo de descanso entre sesiones"
-												})]
-											}), /* @__PURE__ */ jsxs("select", {
-												value: rules.buffer,
-												onChange: (e) => setRules((r) => ({
-													...r,
-													buffer: e.target.value
-												})),
-												className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
-												children: [
-													/* @__PURE__ */ jsx("option", {
-														value: "0",
-														children: "0 min"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "5",
-														children: "5 min"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "10",
-														children: "10 min"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "15",
-														children: "15 min"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "30",
-														children: "30 min"
-													})
-												]
-											})]
-										}),
-										/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
-										/* @__PURE__ */ jsxs("div", {
-											className: "flex items-start justify-between gap-3",
-											children: [/* @__PURE__ */ jsxs("div", {
-												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ jsx("p", {
-													className: "text-sm font-semibold text-ink",
-													children: "Reservas Anticipadas"
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted mt-0.5",
-													children: "Máximo de días a futuro"
-												})]
-											}), /* @__PURE__ */ jsxs("select", {
-												value: rules.reservas,
-												onChange: (e) => setRules((r) => ({
-													...r,
-													reservas: e.target.value
-												})),
-												className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
-												children: [
-													/* @__PURE__ */ jsx("option", {
-														value: "7",
-														children: "7 días"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "14",
-														children: "14 días"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "30",
-														children: "30 días"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "60",
-														children: "60 días"
-													})
-												]
-											})]
-										}),
-										/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
-										/* @__PURE__ */ jsxs("div", {
-											className: "flex items-start justify-between gap-3",
-											children: [/* @__PURE__ */ jsxs("div", {
-												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ jsx("p", {
-													className: "text-sm font-semibold text-ink",
-													children: "Política de Cancelación"
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted mt-0.5",
-													children: "Tiempo mínimo sin cargo"
-												})]
-											}), /* @__PURE__ */ jsxs("select", {
-												value: rules.cancelacion,
-												onChange: (e) => setRules((r) => ({
-													...r,
-													cancelacion: e.target.value
-												})),
-												className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
-												children: [
-													/* @__PURE__ */ jsx("option", {
-														value: "12",
-														children: "12 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "24",
-														children: "24 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "48",
-														children: "48 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "72",
-														children: "72 horas"
-													})
-												]
-											})]
-										})
-									]
-								}),
-								/* @__PURE__ */ jsx("div", {
-									className: "mt-4 pt-4 border-t border-border/40 space-y-3",
-									children: [{
-										key: "aceptacionAuto",
-										label: "Aceptar automáticamente"
-									}, {
-										key: "enFeriados",
-										label: "Permitir reservas en días Feriados"
-									}].map(({ key, label }) => /* @__PURE__ */ jsxs("div", {
-										className: "flex items-center justify-between",
-										children: [/* @__PURE__ */ jsx("span", {
-											className: "text-sm text-ink",
-											children: label
-										}), /* @__PURE__ */ jsx(Toggle, {
-											checked: toggles[key],
-											onChange: () => setToggles((t) => ({
-												...t,
-												[key]: !t[key]
-											}))
+										}), /* @__PURE__ */ jsxs("select", {
+											value: rules.aviso,
+											onChange: (e) => setRules((r) => ({
+												...r,
+												aviso: e.target.value
+											})),
+											className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
+											children: [
+												/* @__PURE__ */ jsx("option", {
+													value: "1",
+													children: "1 hora"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "2",
+													children: "2 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "12",
+													children: "12 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "24",
+													children: "24 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "48",
+													children: "48 horas"
+												})
+											]
 										})]
-									}, key))
-								})
-							]
+									}),
+									/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex items-start justify-between gap-3",
+										children: [/* @__PURE__ */ jsxs("div", {
+											className: "flex-1 min-w-0",
+											children: [/* @__PURE__ */ jsx("p", {
+												className: "text-sm font-semibold text-ink",
+												children: "Buffer entre Sesiones"
+											}), /* @__PURE__ */ jsx("p", {
+												className: "text-xs text-ink-muted mt-0.5",
+												children: "Tiempo de descanso entre sesiones"
+											})]
+										}), /* @__PURE__ */ jsxs("select", {
+											value: rules.buffer,
+											onChange: (e) => setRules((r) => ({
+												...r,
+												buffer: e.target.value
+											})),
+											className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
+											children: [
+												/* @__PURE__ */ jsx("option", {
+													value: "0",
+													children: "0 min"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "5",
+													children: "5 min"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "10",
+													children: "10 min"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "15",
+													children: "15 min"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "30",
+													children: "30 min"
+												})
+											]
+										})]
+									}),
+									/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex items-start justify-between gap-3",
+										children: [/* @__PURE__ */ jsxs("div", {
+											className: "flex-1 min-w-0",
+											children: [/* @__PURE__ */ jsx("p", {
+												className: "text-sm font-semibold text-ink",
+												children: "Reservas Anticipadas"
+											}), /* @__PURE__ */ jsx("p", {
+												className: "text-xs text-ink-muted mt-0.5",
+												children: "Máximo de días a futuro"
+											})]
+										}), /* @__PURE__ */ jsxs("select", {
+											value: rules.reservas,
+											onChange: (e) => setRules((r) => ({
+												...r,
+												reservas: e.target.value
+											})),
+											className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
+											children: [
+												/* @__PURE__ */ jsx("option", {
+													value: "7",
+													children: "7 días"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "14",
+													children: "14 días"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "30",
+													children: "30 días"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "60",
+													children: "60 días"
+												})
+											]
+										})]
+									}),
+									/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex items-start justify-between gap-3",
+										children: [/* @__PURE__ */ jsxs("div", {
+											className: "flex-1 min-w-0",
+											children: [/* @__PURE__ */ jsx("p", {
+												className: "text-sm font-semibold text-ink",
+												children: "Política de Cancelación"
+											}), /* @__PURE__ */ jsx("p", {
+												className: "text-xs text-ink-muted mt-0.5",
+												children: "Tiempo mínimo sin cargo"
+											})]
+										}), /* @__PURE__ */ jsxs("select", {
+											value: rules.cancelacion,
+											onChange: (e) => setRules((r) => ({
+												...r,
+												cancelacion: e.target.value
+											})),
+											className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
+											children: [
+												/* @__PURE__ */ jsx("option", {
+													value: "12",
+													children: "12 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "24",
+													children: "24 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "48",
+													children: "48 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "72",
+													children: "72 horas"
+												})
+											]
+										})]
+									})
+								]
+							})]
 						}),
 						/* @__PURE__ */ jsxs("button", {
 							onClick: handleSave,
@@ -11859,7 +11844,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability--vY3lx7N.js",
+			"module": "/assets/availability-DB3tvH8R.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12104,8 +12089,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-82370b55.js",
-	"version": "82370b55",
+	"url": "/assets/manifest-221c305e.js",
+	"version": "221c305e",
 	"sri": void 0
 };
 //#endregion

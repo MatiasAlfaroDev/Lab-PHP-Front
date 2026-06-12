@@ -10,6 +10,9 @@ interface Servicio {
   duracion: number;
   pausa: number;
   modalidad: "presencial" | "virtual" | "hibrido";
+  min_aviso?: number;
+  min_cancelacion?: number;
+  max_anticipacion_dias?: number;
 }
 
 interface Block {
@@ -38,7 +41,6 @@ interface DragState {
 
 interface Rules {
   aviso:       string;
-  buffer:      string;
   reservas:    string;
   cancelacion: string;
 }
@@ -230,7 +232,7 @@ export default function Availability() {
   const [selectedBlock,    setSelectedBlock]    = useState<{ day: string; bi: number } | null>(null);
   const dragMoved = useRef(false);
   const [rules,            setRules]            = useState<Rules>({
-    aviso: "24", buffer: "15", reservas: "60", cancelacion: "24",
+    aviso: "24", reservas: "60", cancelacion: "24",
   });
  
   const [showExcepciones, setShowExcepciones] = useState(false);
@@ -275,6 +277,23 @@ export default function Availability() {
       .catch(() => setSlots(structuredClone(DEFAULT_SLOTS)))
       .finally(() => setLoadingDisp(false));
   }, [selectedId, servicios]);
+
+    
+  useEffect(() => {
+    const servicio = servicios.find(
+      (s) => s.servicio_id === selectedId
+    );
+
+    if (!servicio) return;
+
+    setRules({
+      aviso: String(servicio.min_aviso ?? 24),
+      reservas: String(servicio.max_anticipacion_dias ?? 60),
+      cancelacion: String(servicio.min_cancelacion ?? 24),
+    });
+  }, [selectedId, servicios]);
+
+
 
   useEffect(() => {
     if (!showExcepciones) return;
@@ -459,7 +478,11 @@ export default function Availability() {
     try {
       const res = await api.put<{ success: boolean; message?: string }>(
         `/servicios/${selectedId}/disponibilidad`,
-        { disponibilidades: slotsToDisps(slots) },
+        { disponibilidades: slotsToDisps(slots),
+          min_aviso: Number(rules.aviso),
+          min_cancelacion: Number(rules.cancelacion),
+          max_anticipacion_dias: Number(rules.reservas),
+         },
         token
       );
       if (res.success) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
@@ -1027,29 +1050,6 @@ export default function Availability() {
                   <option value="48">48 horas</option>
                 </select>
               </div>
-
-              <div className="border-t border-border/30" />
-
-              {/* Buffer entre sesiones */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-ink">Buffer entre Sesiones</p>
-                  <p className="text-xs text-ink-muted mt-0.5">Tiempo de descanso entre sesiones</p>
-                </div>
-                <select
-                  value={rules.buffer}
-                  onChange={(e) => setRules((r) => ({ ...r, buffer: e.target.value }))}
-                  className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0"
-                >
-                  <option value="0">0 min</option>
-                  <option value="5">5 min</option>
-                  <option value="10">10 min</option>
-                  <option value="15">15 min</option>
-                  <option value="30">30 min</option>
-                </select>
-              </div>
-
-              <div className="border-t border-border/30" />
 
               {/* Reservas anticipadas */}
               <div className="flex items-start justify-between gap-3">
