@@ -107,7 +107,7 @@ function MiniCalendar({
           if (!day) return <div key={i} />;
           const date = new Date(year, month, day);
           const dateStr = toDateStr(year, month, day);
-          const isPast = date <= today;
+          const isPast = date < today;
           const dow = DOW_MAP[date.getDay()];
           const isAvailable = availableDays.has(dow) && !isPast;
           const isSelected = selectedDate === dateStr;
