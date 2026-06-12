@@ -8489,7 +8489,6 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 	const dragMoved = useRef(false);
 	const [rules, setRules] = useState({
 		aviso: "24",
-		buffer: "15",
 		reservas: "60",
 		cancelacion: "24"
 	});
@@ -8525,7 +8524,6 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 		if (!servicio) return;
 		setRules({
 			aviso: String(servicio.min_aviso ?? 24),
-			buffer: String(servicio.pausa ?? 15),
 			reservas: String(servicio.max_anticipacion_dias ?? 60),
 			cancelacion: String(servicio.min_cancelacion ?? 24)
 		});
@@ -9321,50 +9319,6 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 											]
 										})]
 									}),
-									/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
-									/* @__PURE__ */ jsxs("div", {
-										className: "flex items-start justify-between gap-3",
-										children: [/* @__PURE__ */ jsxs("div", {
-											className: "flex-1 min-w-0",
-											children: [/* @__PURE__ */ jsx("p", {
-												className: "text-sm font-semibold text-ink",
-												children: "Buffer entre Sesiones"
-											}), /* @__PURE__ */ jsx("p", {
-												className: "text-xs text-ink-muted mt-0.5",
-												children: "Tiempo de descanso entre sesiones"
-											})]
-										}), /* @__PURE__ */ jsxs("select", {
-											value: rules.buffer,
-											onChange: (e) => setRules((r) => ({
-												...r,
-												buffer: e.target.value
-											})),
-											className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
-											children: [
-												/* @__PURE__ */ jsx("option", {
-													value: "0",
-													children: "0 min"
-												}),
-												/* @__PURE__ */ jsx("option", {
-													value: "5",
-													children: "5 min"
-												}),
-												/* @__PURE__ */ jsx("option", {
-													value: "10",
-													children: "10 min"
-												}),
-												/* @__PURE__ */ jsx("option", {
-													value: "15",
-													children: "15 min"
-												}),
-												/* @__PURE__ */ jsx("option", {
-													value: "30",
-													children: "30 min"
-												})
-											]
-										})]
-									}),
-									/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
 									/* @__PURE__ */ jsxs("div", {
 										className: "flex items-start justify-between gap-3",
 										children: [/* @__PURE__ */ jsxs("div", {
@@ -11844,7 +11798,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-DB3tvH8R.js",
+			"module": "/assets/availability-_-UZF_LJ.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12089,8 +12043,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-221c305e.js",
-	"version": "221c305e",
+	"url": "/assets/manifest-ee4ef39c.js",
+	"version": "ee4ef39c",
 	"sri": void 0
 };
 //#endregion
