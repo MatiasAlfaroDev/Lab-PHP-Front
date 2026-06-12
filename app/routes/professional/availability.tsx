@@ -43,11 +43,6 @@ interface Rules {
   cancelacion: string;
 }
 
-interface Toggles {
-  aceptacionAuto:   boolean;
-  enFeriados:       boolean;
-  horaCompleta:     boolean;
-}
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const DAYS = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
@@ -237,9 +232,7 @@ export default function Availability() {
   const [rules,            setRules]            = useState<Rules>({
     aviso: "24", buffer: "15", reservas: "60", cancelacion: "24",
   });
-  const [toggles, setToggles] = useState<Toggles>({
-    aceptacionAuto: true, enFeriados: false, horaCompleta: true,
-  });
+ 
   const [showExcepciones, setShowExcepciones] = useState(false);
   const [showNuevaExcepcion, setShowNuevaExcepcion] = useState(false);
   const [nuevaExcepcion, setNuevaExcepcion] = useState({
@@ -1098,20 +1091,7 @@ export default function Availability() {
             </div>
 
             {/* Toggles */}
-            <div className="mt-4 pt-4 border-t border-border/40 space-y-3">
-              {[
-                { key: "aceptacionAuto" as const, label: "Aceptar automáticamente" },
-                { key: "enFeriados"     as const, label: "Permitir reservas en días Feriados" },
-              ].map(({ key, label }) => (
-                <div key={key} className="flex items-center justify-between">
-                  <span className="text-sm text-ink">{label}</span>
-                  <Toggle
-                    checked={toggles[key]}
-                    onChange={() => setToggles((t) => ({ ...t, [key]: !t[key] }))}
-                  />
-                </div>
-              ))}
-            </div>
+           
           </div>
 
           {/* Save button */}

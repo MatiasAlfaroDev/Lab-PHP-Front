@@ -70,6 +70,7 @@ function handleRequest(request, responseStatusCode, responseHeaders, routerConte
 //#endregion
 //#region app/lib/api.ts
 var BASE_URL = "http://localhost:8000/api";
+var APP_BASE_URL = BASE_URL.replace(/\/api\/?$/, "");
 var cache = /* @__PURE__ */ new Map();
 var TTL = 6e4;
 function getCached(key) {
@@ -548,7 +549,7 @@ var login_default = UNSAFE_withComponentProps(function Login() {
 						className: "flex gap-3 mb-6",
 						children: /* @__PURE__ */ jsxs("button", {
 							onClick: () => {
-								window.location.href = `http://localhost:8000/auth/google/redirect?role=${role}`;
+								window.location.href = `${APP_BASE_URL}/auth/google/redirect?role=${role}`;
 							},
 							className: "flex-1 flex items-center justify-center gap-2 border border-border rounded py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink",
 							children: [/* @__PURE__ */ jsx(GoogleIcon, {}), " Google"]
@@ -834,27 +835,14 @@ function getEcho(token) {
 			wssPort: 8080,
 			forceTLS: false,
 			enabledTransports: ["ws", "wss"],
-			authEndpoint: "http://localhost:8000/broadcasting/auth",
+			authEndpoint: `${APP_BASE_URL}/broadcasting/auth`,
 			auth: { headers: {
 				Authorization: token ? `Bearer ${token}` : "",
 				Accept: "application/json"
-			} }
+			} },
+			withCredentials: true
 		});
 	}
-	echo = new Echo({
-		broadcaster: "reverb",
-		key: "cgux9icc65a7v6i6ia0v",
-		wsHost: "127.0.0.1",
-		wsPort: 8080,
-		forceTLS: false,
-		enabledTransports: ["ws", "wss"],
-		authEndpoint: "http://localhost:8000/broadcasting/auth",
-		auth: { headers: {
-			Authorization: token ? `Bearer ${token}` : "",
-			Accept: "application/json"
-		} },
-		withCredentials: true
-	});
 	return echo;
 }
 //#endregion
@@ -948,12 +936,6 @@ var navItems$2 = [
 		end: true
 	},
 	{
-		to: "/client/messages",
-		label: "Mensajes",
-		icon: MessageIcon$1,
-		disabled: true
-	},
-	{
 		to: "/client/payments",
 		label: "Pagos",
 		icon: CardIcon$1
@@ -1022,21 +1004,7 @@ function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
 			}),
 			/* @__PURE__ */ jsx("nav", {
 				className: "flex-1 p-2 space-y-0.5",
-				children: navItems$2.map(({ to, label, icon: Icon, end, disabled }) => disabled ? /* @__PURE__ */ jsxs("div", {
-					title: effectiveCollapsed ? label : void 0,
-					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${effectiveCollapsed ? "justify-center px-0" : ""}`,
-					children: [
-						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
-						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
-							className: "flex-1",
-							children: label
-						}),
-						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
-							className: "text-[10px] text-sidebar-muted/60 font-normal",
-							children: "pronto"
-						})
-					]
-				}, to) : /* @__PURE__ */ jsxs(NavLink, {
+				children: navItems$2.map(({ to, label, icon: Icon, end }) => /* @__PURE__ */ jsxs(NavLink, {
 					to,
 					end,
 					title: effectiveCollapsed ? label : void 0,
@@ -1181,16 +1149,6 @@ function CalendarIcon$1({ className }) {
 		]
 	});
 }
-function MessageIcon$1({ className }) {
-	return /* @__PURE__ */ jsx("svg", {
-		className,
-		fill: "none",
-		viewBox: "0 0 24 24",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		children: /* @__PURE__ */ jsx("path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" })
-	});
-}
 function CardIcon$1({ className }) {
 	return /* @__PURE__ */ jsxs("svg", {
 		className,
@@ -1265,7 +1223,7 @@ function ChevronRightIcon$2({ className }) {
 //#region app/routes/client/_layout.tsx
 var _layout_exports$2 = /* @__PURE__ */ __exportAll({ default: () => _layout_default$2 });
 var _layout_default$2 = UNSAFE_withComponentProps(function ClientLayout() {
-	const { user, token, isLoading } = useAuth();
+	const { user, isLoading } = useAuth();
 	const navigate = useNavigate();
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [mobileOpen, setMobileOpen] = useState(false);
@@ -1283,7 +1241,6 @@ var _layout_default$2 = UNSAFE_withComponentProps(function ClientLayout() {
 	});
 	return /* @__PURE__ */ jsx(NotificationProvider, {
 		userId: user?.id,
-		token: token ?? void 0,
 		children: /* @__PURE__ */ jsxs("div", {
 			className: "flex min-h-screen bg-bg",
 			children: [/* @__PURE__ */ jsx(ClientSidebar, {
@@ -1711,7 +1668,7 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 	});
 	const filteredPkg = paquetes.filter((p) => Number(p.precio_total) <= priceRange);
 	const resetFilters = () => {
-		setSelectedTypes(serviceTypes.map((t) => t.key));
+		setSelectedTypes([]);
 		setSelectedModality("Todas");
 		setPriceRange(maxPrice);
 	};
@@ -1813,21 +1770,15 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "flex-1 overflow-y-auto p-6",
 			children: [
-				/* @__PURE__ */ jsxs("div", {
+				/* @__PURE__ */ jsx("div", {
 					className: "flex items-start justify-between mb-5",
-					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
+					children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
 						className: "font-display italic text-3xl text-ink mb-1",
 						children: activeTab === "servicios" ? "Encontrá a tu profesional" : "Paquetes"
 					}), /* @__PURE__ */ jsx("p", {
 						className: "text-ink-muted text-sm",
 						children: activeTab === "servicios" ? loadingSvc ? "Cargando servicios..." : `${filteredSvc.length} servicio${filteredSvc.length !== 1 ? "s" : ""} disponible${filteredSvc.length !== 1 ? "s" : ""}` : loadingPkg ? "Cargando paquetes..." : `${filteredPkg.length} paquete${filteredPkg.length !== 1 ? "s" : ""} disponible${filteredPkg.length !== 1 ? "s" : ""}`
-					})] }), /* @__PURE__ */ jsx("button", {
-						className: "relative p-2 rounded-xl border border-border bg-surface hover:bg-bg cursor-pointer",
-						children: /* @__PURE__ */ jsx("ion-icon", {
-							name: "notifications-outline",
-							style: { fontSize: "18px" }
-						})
-					})]
+					})] })
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "flex gap-1 border-b border-border mb-6",
@@ -1933,13 +1884,29 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 												children: initials
 											}), /* @__PURE__ */ jsxs("div", {
 												className: "min-w-0",
-												children: [/* @__PURE__ */ jsx("p", {
-													className: "text-sm font-semibold text-ink",
-													children: servicio.nombre
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted",
-													children: servicio.tipo
-												})]
+												children: [
+													/* @__PURE__ */ jsx("p", {
+														className: "text-sm font-semibold text-ink",
+														children: servicio.nombre
+													}),
+													/* @__PURE__ */ jsx("p", {
+														className: "text-xs text-ink-muted",
+														children: servicio.tipo
+													}),
+													servicio.cantidad_calificaciones ? /* @__PURE__ */ jsxs("p", {
+														className: "text-xs text-ink-muted mt-1",
+														children: [
+															"⭐ ",
+															servicio.promedio?.toFixed(1),
+															" (",
+															servicio.cantidad_calificaciones,
+															")"
+														]
+													}) : /* @__PURE__ */ jsx("p", {
+														className: "text-xs text-ink-muted mt-1",
+														children: "Sin reseñas"
+													})
+												]
 											})]
 										}),
 										servicio.descripcion && /* @__PURE__ */ jsx("p", {
@@ -2414,6 +2381,19 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 	const [loadingSlots, setLoadingSlots] = useState(false);
 	const [selectedSlot, setSelectedSlot] = useState(null);
 	const [slotsError, setSlotsError] = useState(null);
+	const [calificaciones, setCalificaciones] = useState([]);
+	const [promedio, setPromedio] = useState(0);
+	const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
+	const [loadingCalificaciones, setLoadingCalificaciones] = useState(false);
+	useEffect(() => {
+		if (!id || !token) return;
+		setLoadingCalificaciones(true);
+		api.get(`/profesionales/${id}/calificaciones`, token).then((res) => {
+			setCalificaciones(res.data ?? []);
+			setPromedio(res.promedio ?? 0);
+			setCantidadCalificaciones(res.cantidad ?? 0);
+		}).catch(console.error).finally(() => setLoadingCalificaciones(false));
+	}, [id, token]);
 	useEffect(() => {
 		if (!id) return;
 		api.get(`/profesionales/${id}`).then((res) => {
@@ -2594,9 +2574,13 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 						}), /* @__PURE__ */ jsxs("div", {
 							className: "p-6",
 							children: [
-								activeTab === "Acerca de" && /* @__PURE__ */ jsx("p", {
+								activeTab === "Acerca de" && /* @__PURE__ */ jsxs("p", {
 									className: "text-sm text-ink leading-relaxed",
-									children: profesional?.descripcion ?? "Este profesional aún no ha completado su descripción."
+									children: [
+										"Descripción:",
+										" ",
+										profesional?.descripcion ?? "Este profesional aún no ha completado su descripción."
+									]
 								}),
 								activeTab === "Servicios" && /* @__PURE__ */ jsx("div", {
 									className: "space-y-3",
@@ -2648,18 +2632,72 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 									})
 								}),
 								activeTab === "Reseñas" && /* @__PURE__ */ jsxs("div", {
-									className: "flex flex-col items-center py-8 text-center",
-									children: [/* @__PURE__ */ jsx("ion-icon", {
-										name: "star-outline",
-										style: {
-											fontSize: "36px",
-											color: "var(--color-ink-muted)",
-											marginBottom: "8px"
-										}
-									}), /* @__PURE__ */ jsx("p", {
-										className: "text-ink-muted text-sm",
-										children: "Las reseñas estarán disponibles próximamente."
-									})]
+									className: "space-y-4",
+									children: [
+										/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center justify-between",
+											children: [/* @__PURE__ */ jsx("h3", {
+												className: "font-display text-lg text-ink",
+												children: "Reseñas"
+											}), /* @__PURE__ */ jsxs("div", {
+												className: "text-sm text-ink-muted",
+												children: [
+													"⭐ ",
+													promedio.toFixed(1),
+													" · ",
+													cantidadCalificaciones,
+													" opiniones"
+												]
+											})]
+										}),
+										loadingCalificaciones && /* @__PURE__ */ jsx("div", {
+											className: "text-sm text-ink-muted py-6",
+											children: "Cargando reseñas..."
+										}),
+										!loadingCalificaciones && calificaciones.length === 0 && /* @__PURE__ */ jsxs("div", {
+											className: "flex flex-col items-center py-8 text-center",
+											children: [/* @__PURE__ */ jsx("ion-icon", {
+												name: "star-outline",
+												style: {
+													fontSize: "36px",
+													color: "var(--color-ink-muted)"
+												}
+											}), /* @__PURE__ */ jsx("p", {
+												className: "text-sm text-ink-muted mt-2",
+												children: "Este profesional aún no tiene reseñas"
+											})]
+										}),
+										/* @__PURE__ */ jsx("div", {
+											className: "space-y-2",
+											children: calificaciones.map((c) => /* @__PURE__ */ jsxs("div", {
+												className: "p-4 border border-border rounded-xl bg-bg",
+												children: [
+													/* @__PURE__ */ jsxs("div", {
+														className: "flex items-center justify-between",
+														children: [/* @__PURE__ */ jsx("p", {
+															className: "text-sm font-semibold text-ink",
+															children: c.cliente_nombre ?? "Cliente"
+														}), /* @__PURE__ */ jsxs("span", {
+															className: "text-amber-500 text-sm font-bold",
+															children: [
+																"⭐ ",
+																c.puntuacion,
+																"/5"
+															]
+														})]
+													}),
+													c.comentario && /* @__PURE__ */ jsx("p", {
+														className: "text-sm text-ink-muted mt-2",
+														children: c.comentario
+													}),
+													/* @__PURE__ */ jsx("p", {
+														className: "text-[11px] text-ink-muted mt-2",
+														children: c.reserva?.servicio?.nombre
+													})
+												]
+											}, c.calificacion_id))
+										})
+									]
 								})
 							]
 						})]
@@ -4585,7 +4623,7 @@ var ESTADO_STYLE = {
 		cls: "bg-red-50 text-red-400 border-red-200"
 	},
 	realizada: {
-		label: "Realizada",
+		label: "No aceptada",
 		cls: "bg-green-50 text-green-600 border-green-200"
 	}
 };
@@ -4593,7 +4631,7 @@ var TERMINAL = new Set([
 	"cancelada",
 	"finalizada",
 	"no_asistida",
-	"realizada"
+	"no aceptada"
 ]);
 var MONTH_NAMES$1 = [
 	"ene",
@@ -4915,7 +4953,7 @@ var mis_reservas_default = UNSAFE_withComponentProps(function MisReservas() {
 						const puedeCalificar = isPast && r.estado === "finalizada" && !r.calificacion;
 						const canReschedule = ["confirmada", "pagada"].includes(r.estado) && !isPast;
 						const isCancelled = r.estado === "cancelada" || r.estado === "no_asistida";
-						const displayEstado = isPast && !TERMINAL.has(r.estado) ? "realizada" : r.estado;
+						const displayEstado = isPast && !TERMINAL.has(r.estado) ? "no aceptada" : r.estado;
 						const badge = ESTADO_STYLE[displayEstado] ?? {
 							label: displayEstado,
 							cls: "bg-surface text-ink-muted border-border"
@@ -5267,12 +5305,6 @@ var navItems$1 = [
 		icon: CardIcon
 	},
 	{
-		to: "/professional/messages",
-		label: "Mensajes",
-		icon: MessageIcon,
-		disabled: true
-	},
-	{
 		to: "/professional/notifications",
 		label: "Notificaciones",
 		icon: BellIcon$1
@@ -5332,21 +5364,7 @@ function ProfessionalSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose 
 			}),
 			/* @__PURE__ */ jsx("nav", {
 				className: "flex-1 p-2 space-y-0.5",
-				children: navItems$1.map(({ to, label, icon: Icon, end, disabled }) => disabled ? /* @__PURE__ */ jsxs("div", {
-					title: effectiveCollapsed ? label : void 0,
-					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${effectiveCollapsed ? "justify-center px-0" : ""}`,
-					children: [
-						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
-						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
-							className: "flex-1",
-							children: label
-						}),
-						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
-							className: "text-[10px] text-sidebar-muted/60 font-normal",
-							children: "pronto"
-						})
-					]
-				}, to) : /* @__PURE__ */ jsxs(NavLink, {
+				children: navItems$1.map(({ to, label, icon: Icon, end }) => /* @__PURE__ */ jsxs(NavLink, {
 					to,
 					end,
 					title: effectiveCollapsed ? label : void 0,
@@ -5551,16 +5569,6 @@ function CardIcon({ className }) {
 		})]
 	});
 }
-function MessageIcon({ className }) {
-	return /* @__PURE__ */ jsx("svg", {
-		className,
-		fill: "none",
-		viewBox: "0 0 24 24",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		children: /* @__PURE__ */ jsx("path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" })
-	});
-}
 function BellIcon$1({ className }) {
 	return /* @__PURE__ */ jsx("svg", {
 		className,
@@ -5614,7 +5622,7 @@ function ChevronRightIcon$1({ className }) {
 //#region app/routes/professional/_layout.tsx
 var _layout_exports$1 = /* @__PURE__ */ __exportAll({ default: () => _layout_default$1 });
 var _layout_default$1 = UNSAFE_withComponentProps(function ProfessionalLayout() {
-	const { user, token, isLoading } = useAuth();
+	const { user, isLoading } = useAuth();
 	const navigate = useNavigate();
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [mobileOpen, setMobileOpen] = useState(false);
@@ -5632,7 +5640,6 @@ var _layout_default$1 = UNSAFE_withComponentProps(function ProfessionalLayout() 
 	});
 	return /* @__PURE__ */ jsx(NotificationProvider, {
 		userId: user?.id,
-		token: token ?? void 0,
 		children: /* @__PURE__ */ jsxs("div", {
 			className: "flex min-h-screen bg-bg",
 			children: [/* @__PURE__ */ jsx(ProfessionalSidebar, {
@@ -5842,6 +5849,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 		}
 	};
 	const cancelarReserva = async (reservaId) => {
+		console.log("CANCELAR RESERVA", reservaId);
 		await api.put(`/reservas/${reservaId}/cancelar`, {}, token);
 	};
 	const weekDates = getWeekDates(weekStart);
@@ -6195,10 +6203,6 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 										span: "col-span-3"
 									},
 									{
-										label: "SESIONES",
-										span: "col-span-2 flex items-center justify-center"
-									},
-									{
 										label: "PRÓXIMA SESIÓN",
 										span: "col-span-3"
 									},
@@ -6232,13 +6236,6 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 											children: /* @__PURE__ */ jsx("span", {
 												className: "text-sm text-ink-muted truncate block",
 												children: c.email
-											})
-										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "col-span-2 flex justify-center",
-											children: /* @__PURE__ */ jsx("span", {
-												className: "text-sm font-semibold text-ink",
-												children: c.sesiones_restantes
 											})
 										}),
 										/* @__PURE__ */ jsx("div", {
@@ -7249,16 +7246,6 @@ var MODALIDAD_CLS = {
 };
 var inputCls$1 = "w-full border border-border rounded px-3 py-2 text-sm bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 var labelCls$1 = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
-function Toggle$1({ checked, onChange }) {
-	return /* @__PURE__ */ jsx("button", {
-		onClick: (e) => {
-			e.stopPropagation();
-			onChange();
-		},
-		className: `relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors cursor-pointer ${checked ? "bg-green-500" : "bg-gray-300"}`,
-		children: /* @__PURE__ */ jsx("span", { className: `inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[18px]" : "translate-x-0.5"}` })
-	});
-}
 var services_default = UNSAFE_withComponentProps(function Services() {
 	const { token } = useAuth();
 	const [services, setServices] = useState([]);
@@ -7370,12 +7357,6 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 			setSaving(false);
 		}
 	};
-	const toggleActivo = (s) => {
-		setServices((prev) => prev.map((x) => x.servicio_id === s.servicio_id ? {
-			...x,
-			activo: !(x.activo ?? true)
-		} : x));
-	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8 max-w-6xl mx-auto",
 		children: [
@@ -7460,12 +7441,9 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 									className: `grid px-5 py-4 items-center ${isEditing || isDeleting ? "bg-accent/10" : ""}`,
 									style: { gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" },
 									children: [
-										/* @__PURE__ */ jsxs("div", {
+										/* @__PURE__ */ jsx("div", {
 											className: "flex items-center gap-3 min-w-0",
-											children: [/* @__PURE__ */ jsx(Toggle$1, {
-												checked: activo,
-												onChange: () => toggleActivo(s)
-											}), /* @__PURE__ */ jsxs("div", {
+											children: /* @__PURE__ */ jsxs("div", {
 												className: "min-w-0",
 												children: [/* @__PURE__ */ jsx("p", {
 													className: `text-sm font-semibold truncate ${activo ? "text-ink" : "text-ink-muted"}`,
@@ -7478,7 +7456,7 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 														s.ubicacion
 													]
 												})]
-											})]
+											})
 										}),
 										/* @__PURE__ */ jsxs("div", {
 											className: "text-sm text-ink",
@@ -9497,81 +9475,56 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 //#endregion
 //#region app/routes/professional/payments.tsx
 var payments_exports$1 = /* @__PURE__ */ __exportAll({ default: () => payments_default$1 });
-var transactions = [
-	{
-		date: "22 may",
-		client: "Lucía Pérez",
-		service: "Sesión individual · paquete",
-		amount: 40,
-		status: "liquidado"
-	},
-	{
-		date: "21 may",
-		client: "Carlos Ruiz",
-		service: "Primera consulta",
-		amount: 55,
-		status: "pendiente"
-	},
-	{
-		date: "20 may",
-		client: "Marta López",
-		service: "Sesión de pareja",
-		amount: 78,
-		status: "liquidado"
-	},
-	{
-		date: "19 may",
-		client: "Joaquín Vega",
-		service: "Sesión individual",
-		amount: 48,
-		status: "liquidado"
-	},
-	{
-		date: "18 may",
-		client: "Sol Méndez",
-		service: "Seguimiento breve",
-		amount: 28,
-		status: "pendiente"
-	}
-];
 var badgeCls$1 = {
-	liquidado: "badge badge-confirmada",
+	aprobado: "badge badge-confirmada",
 	pendiente: "badge badge-pendiente"
 };
 var payments_default$1 = UNSAFE_withComponentProps(function Payments() {
+	const { token, user } = useAuth();
+	const [transactions, setTransactions] = useState([]);
+	const [resumen, setResumen] = useState({
+		total_mes: 0,
+		pagado: 0,
+		pendiente: 0
+	});
+	const [loading, setLoading] = useState(true);
+	useEffect(() => {
+		if (!token || !user) return;
+		Promise.all([api.get("/profesional/pagos", token), api.get("/profesional/pagos/resumen", token)]).then(([pagosRes, resumenRes]) => {
+			setTransactions(pagosRes.data ?? []);
+			setResumen(resumenRes.data ?? {});
+		}).catch(console.error).finally(() => setLoading(false));
+	}, [token, user]);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8 max-w-5xl mx-auto",
 		children: [
-			/* @__PURE__ */ jsxs("div", {
+			/* @__PURE__ */ jsx("div", {
 				className: "flex items-center justify-between mb-6",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
+				children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
 					className: "font-display text-3xl text-ink",
 					children: "Cobros"
 				}), /* @__PURE__ */ jsx("p", {
 					className: "text-ink-muted mt-1",
 					children: "Historial de pagos y liquidaciones"
-				})] }), /* @__PURE__ */ jsx("button", {
-					className: "border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink",
-					children: "Exportar"
-				})]
+				})] })
 			}),
 			/* @__PURE__ */ jsx("div", {
 				className: "grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8",
 				children: [
 					{
 						label: "INGRESOS DEL MES",
-						value: "€2.840",
-						sub: "38 sesiones"
+						value: `$${resumen.total_mes}`,
+						sub: "Total generado"
 					},
 					{
-						label: "PENDIENTE LIQUIDACIÓN",
-						value: "€890",
-						sub: "Se acreditan el viernes"
+						label: "PAGADO",
+						value: `$${resumen.pagado}`,
+						sub: "Ya acreditado"
 					},
 					{
-						label: "PRÓXIMA LIQUIDACIÓN",
-						value: "24 may",
-						sub: "€420 estimados"
+						label: "PENDIENTE",
+						value: `$${resumen.pendiente}`,
+						sub: "Por liquidar"
 					}
 				].map((c) => /* @__PURE__ */ jsxs("div", {
 					className: "bg-surface border border-border rounded p-5",
@@ -9592,61 +9545,64 @@ var payments_default$1 = UNSAFE_withComponentProps(function Payments() {
 				}, c.label))
 			}),
 			/* @__PURE__ */ jsx("div", {
-				className: "border border-border rounded overflow-x-auto",
-				children: /* @__PURE__ */ jsxs("div", {
-					style: { minWidth: "520px" },
-					children: [/* @__PURE__ */ jsx("div", {
-						className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
-						children: [
-							"FECHA",
-							"CLIENTE",
-							"SERVICIO",
-							"MONTO",
-							"ESTADO"
-						].map((h, i) => /* @__PURE__ */ jsx("div", {
-							className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-1" : i === 1 ? "col-span-3" : i === 2 ? "col-span-4" : i === 3 ? "col-span-2" : "col-span-2"}`,
-							children: h
-						}, i))
-					}), transactions.map((t, i) => /* @__PURE__ */ jsxs("div", {
-						className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
-						children: [
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-1",
-								children: /* @__PURE__ */ jsx("span", {
-									className: "text-sm text-ink-muted",
-									children: t.date
+				className: "border border-border rounded overflow-x-auto bg-surface",
+				children: /* @__PURE__ */ jsx("div", {
+					className: "min-w-[520px] w-full",
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "bg-bg border-b border-border w-full",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: "grid grid-cols-12 px-5 py-3 w-full",
+							children: [
+								"FECHA",
+								"CLIENTE",
+								"SERVICIO",
+								"MONTO",
+								"ESTADO"
+							].map((h, i) => /* @__PURE__ */ jsx("div", {
+								className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-2" : i === 1 ? "col-span-3" : i === 2 ? "col-span-4" : i === 3 ? "col-span-2" : "col-span-1 text-center"}`,
+								children: h
+							}, i))
+						}), transactions.map((t, i) => /* @__PURE__ */ jsxs("div", {
+							className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
+							children: [
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-2",
+									children: /* @__PURE__ */ jsx("span", {
+										className: "text-sm text-ink-muted whitespace-nowrap",
+										children: t.fecha
+									})
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-3",
+									children: /* @__PURE__ */ jsx("span", {
+										className: "text-sm font-semibold text-ink text-center",
+										children: t.cliente
+									})
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-4",
+									children: /* @__PURE__ */ jsx("span", {
+										className: "text-sm text-ink-muted",
+										children: t.servicio
+									})
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-2",
+									children: /* @__PURE__ */ jsxs("span", {
+										className: "font-display text-lg font-bold text-ink",
+										children: ["$", t.monto]
+									})
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-1 text-center",
+									children: /* @__PURE__ */ jsx("span", {
+										className: badgeCls$1[t.estado] ?? "badge",
+										children: t.estado.toUpperCase()
+									})
 								})
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-3",
-								children: /* @__PURE__ */ jsx("span", {
-									className: "text-sm font-semibold text-ink",
-									children: t.client
-								})
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-4",
-								children: /* @__PURE__ */ jsx("span", {
-									className: "text-sm text-ink-muted",
-									children: t.service
-								})
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2",
-								children: /* @__PURE__ */ jsxs("span", {
-									className: "font-display text-lg font-bold text-ink",
-									children: ["€", t.amount]
-								})
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2",
-								children: /* @__PURE__ */ jsx("span", {
-									className: badgeCls$1[t.status],
-									children: t.status.toUpperCase()
-								})
-							})
-						]
-					}, i))]
+							]
+						}, i))]
+					})
 				})
 			})
 		]
@@ -10834,7 +10790,7 @@ var payments_default = UNSAFE_withComponentProps(function AdminPayments() {
 				children: /* @__PURE__ */ jsxs("div", {
 					style: { minWidth: "640px" },
 					children: [/* @__PURE__ */ jsxs("div", {
-						className: "flex px-5 py-3 border-b border-border bg-bg text-xs font-bold text-ink-muted uppercase tracking-widest",
+						className: "flex px-5 py-3 border-b border-border bg-bg text-xs font-bold text-ink-muted uppercase tracking-widest items-center",
 						children: [
 							/* @__PURE__ */ jsx("div", {
 								className: "w-24",
@@ -11399,9 +11355,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-Dtx0gCyo.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
-			"css": ["/assets/root-DFPc2p_x.css"],
+			"module": "/assets/root-Deb80SNV.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
+			"css": ["/assets/root-DwZCZWG2.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -11420,8 +11376,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/home-9mke8Zm0.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/home-jbRgOG_y.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11441,8 +11397,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/login-DVItVFRt.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/login-DLGBmClL.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11462,8 +11418,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/register-CuGZr4gQ.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/register-DgngsB-s.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11483,8 +11439,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/auth.google.callback-CrgL6Eyt.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/auth.google.callback-TCBQnsRJ.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11504,11 +11460,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-BI2HZE8D.js",
+			"module": "/assets/_layout-D1AwYk45.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-DJ39hRro.js"
+				"/assets/AuthContext-NE5TAd_g.js",
+				"/assets/NotificationContext-Bop2CCqz.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11529,8 +11485,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-nQ-iQGHH.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/dashboard-CYtMC4m6.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11550,8 +11506,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/discover-Dle6i-Ul.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/discover-CkhalvHx.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11571,8 +11527,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/professional._id-CEJcnmTT.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/professional._id-SKPSmbaX.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11613,8 +11569,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/package._id.pay-Didvq8NR.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/package._id.pay-BiYyckyf.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11634,8 +11590,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/compra-package._id.pay-BiXF3jVr.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/compra-package._id.pay-poVMicct.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11655,8 +11611,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/packages-DdZVNa-F.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/packages-DufKLb16.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11697,10 +11653,10 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-CxyeqdLc.js",
+			"module": "/assets/payments-BdvKjozo.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/AuthContext-DzGty-Aa.js",
+				"/assets/AuthContext-NE5TAd_g.js",
 				"/assets/ReactToastify-CH_hjN7z.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
@@ -11722,12 +11678,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-D4MNgO-S.js",
+			"module": "/assets/notifications-BimVkBZI.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/NotificationContext-DJ39hRro.js",
+				"/assets/NotificationContext-Bop2CCqz.js",
 				"/assets/bell-B_0dwYTY.js",
-				"/assets/AuthContext-DzGty-Aa.js"
+				"/assets/AuthContext-NE5TAd_g.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11748,10 +11704,10 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/mis-reservas-BRGXzagT.js",
+			"module": "/assets/mis-reservas-BbEP9JLZ.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/AuthContext-DzGty-Aa.js",
+				"/assets/AuthContext-NE5TAd_g.js",
 				"/assets/ReactToastify-CH_hjN7z.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
@@ -11773,8 +11729,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-BsMrt6hg.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/profile-ADk_YCeL.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11794,11 +11750,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-BbIdu2a1.js",
+			"module": "/assets/_layout-C6BL7_YU.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-DJ39hRro.js"
+				"/assets/AuthContext-NE5TAd_g.js",
+				"/assets/NotificationContext-Bop2CCqz.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11819,8 +11775,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/clients-DuA52wGB.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/clients-D00RvBPZ.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11840,8 +11796,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-4PaDtDbU.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/dashboard-BkPgMoww.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11861,8 +11817,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/services-CWNrNP8T.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/services-B1nTE4YY.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11882,8 +11838,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/service-packages-B9IP5cmX.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/service-packages-DLgNAinG.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11903,8 +11859,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-CrpxNiGO.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/availability--vY3lx7N.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11924,8 +11880,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-lBwLL4Rd.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
+			"module": "/assets/payments-rzFqIB1H.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11966,8 +11922,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-BSZI_Fun.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/profile-BCBnq8CS.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11987,12 +11943,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-BGXg4K2W.js",
+			"module": "/assets/notifications-WdDElHmW.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/NotificationContext-DJ39hRro.js",
+				"/assets/NotificationContext-Bop2CCqz.js",
 				"/assets/bell-B_0dwYTY.js",
-				"/assets/AuthContext-DzGty-Aa.js"
+				"/assets/AuthContext-NE5TAd_g.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12013,8 +11969,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-DUi0RfrJ.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/_layout-0BabZFh8.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12034,8 +11990,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-B6uF7RTo.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/dashboard--3b9XTSK.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12055,8 +12011,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/users-BfExO8CR.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/users-CE5D5YNG.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12076,8 +12032,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-CZPjdXSL.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/payments-BZr3QybX.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12097,8 +12053,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/videollamada-7TRJu2nm.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/videollamada-CGbHxjVZ.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12148,8 +12104,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-e1cc3276.js",
-	"version": "e1cc3276",
+	"url": "/assets/manifest-82370b55.js",
+	"version": "82370b55",
 	"sri": void 0
 };
 //#endregion

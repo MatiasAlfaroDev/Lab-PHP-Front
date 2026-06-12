@@ -159,6 +159,8 @@ export default function ClientsAndAgenda() {
     }
   };
   const cancelarReserva = async (reservaId: number) => {
+      console.log("CANCELAR RESERVA", reservaId);
+
     await api.put(`/reservas/${reservaId}/cancelar`, {}, token);
   };
 
