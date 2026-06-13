@@ -65,7 +65,7 @@ export default function Discover() {
   const [servicios, setServicios]               = useState<Servicio[]>([]);
   const [paquetes, setPaquetes]                 = useState<Paquete[]>([]);
   const [loadingSvc, setLoadingSvc]             = useState(true);
-  const [loadingPkg, setLoadingPkg]             = useState(false);
+  const [loadingPkg, setLoadingPkg]             = useState(true);
   const [error, setError]                       = useState<string | null>(null);
   const [errorPkg, setErrorPkg]                 = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes]       = useState<string[]>([]);

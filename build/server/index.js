@@ -801,8 +801,20 @@ var auth_google_callback_exports = /* @__PURE__ */ __exportAll({ default: () => 
 var auth_google_callback_default = UNSAFE_withComponentProps(function GoogleCallback() {
 	const { login } = useAuth();
 	const navigate = useNavigate();
+	const [modal, setModal] = useState({
+		open: false,
+		message: ""
+	});
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search);
+		const error = params.get("error");
+		if (error) {
+			setModal({
+				open: true,
+				message: error
+			});
+			return;
+		}
 		const token = params.get("token");
 		const user = {
 			id: Number(params.get("id")),
@@ -818,7 +830,33 @@ var auth_google_callback_default = UNSAFE_withComponentProps(function GoogleCall
 			else navigate("/client");
 		}
 	}, []);
-	return /* @__PURE__ */ jsx("p", { children: "Iniciando sesión..." });
+	return /* @__PURE__ */ jsxs("div", {
+		className: "flex items-center justify-center min-h-screen",
+		children: [/* @__PURE__ */ jsx("p", {
+			className: "text-ink-muted",
+			children: "Iniciando sesión..."
+		}), modal.open && /* @__PURE__ */ jsx("div", {
+			className: "fixed inset-0 bg-black/50 flex items-center justify-center z-50",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "bg-white rounded-lg shadow-lg p-6 w-[320px] text-center",
+				children: [
+					/* @__PURE__ */ jsx("h2", {
+						className: "text-lg font-bold mb-2 text-red-600",
+						children: "Acceso denegado"
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "text-sm text-ink mb-4",
+						children: modal.message
+					}),
+					/* @__PURE__ */ jsx("button", {
+						onClick: () => navigate("/login"),
+						className: "bg-ink text-white px-4 py-2 rounded",
+						children: "Volver al login"
+					})
+				]
+			})
+		})]
+	});
 });
 //#endregion
 //#region app/lib/echo.ts
@@ -943,7 +981,7 @@ var navItems$2 = [
 	{
 		to: "/client/notifications",
 		label: "Notificaciones",
-		icon: BellIcon$2
+		icon: BellIcon$1
 	}
 ];
 function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
@@ -1170,7 +1208,7 @@ function CardIcon$1({ className }) {
 		})]
 	});
 }
-function BellIcon$2({ className }) {
+function BellIcon$1({ className }) {
 	return /* @__PURE__ */ jsx("svg", {
 		className,
 		fill: "none",
@@ -1991,19 +2029,32 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 						]
 					}),
 					loadingPkg && /* @__PURE__ */ jsx("div", {
-						className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4",
+						className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6",
 						children: [
 							1,
 							2,
-							3
+							3,
+							4,
+							5,
+							6
 						].map((i) => /* @__PURE__ */ jsxs("div", {
-							className: "bg-surface border border-border rounded-2xl overflow-hidden animate-pulse",
-							children: [/* @__PURE__ */ jsx("div", { className: "h-6 bg-border/50 rounded m-5 w-1/2" }), /* @__PURE__ */ jsxs("div", {
-								className: "px-5 pb-5 space-y-3",
+							className: "bg-surface border border-border rounded-xl overflow-hidden animate-pulse",
+							children: [/* @__PURE__ */ jsx("div", { className: "h-32 bg-border/50" }), /* @__PURE__ */ jsxs("div", {
+								className: "p-5",
 								children: [
-									/* @__PURE__ */ jsx("div", { className: "h-3 bg-border/50 rounded w-3/4" }),
-									/* @__PURE__ */ jsx("div", { className: "h-8 bg-border/50 rounded w-1/3" }),
-									/* @__PURE__ */ jsx("div", { className: "h-10 bg-border/50 rounded" })
+									/* @__PURE__ */ jsx("div", { className: "h-6 bg-border/50 rounded w-2/3 mb-3" }),
+									/* @__PURE__ */ jsxs("div", {
+										className: "space-y-2 mb-4",
+										children: [
+											/* @__PURE__ */ jsx("div", { className: "h-3 bg-border/50 rounded w-full" }),
+											/* @__PURE__ */ jsx("div", { className: "h-3 bg-border/50 rounded w-5/6" }),
+											/* @__PURE__ */ jsx("div", { className: "h-3 bg-border/50 rounded w-2/3" })
+										]
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex items-center justify-between",
+										children: [/* @__PURE__ */ jsx("div", { className: "h-8 bg-border/50 rounded w-20" }), /* @__PURE__ */ jsx("div", { className: "h-10 bg-border/50 rounded w-24" })]
+									})
 								]
 							})]
 						}, i))
@@ -2168,7 +2219,7 @@ function MiniCalendar({ year, month, availableDays, selectedDate, onSelect, onPr
 				if (!day) return /* @__PURE__ */ jsx("div", {}, i);
 				const date = new Date(year, month, day);
 				const dateStr = toDateStr$1(year, month, day);
-				const isPast = date <= today;
+				const isPast = date < today;
 				const dow = DOW_MAP[date.getDay()];
 				const isAvailable = availableDays.has(dow) && !isPast;
 				const isSelected = selectedDate === dateStr;
@@ -5307,7 +5358,7 @@ var navItems$1 = [
 	{
 		to: "/professional/notifications",
 		label: "Notificaciones",
-		icon: BellIcon$1
+		icon: BellIcon
 	}
 ];
 function ProfessionalSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
@@ -5569,7 +5620,7 @@ function CardIcon({ className }) {
 		})]
 	});
 }
-function BellIcon$1({ className }) {
+function BellIcon({ className }) {
 	return /* @__PURE__ */ jsx("svg", {
 		className,
 		fill: "none",
@@ -5803,7 +5854,8 @@ function getInitials$2(nombre) {
 var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 	const { token } = useAuth();
 	const [reservas, setReservas] = useState([]);
-	const [clients, setClients] = useState([]);
+	const [clientesProximos, setClientesProximos] = useState([]);
+	const [clientesHistoricos, setClientesHistoricos] = useState([]);
 	const [agendaLoading, setAgendaLoading] = useState(true);
 	const [clientsLoading, setClientsLoading] = useState(true);
 	const [weekStart, setWeekStart] = useState(() => toMonday(/* @__PURE__ */ new Date()));
@@ -5828,7 +5880,13 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 		if (!token) return;
 		fetchAgenda();
 		setClientsLoading(true);
-		api.get("/clientes", token).then((data) => setClients(Array.isArray(data) ? data : [])).catch(() => setClients([])).finally(() => setClientsLoading(false));
+		api.get("/clientes", token).then((data) => {
+			setClientesProximos(data.proximos || []);
+			setClientesHistoricos(data.historicos || []);
+		}).catch(() => {
+			setClientesProximos([]);
+			setClientesHistoricos([]);
+		}).finally(() => setClientsLoading(false));
 	}, [token]);
 	const cambiarEstado = async (reservaId, estado) => {
 		try {
@@ -5864,14 +5922,14 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 		if (from.getMonth() === to.getMonth()) return `${from.getDate()}–${to.getDate()} ${MONTH_NAMES[from.getMonth()]} ${from.getFullYear()}`;
 		return `${from.getDate()} ${MONTH_NAMES[from.getMonth()]} – ${to.getDate()} ${MONTH_NAMES[to.getMonth()]} ${to.getFullYear()}`;
 	})();
-	const filteredClients = clients.filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()));
+	[...clientesProximos, ...clientesHistoricos].filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()));
 	const clientColorMap = {};
-	clients.forEach((c, i) => {
+	[...clientesProximos, ...clientesHistoricos].forEach((c, i) => {
 		clientColorMap[c.nombre] = CLIENT_COLORS[i % CLIENT_COLORS.length];
 	});
 	const clientReservas = selectedClient ? reservas.filter((r) => r.cliente_nombre === selectedClient.nombre) : [];
 	const handleReservaClick = (r) => {
-		const client = clients.find((c) => c.nombre === r.cliente_nombre) ?? null;
+		const client = [...clientesProximos, ...clientesHistoricos].find((c) => c.nombre === r.cliente_nombre) ?? null;
 		if (selectedReserva?.reserva_id === r.reserva_id) {
 			setSelectedReserva(null);
 			setSelectedClient(null);
@@ -5905,7 +5963,9 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 	};
 	const mobileDays = weekDates.slice(mobileStartDay, mobileStartDay + 3);
 	const panelOpen = !!selectedClient;
-	const panelClientColor = selectedClient ? CLIENT_COLORS[Math.max(clients.findIndex((c) => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length] : CLIENT_COLORS[0];
+	const panelClientColor = selectedClient ? CLIENT_COLORS[Math.max([...clientesProximos, ...clientesHistoricos].findIndex((c) => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length] : CLIENT_COLORS[0];
+	const filteredProximos = clientesProximos.filter((c) => `${c.nombre} ${c.email}`.toLowerCase().includes(search.toLowerCase()));
+	const filteredHistoricos = clientesHistoricos.filter((c) => `${c.nombre} ${c.email}`.toLowerCase().includes(search.toLowerCase()));
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8",
 		children: [/* @__PURE__ */ jsxs("div", {
@@ -6168,7 +6228,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 						className: "font-display text-xl text-ink shrink-0",
 						children: ["Clientes", /* @__PURE__ */ jsx("span", {
 							className: "ml-2 text-sm font-normal text-ink-muted",
-							children: !clientsLoading && `${clients.length} activos`
+							children: !clientsLoading && `${clientesProximos.length + clientesHistoricos.length} clientes`
 						})]
 					}), /* @__PURE__ */ jsx("input", {
 						className: "flex-1 border border-border rounded px-3 py-1.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink",
@@ -6179,88 +6239,179 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 				}), clientsLoading ? /* @__PURE__ */ jsx("div", {
 					className: "bg-surface border border-border rounded p-8 text-center text-ink-muted text-sm",
 					children: "Cargando clientes..."
-				}) : filteredClients.length === 0 ? /* @__PURE__ */ jsx("div", {
-					className: "bg-surface border border-border rounded p-8 text-center",
-					children: /* @__PURE__ */ jsx("p", {
-						className: "text-sm text-ink-muted",
-						children: search ? `Sin resultados para "${search}"` : "Tus clientes aparecerán aquí"
-					})
-				}) : /* @__PURE__ */ jsx("div", {
-					className: "bg-surface border border-border rounded overflow-hidden",
-					children: /* @__PURE__ */ jsx("div", {
-						className: "overflow-x-auto",
-						children: /* @__PURE__ */ jsxs("div", {
-							className: "min-w-[580px]",
-							children: [/* @__PURE__ */ jsx("div", {
-								className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
-								children: [
-									{
-										label: "CLIENTE",
-										span: "col-span-3"
-									},
-									{
-										label: "EMAIL",
-										span: "col-span-3"
-									},
-									{
-										label: "PRÓXIMA SESIÓN",
-										span: "col-span-3"
-									},
-									{
-										label: "ESTADO",
-										span: "col-span-1 flex items-center justify-center"
-									}
-								].map((h) => /* @__PURE__ */ jsx("div", {
-									className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
-									children: h.label
-								}, h.label))
-							}), filteredClients.map((c, index) => {
-								const isSelected = selectedClient?.cliente_id === c.cliente_id;
-								const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
-								return /* @__PURE__ */ jsxs("div", {
-									onClick: () => handleClientClick(c),
-									className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`,
+				}) : /* @__PURE__ */ jsxs("div", {
+					className: "space-y-8",
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", {
+						className: "text-lg font-semibold text-ink mb-3",
+						children: [
+							"Próximas reservas (",
+							filteredProximos.length,
+							")"
+						]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "bg-surface border border-border rounded overflow-hidden",
+						children: /* @__PURE__ */ jsx("div", {
+							className: "overflow-x-auto",
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "min-w-[580px]",
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
 									children: [
-										/* @__PURE__ */ jsxs("div", {
-											className: "col-span-3 flex items-center gap-3",
-											children: [/* @__PURE__ */ jsx("div", {
-												className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
-												children: getInitials$2(c.nombre)
-											}), /* @__PURE__ */ jsx("span", {
-												className: "text-sm font-semibold text-ink truncate",
-												children: c.nombre
-											})]
-										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "col-span-3",
-											children: /* @__PURE__ */ jsx("span", {
-												className: "text-sm text-ink-muted truncate block",
-												children: c.email
+										{
+											label: "CLIENTE",
+											span: "col-span-3"
+										},
+										{
+											label: "EMAIL",
+											span: "col-span-3"
+										},
+										{
+											label: "PRÓXIMA SESIÓN",
+											span: "col-span-3"
+										},
+										{
+											label: "ESTADO",
+											span: "col-span-1 flex items-center justify-center"
+										}
+									].map((h) => /* @__PURE__ */ jsx("div", {
+										className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
+										children: h.label
+									}, h.label))
+								}), filteredProximos.length === 0 ? /* @__PURE__ */ jsx("div", {
+									className: "p-8 text-center text-sm text-ink-muted",
+									children: "No hay clientes con reservas futuras"
+								}) : filteredProximos.map((c, index) => {
+									const isSelected = selectedClient?.cliente_id === c.cliente_id;
+									const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
+									return /* @__PURE__ */ jsxs("div", {
+										onClick: () => handleClientClick(c),
+										className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent}
+                      ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`,
+										children: [
+											/* @__PURE__ */ jsxs("div", {
+												className: "col-span-3 flex items-center gap-3",
+												children: [/* @__PURE__ */ jsx("div", {
+													className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
+													children: getInitials$2(c.nombre)
+												}), /* @__PURE__ */ jsx("span", {
+													className: "text-sm font-semibold text-ink truncate",
+													children: c.nombre
+												})]
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-3",
+												children: /* @__PURE__ */ jsx("span", {
+													className: "text-sm text-ink-muted truncate block",
+													children: c.email
+												})
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-3",
+												children: /* @__PURE__ */ jsxs("span", {
+													className: "text-sm text-ink",
+													children: [
+														c.proxima_sesion,
+														" ",
+														c.hora_proxima_sesion?.slice(0, 5) ?? ""
+													]
+												})
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-1 flex justify-center",
+												children: /* @__PURE__ */ jsx("span", {
+													className: `badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`,
+													children: c.estado
+												})
 											})
-										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "col-span-3",
-											children: /* @__PURE__ */ jsxs("span", {
-												className: "text-sm text-ink",
-												children: [
-													c.proxima_sesion,
-													" ",
-													c.hora_proxima_sesion?.slice(0, 5) ?? ""
-												]
-											})
-										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "col-span-1 flex justify-center",
-											children: /* @__PURE__ */ jsx("span", {
-												className: `badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`,
-												children: c.estado
-											})
-										})
-									]
-								}, c.cliente_id);
-							})]
+										]
+									}, c.cliente_id);
+								})]
+							})
 						})
-					})
+					})] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", {
+						className: "text-lg font-semibold text-ink mb-3",
+						children: [
+							"Historial de clientes (",
+							filteredHistoricos.length,
+							")"
+						]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "bg-surface border border-border rounded overflow-hidden",
+						children: /* @__PURE__ */ jsx("div", {
+							className: "overflow-x-auto",
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "min-w-[580px]",
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
+									children: [
+										{
+											label: "CLIENTE",
+											span: "col-span-3"
+										},
+										{
+											label: "EMAIL",
+											span: "col-span-3"
+										},
+										{
+											label: "ÚLTIMA SESIÓN",
+											span: "col-span-3"
+										},
+										{
+											label: "ESTADO",
+											span: "col-span-1 flex items-center justify-center"
+										}
+									].map((h) => /* @__PURE__ */ jsx("div", {
+										className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
+										children: h.label
+									}, h.label))
+								}), filteredHistoricos.length === 0 ? /* @__PURE__ */ jsx("div", {
+									className: "p-8 text-center text-sm text-ink-muted",
+									children: "No hay clientes históricos"
+								}) : filteredHistoricos.map((c, index) => {
+									const isSelected = selectedClient?.cliente_id === c.cliente_id;
+									const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
+									return /* @__PURE__ */ jsxs("div", {
+										onClick: () => handleClientClick(c),
+										className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent}
+                      ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`,
+										children: [
+											/* @__PURE__ */ jsxs("div", {
+												className: "col-span-3 flex items-center gap-3",
+												children: [/* @__PURE__ */ jsx("div", {
+													className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
+													children: getInitials$2(c.nombre)
+												}), /* @__PURE__ */ jsx("span", {
+													className: "text-sm font-semibold text-ink truncate",
+													children: c.nombre
+												})]
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-3",
+												children: /* @__PURE__ */ jsx("span", {
+													className: "text-sm text-ink-muted truncate block",
+													children: c.email
+												})
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-3",
+												children: /* @__PURE__ */ jsx("span", {
+													className: "text-sm text-ink-muted",
+													children: "Sin reservas futuras"
+												})
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-1 flex justify-center",
+												children: /* @__PURE__ */ jsx("span", {
+													className: "badge",
+													children: "Histórico"
+												})
+											})
+										]
+									}, c.cliente_id);
+								})]
+							})
+						})
+					})] })]
 				})] })]
 			}), /* @__PURE__ */ jsx("div", {
 				className: "lg:sticky lg:top-8 space-y-3",
@@ -6782,19 +6933,13 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 				}), /* @__PURE__ */ jsx("p", {
 					className: "text-ink-muted mt-1",
 					children: sesionesHoy > 0 ? `Tenés ${sesionesHoy} sesión${sesionesHoy !== 1 ? "es" : ""} hoy` : "Sin sesiones hoy"
-				})] }), /* @__PURE__ */ jsxs("div", {
+				})] }), /* @__PURE__ */ jsx("div", {
 					className: "flex flex-wrap items-center gap-2 sm:gap-3",
-					children: [/* @__PURE__ */ jsxs("button", {
-						className: "relative p-2 border border-border rounded bg-surface hover:bg-bg",
-						children: [/* @__PURE__ */ jsx(BellIcon, {}), pendientes.length > 0 && /* @__PURE__ */ jsx("span", {
-							className: "absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold",
-							children: pendientes.length
-						})]
-					}), /* @__PURE__ */ jsxs(Link, {
+					children: /* @__PURE__ */ jsxs(Link, {
 						to: "/professional/services",
 						className: "flex items-center gap-2 border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink",
 						children: [/* @__PURE__ */ jsx(PlusIcon, {}), "Nuevo servicio"]
-					})]
+					})
 				})]
 			}),
 			/* @__PURE__ */ jsx("div", {
@@ -7101,19 +7246,6 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 		]
 	});
 });
-function BellIcon() {
-	return /* @__PURE__ */ jsxs("svg", {
-		width: "18",
-		height: "18",
-		viewBox: "0 0 24 24",
-		fill: "none",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		strokeLinecap: "round",
-		strokeLinejoin: "round",
-		children: [/* @__PURE__ */ jsx("path", { d: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" }), /* @__PURE__ */ jsx("path", { d: "M13.73 21a2 2 0 0 1-3.46 0" })]
-	});
-}
 function PlusIcon() {
 	return /* @__PURE__ */ jsxs("svg", {
 		width: "15",
@@ -7233,6 +7365,7 @@ var EMPTY_FORM$1 = {
 	descripcion: "",
 	modalidad: "presencial",
 	tipo: "",
+	tipoPersonalizado: "",
 	precio: "",
 	duracion: "",
 	pausa: "",
@@ -7244,6 +7377,25 @@ var MODALIDAD_CLS = {
 	virtual: "bg-orange-100  text-orange-700",
 	hibrido: "bg-amber-100   text-amber-800"
 };
+var TIPOS_SERVICIO = [
+	"Psicología",
+	"Nutrición",
+	"Tarot",
+	"Astrología",
+	"Entrenamiento Personal",
+	"Yoga",
+	"Pilates",
+	"Fisioterapia",
+	"Masoterapia",
+	"Clases Particulares",
+	"Idiomas",
+	"Música",
+	"Consultoría",
+	"Asesoría Legal",
+	"Belleza y Estética",
+	"Fotografía",
+	"Otro"
+];
 var inputCls$1 = "w-full border border-border rounded px-3 py-2 text-sm bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 var labelCls$1 = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
 var services_default = UNSAFE_withComponentProps(function Services() {
@@ -7292,7 +7444,8 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 			nombre: s.nombre,
 			descripcion: s.descripcion,
 			modalidad: s.modalidad,
-			tipo: s.tipo,
+			tipo: TIPOS_SERVICIO.includes(s.tipo) ? s.tipo : "Otro",
+			tipoPersonalizado: TIPOS_SERVICIO.includes(s.tipo) ? "" : s.tipo,
 			precio: String(s.precio),
 			duracion: String(s.duracion),
 			pausa: String(s.pausa),
@@ -7312,8 +7465,9 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 	}));
 	const needsLocation = ["presencial", "hibrido"].includes(form.modalidad.toLowerCase());
 	const handleSave = async () => {
+		const tipoFinal = form.tipo === "Otro" ? form.tipoPersonalizado.trim() : form.tipo;
 		if (!form.nombre.trim()) return showToast("El nombre es requerido", false);
-		if (!form.tipo.trim()) return showToast("El tipo es requerido", false);
+		if (!tipoFinal.trim()) return showToast("El tipo es requerido", false);
 		if (!form.precio) return showToast("El precio es requerido", false);
 		if (!form.duracion) return showToast("La duración es requerida", false);
 		setSaving(true);
@@ -7322,7 +7476,7 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 				nombre: form.nombre,
 				descripcion: form.descripcion,
 				modalidad: form.modalidad.toLowerCase(),
-				tipo: form.tipo,
+				tipo: tipoFinal,
 				precio: Number(form.precio),
 				duracion: Number(form.duracion),
 				pausa: Number(form.pausa),
@@ -7571,15 +7725,33 @@ function ServiceForm({ form, setF, saving, isEdit, onSave, onCancel, needsLocati
 					placeholder: "Ej. Sesión individual",
 					value: form.nombre,
 					onChange: (e) => setF({ nombre: e.target.value })
-				})] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-					className: labelCls$1,
-					children: "Tipo"
-				}), /* @__PURE__ */ jsx("input", {
-					className: inputCls$1,
-					placeholder: "Ej. Consulta, Terapia...",
-					value: form.tipo,
-					onChange: (e) => setF({ tipo: e.target.value })
-				})] })]
+				})] }), /* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsx("label", {
+						className: labelCls$1,
+						children: "Tipo"
+					}),
+					/* @__PURE__ */ jsxs("select", {
+						className: inputCls$1,
+						value: form.tipo,
+						onChange: (e) => setF({
+							tipo: e.target.value,
+							tipoPersonalizado: ""
+						}),
+						children: [/* @__PURE__ */ jsx("option", {
+							value: "",
+							children: "Seleccionar tipo"
+						}), TIPOS_SERVICIO.map((tipo) => /* @__PURE__ */ jsx("option", {
+							value: tipo,
+							children: tipo
+						}, tipo))]
+					}),
+					form.tipo === "Otro" && /* @__PURE__ */ jsx("input", {
+						className: `${inputCls$1} mt-2`,
+						placeholder: "Especifique el tipo de servicio",
+						value: form.tipoPersonalizado,
+						onChange: (e) => setF({ tipoPersonalizado: e.target.value })
+					})
+				] })]
 			}),
 			/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
 				className: labelCls$1,
@@ -10547,6 +10719,7 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 	const { token } = useAuth();
 	const [clients, setClients] = useState([]);
 	const [professionals, setProfessionals] = useState([]);
+	const [loadingId, setLoadingId] = useState(null);
 	useEffect(() => {
 		if (!token) return;
 		const loadUsers = async () => {
@@ -10560,6 +10733,32 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 		};
 		loadUsers();
 	}, [token]);
+	const [modal, setModal] = useState({
+		open: false,
+		message: ""
+	});
+	const blockUser = async (id) => {
+		try {
+			setLoadingId(id);
+			const res = await api.post(`/admin/blockUser/${id}`, {}, token);
+			if (res.success) {
+				const toggle = (list) => list.map((u) => u.id === id ? {
+					...u,
+					activo: !u.activo
+				} : u);
+				setClients(toggle(clients));
+				setProfessionals(toggle(professionals));
+				setModal({
+					open: true,
+					message: res.message
+				});
+			}
+		} catch (e) {
+			console.error("Error cambiando estado:", e);
+		} finally {
+			setLoadingId(null);
+		}
+	};
 	const getInitials = (name) => name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 	const Table = ({ title, data }) => /* @__PURE__ */ jsxs("div", {
 		className: "mb-10",
@@ -10577,16 +10776,17 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 						"EMAIL",
 						"SESIONES",
 						"DESDE",
+						"ESTADO",
 						""
 					].map((h, i) => /* @__PURE__ */ jsx("div", {
-						className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-7" : i === 1 ? "col-span-7" : i === 2 ? "col-span-3 text-center" : i === 3 ? "col-span-5 text-center" : "col-span-2"}`,
+						className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-6" : i === 1 ? "col-span-6" : i === 2 ? "col-span-3 text-center" : i === 3 ? "col-span-4 text-center" : i === 4 ? "col-span-3 text-center" : "col-span-2"}`,
 						children: h
 					}, i))
 				}), data.map((u) => /* @__PURE__ */ jsxs("div", {
 					className: "grid grid-cols-24 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
 					children: [
 						/* @__PURE__ */ jsxs("div", {
-							className: "col-span-7 flex items-center gap-3",
+							className: "col-span-6 flex items-center gap-3",
 							children: [/* @__PURE__ */ jsx("div", {
 								className: "w-9 h-9 rounded-lg bg-violet-500 flex items-center justify-center text-white text-xs font-bold",
 								children: getInitials(u.name)
@@ -10596,7 +10796,7 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 							})]
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "col-span-7 min-w-0",
+							className: "col-span-6 min-w-0",
 							children: /* @__PURE__ */ jsx("span", {
 								className: "text-sm text-ink-muted block truncate sm:truncate-none sm:break-words",
 								children: u.email
@@ -10610,17 +10810,29 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 							})
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "col-span-5 text-center",
+							className: "col-span-4 text-center",
 							children: /* @__PURE__ */ jsx("span", {
 								className: "text-sm text-ink-muted justify items-center",
 								children: u.joined
 							})
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "col-span-1",
+							className: "col-span-3 text-center",
+							children: u.activo ? /* @__PURE__ */ jsx("span", {
+								className: "text-xs px-2 py-1 rounded bg-green-500 text-white",
+								children: "Activo"
+							}) : /* @__PURE__ */ jsx("span", {
+								className: "text-xs px-2 py-1 rounded bg-red-500 text-white",
+								children: "Bloqueado"
+							})
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "col-span-2",
 							children: /* @__PURE__ */ jsx("button", {
-								className: "text-ink-muted hover:text-ink p-1",
-								children: "⋯"
+								onClick: () => blockUser(Number(u.id)),
+								disabled: loadingId === u.id,
+								className: `text-xs px-2 py-1 rounded text-white ${u.activo ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"} ${loadingId === u.id ? "opacity-60 cursor-not-allowed" : ""}`,
+								children: loadingId === u.id ? "Cargando..." : u.activo ? "Bloquear" : "Activar"
 							})
 						})
 					]
@@ -10648,6 +10860,23 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 			/* @__PURE__ */ jsx(Table, {
 				title: "Profesionales",
 				data: professionals
+			}),
+			modal.open && /* @__PURE__ */ jsx("div", {
+				className: "fixed inset-0 bg-black/40 flex items-center justify-center z-50",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "bg-white rounded-lg p-6 shadow-lg w-[300px] text-center",
+					children: [/* @__PURE__ */ jsx("p", {
+						className: "text-sm text-ink mb-4",
+						children: modal.message
+					}), /* @__PURE__ */ jsx("button", {
+						onClick: () => setModal({
+							open: false,
+							message: ""
+						}),
+						className: "bg-violet-500 text-white px-4 py-2 rounded",
+						children: "OK"
+					})]
+				})
 			})
 		]
 	});
@@ -11294,9 +11523,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-Deb80SNV.js",
+			"module": "/assets/root-DsMKQRH6.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
-			"css": ["/assets/root-DwZCZWG2.css"],
+			"css": ["/assets/root-Dxpflsvq.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -11378,7 +11607,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/auth.google.callback-TCBQnsRJ.js",
+			"module": "/assets/auth.google.callback-CjDD0zji.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11445,7 +11674,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/discover-CkhalvHx.js",
+			"module": "/assets/discover-CP4tLiRN.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11466,7 +11695,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/professional._id-SKPSmbaX.js",
+			"module": "/assets/professional._id-DtHHyzpl.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11714,7 +11943,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/clients-D00RvBPZ.js",
+			"module": "/assets/clients-DZEQgWg-.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11735,7 +11964,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-BkPgMoww.js",
+			"module": "/assets/dashboard-CANJTltN.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11756,7 +11985,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/services-B1nTE4YY.js",
+			"module": "/assets/services-II19Ba4b.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11950,7 +12179,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/users-CE5D5YNG.js",
+			"module": "/assets/users-BBq742c0.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12043,8 +12272,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-ee4ef39c.js",
-	"version": "ee4ef39c",
+	"url": "/assets/manifest-93818081.js",
+	"version": "93818081",
 	"sri": void 0
 };
 //#endregion
