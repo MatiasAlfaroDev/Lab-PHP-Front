@@ -1664,7 +1664,7 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 	const [servicios, setServicios] = useState([]);
 	const [paquetes, setPaquetes] = useState([]);
 	const [loadingSvc, setLoadingSvc] = useState(true);
-	const [loadingPkg, setLoadingPkg] = useState(false);
+	const [loadingPkg, setLoadingPkg] = useState(true);
 	const [error, setError] = useState(null);
 	const [errorPkg, setErrorPkg] = useState(null);
 	const [selectedTypes, setSelectedTypes] = useState([]);
@@ -2029,32 +2029,19 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 						]
 					}),
 					loadingPkg && /* @__PURE__ */ jsx("div", {
-						className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6",
+						className: "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4",
 						children: [
 							1,
 							2,
-							3,
-							4,
-							5,
-							6
+							3
 						].map((i) => /* @__PURE__ */ jsxs("div", {
-							className: "bg-surface border border-border rounded-xl overflow-hidden animate-pulse",
-							children: [/* @__PURE__ */ jsx("div", { className: "h-32 bg-border/50" }), /* @__PURE__ */ jsxs("div", {
-								className: "p-5",
+							className: "bg-surface border border-border rounded-2xl overflow-hidden animate-pulse",
+							children: [/* @__PURE__ */ jsx("div", { className: "h-6 bg-border/50 rounded m-5 w-1/2" }), /* @__PURE__ */ jsxs("div", {
+								className: "px-5 pb-5 space-y-3",
 								children: [
-									/* @__PURE__ */ jsx("div", { className: "h-6 bg-border/50 rounded w-2/3 mb-3" }),
-									/* @__PURE__ */ jsxs("div", {
-										className: "space-y-2 mb-4",
-										children: [
-											/* @__PURE__ */ jsx("div", { className: "h-3 bg-border/50 rounded w-full" }),
-											/* @__PURE__ */ jsx("div", { className: "h-3 bg-border/50 rounded w-5/6" }),
-											/* @__PURE__ */ jsx("div", { className: "h-3 bg-border/50 rounded w-2/3" })
-										]
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "flex items-center justify-between",
-										children: [/* @__PURE__ */ jsx("div", { className: "h-8 bg-border/50 rounded w-20" }), /* @__PURE__ */ jsx("div", { className: "h-10 bg-border/50 rounded w-24" })]
-									})
+									/* @__PURE__ */ jsx("div", { className: "h-3 bg-border/50 rounded w-3/4" }),
+									/* @__PURE__ */ jsx("div", { className: "h-8 bg-border/50 rounded w-1/3" }),
+									/* @__PURE__ */ jsx("div", { className: "h-10 bg-border/50 rounded" })
 								]
 							})]
 						}, i))
@@ -8667,7 +8654,8 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 	const [showExcepciones, setShowExcepciones] = useState(false);
 	const [showNuevaExcepcion, setShowNuevaExcepcion] = useState(false);
 	const [nuevaExcepcion, setNuevaExcepcion] = useState({
-		fecha: "",
+		fecha_inicio: "",
+		fecha_fin: "",
 		diaCompleto: true,
 		hora_inicio: "",
 		hora_fin: "",
@@ -8927,12 +8915,13 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 		}
 	};
 	const handleCrearExcepcion = async () => {
-		if (!nuevaExcepcion.fecha) return;
+		if (!nuevaExcepcion.fecha_inicio || !nuevaExcepcion.fecha_fin) return;
 		try {
 			await api.post("/excepciones", {
-				fecha: nuevaExcepcion.fecha,
-				hora_inicio: nuevaExcepcion.diaCompleto ? void 0 : nuevaExcepcion.hora_inicio,
-				hora_fin: nuevaExcepcion.diaCompleto ? void 0 : nuevaExcepcion.hora_fin,
+				fecha_desde: nuevaExcepcion.fecha_inicio,
+				fecha_hasta: nuevaExcepcion.fecha_fin,
+				hora_inicio: nuevaExcepcion.diaCompleto ? null : nuevaExcepcion.hora_inicio,
+				hora_fin: nuevaExcepcion.diaCompleto ? null : nuevaExcepcion.hora_fin,
 				motivo: nuevaExcepcion.motivo
 			}, token);
 			setShowNuevaExcepcion(false);
@@ -9009,9 +8998,9 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 							children: excepciones.map((e) => /* @__PURE__ */ jsxs("div", {
 								className: "border rounded-xl p-4",
 								children: [
-									/* @__PURE__ */ jsx("div", {
+									/* @__PURE__ */ jsxs("div", {
 										className: "font-medium",
-										children: e.fecha
+										children: [e.fecha_desde, e.fecha_desde !== e.fecha_hasta && ` al ${e.fecha_hasta}`]
 									}),
 									/* @__PURE__ */ jsx("div", {
 										className: "text-sm text-ink-muted",
@@ -9053,13 +9042,25 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 						children: [
 							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
 								className: "block text-sm font-medium mb-1",
-								children: "Fecha"
+								children: "Desde"
 							}), /* @__PURE__ */ jsx("input", {
 								type: "date",
-								value: nuevaExcepcion.fecha,
+								value: nuevaExcepcion.fecha_inicio,
 								onChange: (e) => setNuevaExcepcion({
 									...nuevaExcepcion,
-									fecha: e.target.value
+									fecha_inicio: e.target.value
+								}),
+								className: "w-full border rounded-lg px-3 py-2"
+							})] }),
+							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+								className: "block text-sm font-medium mb-1",
+								children: "Hasta"
+							}), /* @__PURE__ */ jsx("input", {
+								type: "date",
+								value: nuevaExcepcion.fecha_fin,
+								onChange: (e) => setNuevaExcepcion({
+									...nuevaExcepcion,
+									fecha_fin: e.target.value
 								}),
 								className: "w-full border rounded-lg px-3 py-2"
 							})] }),
@@ -11523,9 +11524,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-DsMKQRH6.js",
+			"module": "/assets/root-pOrsvIJ7.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
-			"css": ["/assets/root-Dxpflsvq.css"],
+			"css": ["/assets/root-D_I6vwVL.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -11674,7 +11675,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/discover-CP4tLiRN.js",
+			"module": "/assets/discover-Bq7jFXMc.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12027,7 +12028,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-_-UZF_LJ.js",
+			"module": "/assets/availability-DUho7E-m.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12272,8 +12273,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-93818081.js",
-	"version": "93818081",
+	"url": "/assets/manifest-763aceb7.js",
+	"version": "763aceb7",
 	"sri": void 0
 };
 //#endregion

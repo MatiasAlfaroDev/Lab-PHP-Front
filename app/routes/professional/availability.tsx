@@ -238,12 +238,13 @@ export default function Availability() {
   const [showExcepciones, setShowExcepciones] = useState(false);
   const [showNuevaExcepcion, setShowNuevaExcepcion] = useState(false);
   const [nuevaExcepcion, setNuevaExcepcion] = useState({
-    fecha: "",
-    diaCompleto: true,
-    hora_inicio: "",
-    hora_fin: "",
-    motivo: "",
-  });
+  fecha_inicio: "",
+  fecha_fin: "",
+  diaCompleto: true,
+  hora_inicio: "",
+  hora_fin: "",
+  motivo: "",
+});
   const [excepciones, setExcepciones] = useState([]);
 
   // ── Load services ────────────────────────────────────────────────────────
@@ -495,14 +496,21 @@ export default function Availability() {
   };
 
   const handleCrearExcepcion = async () => {
-    if (!nuevaExcepcion.fecha) return;
-    try {
-      await api.post("/excepciones", {
-        fecha: nuevaExcepcion.fecha,
-        hora_inicio: nuevaExcepcion.diaCompleto ? undefined : nuevaExcepcion.hora_inicio,
-        hora_fin: nuevaExcepcion.diaCompleto ? undefined : nuevaExcepcion.hora_fin,
-        motivo: nuevaExcepcion.motivo,
-      }, token);
+  if (
+    !nuevaExcepcion.fecha_inicio ||
+    !nuevaExcepcion.fecha_fin
+  ) {
+    return;
+  }
+
+  try {
+   await api.post("/excepciones", {
+  fecha_desde: nuevaExcepcion.fecha_inicio,
+  fecha_hasta: nuevaExcepcion.fecha_fin,
+  hora_inicio: nuevaExcepcion.diaCompleto ? null : nuevaExcepcion.hora_inicio,
+  hora_fin: nuevaExcepcion.diaCompleto ? null : nuevaExcepcion.hora_fin,
+  motivo: nuevaExcepcion.motivo,
+}, token);
       setShowNuevaExcepcion(false);
       // Recargar excepciones
       const res:any = await api.get<{ success: boolean; data: any[] }>("/excepciones", token);
@@ -591,8 +599,10 @@ export default function Availability() {
                     className="border rounded-xl p-4"
                   >
                     <div className="font-medium">
-                      {e.fecha}
-                    </div>
+                    {e.fecha_desde}
+                    {e.fecha_desde !== e.fecha_hasta &&
+                      ` al ${e.fecha_hasta}`}
+                  </div>
 
                     <div className="text-sm text-ink-muted">
                       {e.hora_inicio && e.hora_fin
@@ -639,22 +649,40 @@ export default function Availability() {
       <div className="space-y-4">
 
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Fecha
-          </label>
+  <label className="block text-sm font-medium mb-1">
+    Desde
+  </label>
 
-          <input
-            type="date"
-            value={nuevaExcepcion.fecha}
-            onChange={(e) =>
-              setNuevaExcepcion({
-                ...nuevaExcepcion,
-                fecha: e.target.value,
-              })
-            }
-            className="w-full border rounded-lg px-3 py-2"
-          />
-        </div>
+  <input
+    type="date"
+    value={nuevaExcepcion.fecha_inicio}
+    onChange={(e) =>
+      setNuevaExcepcion({
+        ...nuevaExcepcion,
+        fecha_inicio: e.target.value,
+      })
+    }
+    className="w-full border rounded-lg px-3 py-2"
+  />
+</div>
+
+<div>
+  <label className="block text-sm font-medium mb-1">
+    Hasta
+  </label>
+
+  <input
+    type="date"
+    value={nuevaExcepcion.fecha_fin}
+    onChange={(e) =>
+      setNuevaExcepcion({
+        ...nuevaExcepcion,
+        fecha_fin: e.target.value,
+      })
+    }
+    className="w-full border rounded-lg px-3 py-2"
+  />
+</div>
 
         <div className="flex items-center gap-2">
           <input
