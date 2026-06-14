@@ -95,8 +95,12 @@ export function NotificationProvider({
     channel.notification((notification: any) => {
       console.log("WS NOTIFICATION:", notification);
 
+      window.dispatchEvent(
+        new CustomEvent("reserva-updated", {
+          detail: notification,
+        })
+      );
  
-
       setNotifications((prev) => {
         const exists = prev.some((n) => n.id === notification.id);
         if (exists) return prev;
