@@ -188,7 +188,12 @@ function BookingModal({
         throw new Error(res.message ?? "Error al crear la reserva");
       }
 
+      window.dispatchEvent(
+        new CustomEvent("reserva-updated")
+      );
+
       setSuccess(true);
+
     } catch (e: any) {
       setError(e.message ?? "Error al reservar");
     } finally {
@@ -261,8 +266,13 @@ function BookingModal({
                 </div>
                 <p className="text-base font-bold text-ink pt-1">$ {Number(service.precio).toFixed(0)}</p>
               </div>
-
+               {error && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                  {error}
+                </div>
+              )}
               {/* Confirm button — only for "sitio" */}
+             
                 <button
                   onClick={confirmSitio}
                   disabled={loading}
@@ -395,6 +405,40 @@ export default function ProfessionalDetail() {
         setSlotsError(e.message ?? "Error al cargar horarios")
       )
       .finally(() => setLoadingSlots(false));
+  }, [selectedDate, selectedService]);
+
+  useEffect(() => {
+    if (!selectedDate || !selectedService) return;
+
+    const handler = async () => {
+      console.log("SLOTS REFRESH");
+
+      try {
+        const res = await api.get<{
+          success: boolean;
+          data: { hora: string; modalidad: string }[];
+        }>(
+          `/servicios/${selectedService.servicio_id}/slots?fecha=${selectedDate}`
+        );
+
+        if (res.success) {
+          setSlots(res.data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    window.addEventListener(
+      "reserva-updated",
+      handler
+    );
+
+    return () =>
+      window.removeEventListener(
+        "reserva-updated",
+        handler
+      );
   }, [selectedDate, selectedService]);
 
   useEffect(() => {
