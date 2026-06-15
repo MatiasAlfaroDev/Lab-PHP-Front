@@ -156,8 +156,34 @@ export default function ProfessionalDashboard() {
   const [openCalificaciones, setOpenCalificaciones] = useState(false);
   const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
 
-  useEffect(() => {
+  const loadDashboard = async () => {
     if (!token || !user?.id) return;
+
+    try {
+      const [agendaRes, pendientesRes, calificacionesRes] =
+        await Promise.all([
+          api.get("/mi-agenda", token),
+          api.get("/reservas/pendientes", token),
+          api.get(`/profesionales/${user.id}/calificaciones`, token),
+        ]);
+
+      const agenda: any = agendaRes;
+      const pendientesData: any = pendientesRes;
+      const calificacionesData: any = calificacionesRes;
+
+      setAllReservas(agenda.data ?? []);
+      setPendientes(pendientesData.data ?? []);
+
+      setCalificaciones(calificacionesData.data ?? []);
+      setPromedio(calificacionesData.promedio ?? 0);
+      setCantidadCalificaciones(calificacionesData.cantidad ?? 0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+   /* if (!token || !user?.id) return;
     Promise.all([
       api.get("/mi-agenda", token).then((res: any) => setAllReservas(res.data ?? [])).catch(() => {}),
       api.get("/reservas/pendientes", token).then((res: any) => setPendientes(res.data ?? [])).catch(() => {}),
@@ -167,7 +193,26 @@ export default function ProfessionalDashboard() {
         setPromedio(payload.promedio ?? 0);
         setCantidadCalificaciones(payload.cantidad ?? 0);
       }).catch(() => {}),
-    ]).finally(() => setLoading(false));
+    ]).finally(() => setLoading(false)); */
+    loadDashboard();
+  }, [token, user?.id]);
+
+  useEffect(() => {
+    const handler = () => {
+      console.log("PRO DASHBOARD REFRESH");
+      loadDashboard();
+    };
+
+    window.addEventListener(
+      "reserva-updated",
+      handler
+    );
+
+    return () =>
+      window.removeEventListener(
+        "reserva-updated",
+        handler
+      );
   }, [token, user?.id]);
 
   const hoy        = todayStr();

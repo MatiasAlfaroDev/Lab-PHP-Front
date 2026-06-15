@@ -127,30 +127,54 @@ const [clientesHistoricos, setClientesHistoricos] = useState<Client[]>([]);
       .finally(() => setAgendaLoading(false));
   };
 
+  const fetchClientes = () => {
+    if (!token) return;
+
+    setClientsLoading(true);
+
+    api
+      .get("/clientes", token)
+      .then((data: any) => {
+        setClientesProximos(data.proximos || []);
+        setClientesHistoricos(data.historicos || []);
+      })
+      .catch(() => {
+        setClientesProximos([]);
+        setClientesHistoricos([]);
+      })
+      .finally(() => setClientsLoading(false));
+  };
+
   useEffect(() => { setMobileStartDay(0); }, [weekStart]);
 
   useEffect(() => {
-  if (!token) return;
+    if (!token) return;
 
-  fetchAgenda();
+    fetchAgenda();
+    fetchClientes();
+  }, [token]);
 
-  setClientsLoading(true);
+  useEffect(() => {
+    if (!token) return;
 
-  api
-    .get<{
-      proximos: Client[];
-      historicos: Client[];
-    }>("/clientes", token)
-    .then((data) => {
-      setClientesProximos(data.proximos || []);
-      setClientesHistoricos(data.historicos || []);
-    })
-    .catch(() => {
-      setClientesProximos([]);
-      setClientesHistoricos([]);
-    })
-    .finally(() => setClientsLoading(false));
-}, [token]);
+    const handler = () => {
+      console.log("CLIENTES REFRESH");
+
+      fetchAgenda();
+      fetchClientes();
+    };
+
+    window.addEventListener(
+      "reserva-updated",
+      handler
+    );
+
+    return () =>
+      window.removeEventListener(
+        "reserva-updated",
+        handler
+      );
+  }, [token]);
 
   // ── Cambiar estado de reserva ──────────────────────────────────────────────
   const cambiarEstado = async (reservaId: number, estado: "confirmada" | "cancelada") => {
