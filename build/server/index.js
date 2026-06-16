@@ -8873,6 +8873,7 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 		motivo: ""
 	});
 	const [excepciones, setExcepciones] = useState([]);
+	const [errorExcepcion, setErrorExcepcion] = useState("");
 	useEffect(() => {
 		setLoadingServicios(true);
 		api.get("/mis-servicios", token).then((res) => {
@@ -9140,7 +9141,7 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 			const res = await api.get("/excepciones", token);
 			if (res.success) setExcepciones(res.data);
 		} catch (e) {
-			alert("Error al crear excepción");
+			setErrorExcepcion(e instanceof Error ? e.message : "Error al crear excepción");
 		}
 	};
 	const handleDeleteExcepcion = async (id) => {
@@ -9169,7 +9170,10 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 						className: "font-display text-3xl text-ink",
 						children: "Disponibilidad"
 					}), /* @__PURE__ */ jsx("button", {
-						onClick: () => setShowExcepciones(true),
+						onClick: () => {
+							setErrorExcepcion("");
+							setShowNuevaExcepcion(true);
+						},
 						className: "self-start sm:self-auto px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200",
 						children: "Excepciones"
 					})]
@@ -9324,6 +9328,10 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 								rows: 3,
 								className: "w-full border rounded-lg px-3 py-2"
 							})] }),
+							errorExcepcion && /* @__PURE__ */ jsx("div", {
+								className: "bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm",
+								children: errorExcepcion
+							}),
 							/* @__PURE__ */ jsxs("div", {
 								className: "flex justify-end gap-2 pt-2",
 								children: [/* @__PURE__ */ jsx("button", {
@@ -12242,7 +12250,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-CLKN_iZz.js",
+			"module": "/assets/availability-G46YMYGq.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12487,8 +12495,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-07e24d9d.js",
-	"version": "07e24d9d",
+	"url": "/assets/manifest-c6109759.js",
+	"version": "c6109759",
 	"sri": void 0
 };
 //#endregion

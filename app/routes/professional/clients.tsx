@@ -100,8 +100,9 @@ export default function ClientsAndAgenda() {
   const { token } = useAuth();
 
   const [reservas,       setReservas]       = useState<Reserva[]>([]);
-const [clientesProximos, setClientesProximos] = useState<Client[]>([]);
-const [clientesHistoricos, setClientesHistoricos] = useState<Client[]>([]);
+  const [clientesProximos, setClientesProximos] = useState<Client[]>([]);
+  const [clientesHistoricos, setClientesHistoricos] = useState<Client[]>([]);
+  const [clientesPaquetes, setClientesPaquetes] = useState<Client[]>([]);
   const [agendaLoading,  setAgendaLoading]  = useState(true);
   const [clientsLoading, setClientsLoading] = useState(true);
   const [weekStart,      setWeekStart]      = useState(() => toMonday(new Date()));
@@ -127,54 +128,33 @@ const [clientesHistoricos, setClientesHistoricos] = useState<Client[]>([]);
       .finally(() => setAgendaLoading(false));
   };
 
-  const fetchClientes = () => {
-    if (!token) return;
-
-    setClientsLoading(true);
-
-    api
-      .get("/clientes", token)
-      .then((data: any) => {
-        setClientesProximos(data.proximos || []);
-        setClientesHistoricos(data.historicos || []);
-      })
-      .catch(() => {
-        setClientesProximos([]);
-        setClientesHistoricos([]);
-      })
-      .finally(() => setClientsLoading(false));
-  };
-
   useEffect(() => { setMobileStartDay(0); }, [weekStart]);
 
   useEffect(() => {
-    if (!token) return;
+  if (!token) return;
 
-    fetchAgenda();
-    fetchClientes();
-  }, [token]);
+  fetchAgenda();
 
-  useEffect(() => {
-    if (!token) return;
+  setClientsLoading(true);
 
-    const handler = () => {
-      console.log("CLIENTES REFRESH");
-
-      fetchAgenda();
-      fetchClientes();
-    };
-
-    window.addEventListener(
-      "reserva-updated",
-      handler
-    );
-
-    return () =>
-      window.removeEventListener(
-        "reserva-updated",
-        handler
-      );
-  }, [token]);
+  api
+    .get<{
+      sesiones: Client[];
+      historicos: Client[];
+      paquetes: Client[];
+    }>("/clientes", token)
+    .then((data) => {
+      setClientesProximos(data.sesiones || []);
+      setClientesHistoricos(data.historicos || []);
+      setClientesPaquetes(data.paquetes || []);
+    })
+    .catch(() => {
+      setClientesProximos([]);
+      setClientesHistoricos([]);
+      setClientesPaquetes([]);
+    })
+    .finally(() => setClientsLoading(false));
+}, [token]);
 
   // ── Cambiar estado de reserva ──────────────────────────────────────────────
   const cambiarEstado = async (reservaId: number, estado: "confirmada" | "cancelada") => {
@@ -218,13 +198,13 @@ const [clientesHistoricos, setClientesHistoricos] = useState<Client[]>([]);
     return `${from.getDate()} ${MONTH_NAMES[from.getMonth()]} – ${to.getDate()} ${MONTH_NAMES[to.getMonth()]} ${to.getFullYear()}`;
   })();
 
-  const filteredClients = [...clientesProximos, ...clientesHistoricos].filter((c) =>
+  const filteredClients = [...clientesProximos, ...clientesHistoricos, ...clientesPaquetes].filter((c) =>
     c.nombre.toLowerCase().includes(search.toLowerCase()) ||
     c.email.toLowerCase().includes(search.toLowerCase())
   );
 
   const clientColorMap: Record<string, typeof CLIENT_COLORS[0]> = {};
-  [...clientesProximos, ...clientesHistoricos].forEach((c, i) => {
+  [...clientesProximos, ...clientesHistoricos, ...clientesPaquetes].forEach((c, i) => {
     clientColorMap[c.nombre] = CLIENT_COLORS[i % CLIENT_COLORS.length];
   });
 
@@ -235,7 +215,7 @@ const [clientesHistoricos, setClientesHistoricos] = useState<Client[]>([]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleReservaClick = (r: Reserva) => {
-    const client = [...clientesProximos, ...clientesHistoricos].find((c) => c.nombre === r.cliente_nombre) ?? null;
+    const client = [...clientesProximos, ...clientesHistoricos, ...clientesPaquetes].find((c) => c.nombre === r.cliente_nombre) ?? null;
     const isAlreadySelected = selectedReserva?.reserva_id === r.reserva_id;
     if (isAlreadySelected) {
       setSelectedReserva(null);
@@ -275,7 +255,7 @@ const [clientesHistoricos, setClientesHistoricos] = useState<Client[]>([]);
   const panelOpen = !!selectedClient;
 
   const panelClientColor = selectedClient
-    ? CLIENT_COLORS[Math.max([...clientesProximos, ...clientesHistoricos] .findIndex(c => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length]
+    ? CLIENT_COLORS[Math.max([...clientesProximos, ...clientesHistoricos, ...clientesPaquetes] .findIndex(c => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length]
     : CLIENT_COLORS[0];
 
 
@@ -287,6 +267,12 @@ const [clientesHistoricos, setClientesHistoricos] = useState<Client[]>([]);
 );
 
 const filteredHistoricos = clientesHistoricos.filter((c) =>
+  `${c.nombre} ${c.email}`
+    .toLowerCase()
+    .includes(search.toLowerCase())
+);
+
+const filteredpaquete = clientesPaquetes.filter((c) =>
   `${c.nombre} ${c.email}`
     .toLowerCase()
     .includes(search.toLowerCase())
@@ -516,7 +502,7 @@ const filteredHistoricos = clientesHistoricos.filter((c) =>
       Clientes
       <span className="ml-2 text-sm font-normal text-ink-muted">
         {!clientsLoading &&
-          `${clientesProximos.length + clientesHistoricos.length} clientes`}
+          `${clientesProximos.length + clientesHistoricos.length + clientesPaquetes.length} clientes`}
       </span>
     </h2>
 
@@ -538,7 +524,7 @@ const filteredHistoricos = clientesHistoricos.filter((c) =>
       {/* CLIENTES CON PRÓXIMAS RESERVAS */}
       <div>
         <h3 className="text-lg font-semibold text-ink mb-3">
-          Próximas reservas ({filteredProximos.length})
+          Próximas reservas de servicio ({filteredProximos.length})
         </h3>
 
         <div className="bg-surface border border-border rounded overflow-hidden">
@@ -602,6 +588,102 @@ const filteredHistoricos = clientesHistoricos.filter((c) =>
                         <span className="text-sm text-ink">
                           {c.proxima_sesion}{" "}
                           {c.hora_proxima_sesion?.slice(0, 5) ?? ""}
+                        </span>
+                      </div>
+
+                      <div className="col-span-1 flex justify-center">
+                        <span
+                          className={`badge ${
+                            c.estado === "EN SESION"
+                              ? "badge-en-vivo"
+                              : "badge-confirmada"
+                          }`}
+                        >
+                          {c.estado}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+       <div>
+        <h3 className="text-lg font-semibold text-ink mb-3">
+          Próximas reservas de paquete ({filteredpaquete.length})
+        </h3>
+
+        <div className="bg-surface border border-border rounded overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[580px]">
+
+              <div className="grid grid-cols-12 px-5 py-3 border-b border-border bg-bg">
+                {[
+                  { label: "CLIENTE", span: "col-span-3" },
+                  { label: "EMAIL", span: "col-span-3" },
+                  { label: "PRÓXIMA SESIÓN", span: "col-span-3" },
+                  { label: "SESIONES RESTANTES", span: "col-span-2" },
+                  { label: "ESTADO", span: "col-span-1 flex items-center justify-center" },
+                ].map((h) => (
+                  <div
+                    key={h.label}
+                    className={`text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`}
+                  >
+                    {h.label}
+                  </div>
+                ))}
+              </div>
+
+              {filteredpaquete.length === 0 ? (
+                <div className="p-8 text-center text-sm text-ink-muted">
+                  No hay clientes con reservas de paquete futuras
+                </div>
+              ) : (
+                filteredpaquete.map((c, index) => {
+                  const isSelected =
+                    selectedClient?.cliente_id === c.cliente_id;
+
+                  const cc =
+                    CLIENT_COLORS[index % CLIENT_COLORS.length];
+
+                  return (
+                    <div
+                      key={c.cliente_id}
+                      onClick={() => handleClientClick(c)}
+                      className={`grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent}
+                      ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
+                    >
+                      <div className="col-span-3 flex items-center gap-3">
+                        <div
+                          className={`w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`}
+                        >
+                          {getInitials(c.nombre)}
+                        </div>
+
+                        <span className="text-sm font-semibold text-ink truncate">
+                          {c.nombre}
+                        </span>
+                      </div>
+
+                      <div className="col-span-3">
+                        <span className="text-sm text-ink-muted truncate block">
+                          {c.email}
+                        </span>
+                      </div>
+
+                      <div className="col-span-3">
+                        <span className="text-sm text-ink">
+                          {c.proxima_sesion}{" "}
+                          {c.hora_proxima_sesion?.slice(0, 5) ?? ""}
+                        </span>
+                      </div>
+
+                      <div className="col-span-2">
+                        <span className="text-sm text-ink-muted truncate block">
+                          {c.sesiones_restantes}
                         </span>
                       </div>
 
