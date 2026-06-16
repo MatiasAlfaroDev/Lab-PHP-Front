@@ -246,6 +246,7 @@ export default function Availability() {
   motivo: "",
 });
   const [excepciones, setExcepciones] = useState([]);
+  const [errorExcepcion, setErrorExcepcion] = useState("");
 
   // ── Load services ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -495,6 +496,8 @@ export default function Availability() {
     }
   };
 
+  
+  const hoy = new Date().toISOString().split("T")[0];
   const handleCrearExcepcion = async () => {
   if (
     !nuevaExcepcion.fecha_inicio ||
@@ -515,9 +518,13 @@ export default function Availability() {
       // Recargar excepciones
       const res:any = await api.get<{ success: boolean; data: any[] }>("/excepciones", token);
       if (res.success) setExcepciones(res.data);
-    } catch (e) {
-      alert("Error al crear excepción");
-    }
+    }catch (e: unknown) {
+  setErrorExcepcion(
+    e instanceof Error
+      ? e.message
+      : "Error al crear excepción"
+  );
+}
   };
 
   const handleDeleteExcepcion = async (id: number) => {
@@ -551,7 +558,10 @@ export default function Availability() {
           </h1>
 
           <button
-            onClick={() => setShowExcepciones(true)}
+            onClick={() => {
+                setErrorExcepcion("");
+                setShowNuevaExcepcion(true);
+              }}
             className="self-start sm:self-auto px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
           >
             Excepciones
@@ -655,6 +665,7 @@ export default function Availability() {
 
   <input
     type="date"
+    min={hoy}
     value={nuevaExcepcion.fecha_inicio}
     onChange={(e) =>
       setNuevaExcepcion({
@@ -673,6 +684,7 @@ export default function Availability() {
 
   <input
     type="date"
+    min={hoy}
     value={nuevaExcepcion.fecha_fin}
     onChange={(e) =>
       setNuevaExcepcion({
@@ -756,6 +768,12 @@ export default function Availability() {
             className="w-full border rounded-lg px-3 py-2"
           />
         </div>
+
+            {errorExcepcion && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
+              {errorExcepcion}
+            </div>
+          )}
 
         <div className="flex justify-end gap-2 pt-2">
           <button

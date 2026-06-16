@@ -1350,14 +1350,22 @@ var dashboard_default$2 = UNSAFE_withComponentProps(function ClientDashboard() {
 	const [bookings, setBookings] = useState([]);
 	const [packages, setPackages] = useState([]);
 	const now = /* @__PURE__ */ new Date();
+	const load = async () => {
+		if (!token) return;
+		const [reservasRes, paquetesRes] = await Promise.all([api.get("/mis-reservas", token), api.get("/mis-compras-paquetes", token)]);
+		setBookings(reservasRes.data);
+		setPackages(paquetesRes);
+	};
 	useEffect(() => {
-		const load = async () => {
-			if (!token) return;
-			const [reservasRes, paquetesRes] = await Promise.all([api.get("/mis-reservas", token), api.get("/mis-compras-paquetes", token)]);
-			setBookings(reservasRes.data);
-			setPackages(paquetesRes);
-		};
 		load();
+	}, [token]);
+	useEffect(() => {
+		const handler = () => {
+			console.log("CLIENT DASHBOARD REFRESH");
+			load();
+		};
+		window.addEventListener("reserva-updated", handler);
+		return () => window.removeEventListener("reserva-updated", handler);
 	}, [token]);
 	const upcomingBookings = bookings.filter((b) => {
 		const date = /* @__PURE__ */ new Date(`${b.fecha}T${b.hora}`);
@@ -2265,6 +2273,7 @@ function BookingModal({ service, date, slot, onClose, token, compraItemId }) {
 				compra_item_paquete_id: compraItemId ? Number(compraItemId) : null
 			}, token);
 			if (!res.success) throw new Error(res.message ?? "Error al crear la reserva");
+			window.dispatchEvent(new CustomEvent("reserva-updated"));
 			setSuccess(true);
 		} catch (e) {
 			setError(e.message ?? "Error al reservar");
@@ -2378,6 +2387,10 @@ function BookingModal({ service, date, slot, onClose, token, compraItemId }) {
 							})
 						]
 					}),
+					error && /* @__PURE__ */ jsx("div", {
+						className: "rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600",
+						children: error
+					}),
 					/* @__PURE__ */ jsxs("button", {
 						onClick: confirmSitio,
 						disabled: loading,
@@ -2464,6 +2477,20 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 		api.get(`/servicios/${selectedService.servicio_id}/slots?fecha=${selectedDate}`).then((res) => {
 			if (res.success) setSlots(res.data);
 		}).catch((e) => setSlotsError(e.message ?? "Error al cargar horarios")).finally(() => setLoadingSlots(false));
+	}, [selectedDate, selectedService]);
+	useEffect(() => {
+		if (!selectedDate || !selectedService) return;
+		const handler = async () => {
+			console.log("SLOTS REFRESH");
+			try {
+				const res = await api.get(`/servicios/${selectedService.servicio_id}/slots?fecha=${selectedDate}`);
+				if (res.success) setSlots(res.data);
+			} catch (e) {
+				console.error(e);
+			}
+		};
+		window.addEventListener("reserva-updated", handler);
+		return () => window.removeEventListener("reserva-updated", handler);
 	}, [selectedDate, selectedService]);
 	useEffect(() => {
 		if (!reprogramarId) return;
@@ -5860,12 +5887,8 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 			if (res.success) setReservas(res.data);
 		}).catch(() => {}).finally(() => setAgendaLoading(false));
 	};
-	useEffect(() => {
-		setMobileStartDay(0);
-	}, [weekStart]);
-	useEffect(() => {
+	const fetchClientes = () => {
 		if (!token) return;
-		fetchAgenda();
 		setClientsLoading(true);
 		api.get("/clientes", token).then((data) => {
 			setClientesProximos(data.proximos || []);
@@ -5874,6 +5897,24 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 			setClientesProximos([]);
 			setClientesHistoricos([]);
 		}).finally(() => setClientsLoading(false));
+	};
+	useEffect(() => {
+		setMobileStartDay(0);
+	}, [weekStart]);
+	useEffect(() => {
+		if (!token) return;
+		fetchAgenda();
+		fetchClientes();
+	}, [token]);
+	useEffect(() => {
+		if (!token) return;
+		const handler = () => {
+			console.log("CLIENTES REFRESH");
+			fetchAgenda();
+			fetchClientes();
+		};
+		window.addEventListener("reserva-updated", handler);
+		return () => window.removeEventListener("reserva-updated", handler);
 	}, [token]);
 	const cambiarEstado = async (reservaId, estado) => {
 		try {
@@ -6857,18 +6898,36 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 	const [promedio, setPromedio] = useState(0);
 	const [openCalificaciones, setOpenCalificaciones] = useState(false);
 	const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
-	useEffect(() => {
+	const loadDashboard = async () => {
 		if (!token || !user?.id) return;
-		Promise.all([
-			api.get("/mi-agenda", token).then((res) => setAllReservas(res.data ?? [])).catch(() => {}),
-			api.get("/reservas/pendientes", token).then((res) => setPendientes(res.data ?? [])).catch(() => {}),
-			api.get(`/profesionales/${user.id}/calificaciones`, token).then((res) => {
-				const payload = res;
-				setCalificaciones(payload.data ?? []);
-				setPromedio(payload.promedio ?? 0);
-				setCantidadCalificaciones(payload.cantidad ?? 0);
-			}).catch(() => {})
-		]).finally(() => setLoading(false));
+		try {
+			const [agendaRes, pendientesRes, calificacionesRes] = await Promise.all([
+				api.get("/mi-agenda", token),
+				api.get("/reservas/pendientes", token),
+				api.get(`/profesionales/${user.id}/calificaciones`, token)
+			]);
+			const agenda = agendaRes;
+			const pendientesData = pendientesRes;
+			const calificacionesData = calificacionesRes;
+			setAllReservas(agenda.data ?? []);
+			setPendientes(pendientesData.data ?? []);
+			setCalificaciones(calificacionesData.data ?? []);
+			setPromedio(calificacionesData.promedio ?? 0);
+			setCantidadCalificaciones(calificacionesData.cantidad ?? 0);
+		} finally {
+			setLoading(false);
+		}
+	};
+	useEffect(() => {
+		loadDashboard();
+	}, [token, user?.id]);
+	useEffect(() => {
+		const handler = () => {
+			console.log("PRO DASHBOARD REFRESH");
+			loadDashboard();
+		};
+		window.addEventListener("reserva-updated", handler);
+		return () => window.removeEventListener("reserva-updated", handler);
 	}, [token, user?.id]);
 	const hoy = todayStr();
 	const semanaDesde = startOfWeekStr();
@@ -7347,6 +7406,8 @@ function XIcon() {
 //#endregion
 //#region app/routes/professional/services.tsx
 var services_exports = /* @__PURE__ */ __exportAll({ default: () => services_default });
+var GMAPS_KEY = "AIzaSyBWf1wjKY5nMYkBi0f-1enF1k5k7xDXkq0";
+var API_BASE = "http://localhost:8000/api";
 var EMPTY_FORM$1 = {
 	nombre: "",
 	descripcion: "",
@@ -7357,7 +7418,9 @@ var EMPTY_FORM$1 = {
 	duracion: "",
 	pausa: "",
 	min_cancelacion: "",
-	ubicacion: ""
+	ubicacion: "",
+	latitud: null,
+	longitud: null
 };
 var MODALIDAD_CLS = {
 	presencial: "bg-emerald-100 text-emerald-800",
@@ -7385,6 +7448,80 @@ var TIPOS_SERVICIO = [
 ];
 var inputCls$1 = "w-full border border-border rounded px-3 py-2 text-sm bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 var labelCls$1 = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
+function useGoogleMaps() {
+	const [ready, setReady] = useState(() => !!window.google?.maps);
+	useEffect(() => {
+		if (window.google?.maps) {
+			setReady(true);
+			return;
+		}
+		if (document.getElementById("gmap-sdk")) return;
+		const script = document.createElement("script");
+		script.id = "gmap-sdk";
+		script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places`;
+		script.async = true;
+		script.onload = () => setReady(true);
+		document.head.appendChild(script);
+	}, []);
+	return ready;
+}
+function MapPicker({ lat, lng, onDragEnd }) {
+	const mapsReady = useGoogleMaps();
+	const containerRef = useRef(null);
+	const mapRef = useRef(null);
+	const markerRef = useRef(null);
+	const onDragEndRef = useRef(onDragEnd);
+	onDragEndRef.current = onDragEnd;
+	useEffect(() => {
+		if (!mapsReady || !containerRef.current) return;
+		const g = window.google.maps;
+		const center = {
+			lat: lat ?? -34.9011,
+			lng: lng ?? -56.1645
+		};
+		const map = new g.Map(containerRef.current, {
+			center,
+			zoom: 15
+		});
+		const marker = new g.Marker({
+			position: center,
+			map,
+			draggable: true
+		});
+		marker.addListener("dragend", async () => {
+			const pos = marker.getPosition();
+			const newLat = pos.lat();
+			const newLng = pos.lng();
+			try {
+				const res = await fetch(`${API_BASE}/geocoding/reverse?lat=${newLat}&lng=${newLng}`);
+				const json = await res.json();
+				if (res.ok && json.success) onDragEndRef.current(newLat, newLng, json.data.direccion_formateada);
+				else onDragEndRef.current(newLat, newLng, "Ubicación personalizada");
+			} catch {
+				onDragEndRef.current(newLat, newLng, "Ubicación personalizada");
+			}
+		});
+		mapRef.current = map;
+		markerRef.current = marker;
+		return () => {
+			marker.setMap(null);
+		};
+	}, [mapsReady]);
+	useEffect(() => {
+		if (!markerRef.current || lat === null || lng === null) return;
+		const pos = new window.google.maps.LatLng(lat, lng);
+		markerRef.current.setPosition(pos);
+		mapRef.current?.panTo(pos);
+	}, [lat, lng]);
+	if (!mapsReady) return /* @__PURE__ */ jsx("div", {
+		className: "w-full h-56 rounded border border-border bg-gray-100 flex items-center justify-center text-xs text-ink-muted animate-pulse",
+		children: "Cargando mapa..."
+	});
+	return /* @__PURE__ */ jsx("div", {
+		ref: containerRef,
+		className: "w-full h-56 rounded border border-border"
+	});
+}
 var services_default = UNSAFE_withComponentProps(function Services() {
 	const { token } = useAuth();
 	const [services, setServices] = useState([]);
@@ -7437,7 +7574,9 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 			duracion: String(s.duracion),
 			pausa: String(s.pausa),
 			min_cancelacion: String(s.min_cancelacion),
-			ubicacion: s.ubicacion ?? ""
+			ubicacion: s.ubicacion ?? "",
+			latitud: s.latitud ?? null,
+			longitud: s.longitud ?? null
 		});
 		setEditingId(id);
 	};
@@ -7457,6 +7596,7 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 		if (!tipoFinal.trim()) return showToast("El tipo es requerido", false);
 		if (!form.precio) return showToast("El precio es requerido", false);
 		if (!form.duracion) return showToast("La duración es requerida", false);
+		if (needsLocation && (form.latitud === null || form.longitud === null)) return showToast("Confirmá la ubicación en el mapa", false);
 		setSaving(true);
 		try {
 			const body = {
@@ -7469,7 +7609,11 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 				pausa: Number(form.pausa),
 				min_cancelacion: Number(form.min_cancelacion)
 			};
-			if (needsLocation && form.ubicacion.trim()) body.ubicacion = form.ubicacion.trim();
+			if (needsLocation) {
+				body.direccion = form.ubicacion.trim();
+				body.latitud = form.latitud;
+				body.longitud = form.longitud;
+			}
 			if (editingId === "new") {
 				await api.post("/servicios", body, token);
 				showToast("Servicio creado");
@@ -7688,6 +7832,53 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 	});
 });
 function ServiceForm({ form, setF, saving, isEdit, onSave, onCancel, needsLocation }) {
+	const [geocodingError, setGeocodingError] = useState(null);
+	const [geocoding, setGeocoding] = useState(false);
+	const debounceRef = useRef(null);
+	useEffect(() => () => {
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+	}, []);
+	const handleAddressInput = (value) => {
+		setF({
+			ubicacion: value,
+			latitud: null,
+			longitud: null
+		});
+		setGeocodingError(null);
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		if (!value.trim()) return;
+		debounceRef.current = setTimeout(async () => {
+			setGeocoding(true);
+			try {
+				const res = await fetch(`${API_BASE}/geocoding?address=${encodeURIComponent(value)}`);
+				const json = await res.json();
+				if (res.status === 404) {
+					setGeocodingError("No se encontró la dirección, intentá con más detalle");
+					return;
+				}
+				if (res.ok && json.success) {
+					setF({
+						ubicacion: json.data.direccion_formateada,
+						latitud: json.data.latitud,
+						longitud: json.data.longitud
+					});
+					setGeocodingError(null);
+				}
+			} catch {} finally {
+				setGeocoding(false);
+			}
+		}, 600);
+	};
+	const handleMapDragEnd = (lat, lng, address) => {
+		setF({
+			latitud: lat,
+			longitud: lng,
+			ubicacion: address
+		});
+		setGeocodingError(null);
+	};
+	const locationConfirmed = form.latitud !== null && form.longitud !== null;
+	const canSave = !saving && (!needsLocation || locationConfirmed);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "bg-white border border-border rounded p-5 space-y-4",
 		children: [
@@ -7799,22 +7990,41 @@ function ServiceForm({ form, setF, saving, isEdit, onSave, onCancel, needsLocati
 					})] })
 				]
 			}),
-			needsLocation && /* @__PURE__ */ jsxs("div", { children: [
-				/* @__PURE__ */ jsx("label", {
-					className: labelCls$1,
-					children: "Dirección / Ubicación"
-				}),
-				/* @__PURE__ */ jsx("input", {
-					className: inputCls$1,
-					placeholder: "Ej. Av. Corrientes 1234, CABA",
-					value: form.ubicacion,
-					onChange: (e) => setF({ ubicacion: e.target.value })
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "text-xs text-ink-muted mt-1",
-					children: "Visible para el cliente al confirmar la reserva"
-				})
-			] }),
+			needsLocation && /* @__PURE__ */ jsxs("div", {
+				className: "space-y-2",
+				children: [/* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsx("label", {
+						className: labelCls$1,
+						children: "Dirección / Ubicación"
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "relative",
+						children: [/* @__PURE__ */ jsx("input", {
+							className: inputCls$1,
+							placeholder: "Ej. Av. Arequipa 123, Lima",
+							value: form.ubicacion,
+							onChange: (e) => handleAddressInput(e.target.value)
+						}), geocoding && /* @__PURE__ */ jsx("span", {
+							className: "absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted pointer-events-none",
+							children: "Buscando..."
+						})]
+					}),
+					geocodingError ? /* @__PURE__ */ jsx("p", {
+						className: "text-xs text-red-500 mt-1",
+						children: geocodingError
+					}) : locationConfirmed ? /* @__PURE__ */ jsx("p", {
+						className: "text-xs text-emerald-600 mt-1",
+						children: "✓ Ubicación confirmada en el mapa"
+					}) : /* @__PURE__ */ jsx("p", {
+						className: "text-xs text-ink-muted mt-1",
+						children: "Escribí la dirección para ubicarla en el mapa, o arrastrá el pin"
+					})
+				] }), /* @__PURE__ */ jsx(MapPicker, {
+					lat: form.latitud,
+					lng: form.longitud,
+					onDragEnd: handleMapDragEnd
+				})]
+			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "grid grid-cols-2 gap-4",
 				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
@@ -7847,8 +8057,9 @@ function ServiceForm({ form, setF, saving, isEdit, onSave, onCancel, needsLocati
 					children: "Cancelar"
 				}), /* @__PURE__ */ jsx("button", {
 					onClick: onSave,
-					disabled: saving,
-					className: "bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer",
+					disabled: !canSave,
+					title: needsLocation && !locationConfirmed ? "Confirmá la ubicación en el mapa" : void 0,
+					className: "bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed",
 					children: saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear servicio"
 				})]
 			})
@@ -8914,6 +9125,7 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 			setSaving(false);
 		}
 	};
+	const hoy = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
 	const handleCrearExcepcion = async () => {
 		if (!nuevaExcepcion.fecha_inicio || !nuevaExcepcion.fecha_fin) return;
 		try {
@@ -9045,6 +9257,7 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 								children: "Desde"
 							}), /* @__PURE__ */ jsx("input", {
 								type: "date",
+								min: hoy,
 								value: nuevaExcepcion.fecha_inicio,
 								onChange: (e) => setNuevaExcepcion({
 									...nuevaExcepcion,
@@ -9057,6 +9270,7 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 								children: "Hasta"
 							}), /* @__PURE__ */ jsx("input", {
 								type: "date",
+								min: hoy,
 								value: nuevaExcepcion.fecha_fin,
 								onChange: (e) => setNuevaExcepcion({
 									...nuevaExcepcion,
@@ -11524,9 +11738,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-pOrsvIJ7.js",
+			"module": "/assets/root-CgdQvbnh.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
-			"css": ["/assets/root-D_I6vwVL.css"],
+			"css": ["/assets/root-6VFZ2a-t.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -11654,7 +11868,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-CYtMC4m6.js",
+			"module": "/assets/dashboard-BuCkQy9F.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11696,7 +11910,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/professional._id-DtHHyzpl.js",
+			"module": "/assets/professional._id-C46H-u4s.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11944,7 +12158,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/clients-DZEQgWg-.js",
+			"module": "/assets/clients-kr9Ruq1R.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11965,7 +12179,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-CANJTltN.js",
+			"module": "/assets/dashboard-B2bZDwoc.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11986,7 +12200,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/services-II19Ba4b.js",
+			"module": "/assets/services-BVCn45eV.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12028,7 +12242,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-DUho7E-m.js",
+			"module": "/assets/availability-CLKN_iZz.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12273,8 +12487,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-763aceb7.js",
-	"version": "763aceb7",
+	"url": "/assets/manifest-07e24d9d.js",
+	"version": "07e24d9d",
 	"sri": void 0
 };
 //#endregion
