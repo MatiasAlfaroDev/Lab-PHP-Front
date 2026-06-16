@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
+
+declare global { interface Window { google: any } }
+
+const GMAPS_KEY = "AIzaSyBWf1wjKY5nMYkBi0f-1enF1k5k7xDXkq0";
+const API_BASE  = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +20,8 @@ type Servicio = {
   pausa: number;
   min_cancelacion: number;
   ubicacion?: string;
+  latitud?: number;
+  longitud?: number;
   activo?: boolean;
   reservas_count?: number;
 };
@@ -30,6 +37,8 @@ type FormState = {
   pausa: string;
   min_cancelacion: string;
   ubicacion: string;
+  latitud: number | null;
+  longitud: number | null;
 };
 
 const EMPTY_FORM: FormState = {
@@ -43,6 +52,8 @@ const EMPTY_FORM: FormState = {
   pausa: "",
   min_cancelacion: "",
   ubicacion: "",
+  latitud: null,
+  longitud: null,
 };
 
 const MODALIDAD_CLS: Record<string, string> = {
@@ -73,6 +84,92 @@ const TIPOS_SERVICIO = [
 
 const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 const labelCls = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
+
+// ─── Google Maps hook ─────────────────────────────────────────────────────────
+
+function useGoogleMaps(): boolean {
+  const [ready, setReady] = useState(() => !!window.google?.maps);
+
+  useEffect(() => {
+    if (window.google?.maps) { setReady(true); return; }
+    if (document.getElementById("gmap-sdk")) return;
+
+    const script = document.createElement("script");
+    script.id    = "gmap-sdk";
+    script.src   = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places`;
+    script.async = true;
+    script.onload = () => setReady(true);
+    document.head.appendChild(script);
+  }, []);
+
+  return ready;
+}
+
+// ─── Map picker ───────────────────────────────────────────────────────────────
+
+function MapPicker({
+  lat, lng, onDragEnd,
+}: {
+  lat: number | null;
+  lng: number | null;
+  onDragEnd: (lat: number, lng: number, address: string) => void;
+}) {
+  const mapsReady    = useGoogleMaps();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef       = useRef<any>(null);
+  const markerRef    = useRef<any>(null);
+  const onDragEndRef = useRef(onDragEnd);
+  onDragEndRef.current = onDragEnd;
+
+  useEffect(() => {
+    if (!mapsReady || !containerRef.current) return;
+    const g      = window.google.maps;
+    const center = { lat: lat ?? -34.9011, lng: lng ?? -56.1645 };
+
+    const map    = new g.Map(containerRef.current, { center, zoom: 15 });
+    const marker = new g.Marker({ position: center, map, draggable: true });
+
+    marker.addListener("dragend", async () => {
+      const pos    = marker.getPosition();
+      const newLat = pos.lat() as number;
+      const newLng = pos.lng() as number;
+      try {
+        const res  = await fetch(`${API_BASE}/geocoding/reverse?lat=${newLat}&lng=${newLng}`);
+        const json = await res.json();
+        if (res.ok && json.success) {
+          onDragEndRef.current(newLat, newLng, json.data.direccion_formateada);
+        } else {
+          onDragEndRef.current(newLat, newLng, "Ubicación personalizada");
+        }
+      } catch {
+        onDragEndRef.current(newLat, newLng, "Ubicación personalizada");
+      }
+    });
+
+    mapRef.current    = map;
+    markerRef.current = marker;
+
+    return () => { marker.setMap(null); };
+  }, [mapsReady]);
+
+  useEffect(() => {
+    if (!markerRef.current || lat === null || lng === null) return;
+    const g   = window.google.maps;
+    const pos = new g.LatLng(lat, lng);
+    markerRef.current.setPosition(pos);
+    mapRef.current?.panTo(pos);
+  }, [lat, lng]);
+
+  if (!mapsReady) {
+    return (
+      <div className="w-full h-56 rounded border border-border bg-gray-100 flex items-center justify-center text-xs text-ink-muted animate-pulse">
+        Cargando mapa...
+      </div>
+    );
+  }
+
+  return <div ref={containerRef} className="w-full h-56 rounded border border-border" />;
+}
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
 
@@ -136,16 +233,18 @@ export default function Services() {
     const id = s.servicio_id;
     if (editingId === id) { setEditingId(null); return; }
     setForm({
-      nombre:          s.nombre,
-      descripcion:     s.descripcion,
-      modalidad:       s.modalidad,
-      tipo: TIPOS_SERVICIO.includes(s.tipo) ? s.tipo : "Otro",
+      nombre:            s.nombre,
+      descripcion:       s.descripcion,
+      modalidad:         s.modalidad,
+      tipo:              TIPOS_SERVICIO.includes(s.tipo) ? s.tipo : "Otro",
       tipoPersonalizado: TIPOS_SERVICIO.includes(s.tipo) ? "" : s.tipo,
-      precio:          String(s.precio),
-      duracion:        String(s.duracion),
-      pausa:           String(s.pausa),
-      min_cancelacion: String(s.min_cancelacion),
-      ubicacion:       s.ubicacion ?? "",
+      precio:            String(s.precio),
+      duracion:          String(s.duracion),
+      pausa:             String(s.pausa),
+      min_cancelacion:   String(s.min_cancelacion),
+      ubicacion:         s.ubicacion ?? "",
+      latitud:           s.latitud  ?? null,
+      longitud:          s.longitud ?? null,
     });
     setEditingId(id);
   };
@@ -161,30 +260,36 @@ export default function Services() {
   const needsLocation = ["presencial", "hibrido"].includes(form.modalidad.toLowerCase());
 
   // ── Save / Delete ──────────────────────────────────────────────────────────
-    
-    
+
   const handleSave = async () => {
     const tipoFinal =
       form.tipo === "Otro"
         ? form.tipoPersonalizado.trim()
         : form.tipo;
-    if (!form.nombre.trim())   return showToast("El nombre es requerido", false);
-    if (!tipoFinal.trim())     return showToast("El tipo es requerido", false);
-    if (!form.precio)          return showToast("El precio es requerido", false);
-    if (!form.duracion)        return showToast("La duración es requerida", false);
+    if (!form.nombre.trim()) return showToast("El nombre es requerido", false);
+    if (!tipoFinal.trim())   return showToast("El tipo es requerido", false);
+    if (!form.precio)        return showToast("El precio es requerido", false);
+    if (!form.duracion)      return showToast("La duración es requerida", false);
+    if (needsLocation && (form.latitud === null || form.longitud === null)) {
+      return showToast("Confirmá la ubicación en el mapa", false);
+    }
     setSaving(true);
     try {
       const body: Record<string, unknown> = {
         nombre:          form.nombre,
         descripcion:     form.descripcion,
         modalidad:       form.modalidad.toLowerCase(),
-        tipo: tipoFinal,
+        tipo:            tipoFinal,
         precio:          Number(form.precio),
         duracion:        Number(form.duracion),
         pausa:           Number(form.pausa),
         min_cancelacion: Number(form.min_cancelacion),
       };
-      if (needsLocation && form.ubicacion.trim()) body.ubicacion = form.ubicacion.trim();
+      if (needsLocation) {
+        body.direccion = form.ubicacion.trim();
+        body.latitud   = form.latitud;
+        body.longitud  = form.longitud;
+      }
 
       if (editingId === "new") {
         await api.post("/servicios", body, token);
@@ -426,6 +531,51 @@ function ServiceForm({
   onCancel: () => void;
   needsLocation: boolean;
 }) {
+  const [geocodingError, setGeocodingError] = useState<string | null>(null);
+  const [geocoding,      setGeocoding]      = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+
+  const handleAddressInput = (value: string) => {
+    setF({ ubicacion: value, latitud: null, longitud: null });
+    setGeocodingError(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!value.trim()) return;
+
+    debounceRef.current = setTimeout(async () => {
+      setGeocoding(true);
+      try {
+        const res  = await fetch(`${API_BASE}/geocoding?address=${encodeURIComponent(value)}`);
+        const json = await res.json();
+        if (res.status === 404) {
+          setGeocodingError("No se encontró la dirección, intentá con más detalle");
+          return;
+        }
+        if (res.ok && json.success) {
+          setF({
+            ubicacion: json.data.direccion_formateada,
+            latitud:   json.data.latitud,
+            longitud:  json.data.longitud,
+          });
+          setGeocodingError(null);
+        }
+      } catch {
+        // silent — user can still drag the pin
+      } finally {
+        setGeocoding(false);
+      }
+    }, 600);
+  };
+
+  const handleMapDragEnd = (lat: number, lng: number, address: string) => {
+    setF({ latitud: lat, longitud: lng, ubicacion: address });
+    setGeocodingError(null);
+  };
+
+  const locationConfirmed = form.latitud !== null && form.longitud !== null;
+  const canSave = !saving && (!needsLocation || locationConfirmed);
+
   return (
     <div className="bg-white border border-border rounded p-5 space-y-4">
       <div className="flex items-center justify-between">
@@ -505,13 +655,39 @@ function ServiceForm({
         </div>
       </div>
 
-      {/* Ubicación — solo para presencial / híbrido */}
+      {/* Ubicación + Mapa — solo para presencial / híbrido */}
       {needsLocation && (
-        <div>
-          <label className={labelCls}>Dirección / Ubicación</label>
-          <input className={inputCls} placeholder="Ej. Av. Corrientes 1234, CABA"
-            value={form.ubicacion} onChange={(e) => setF({ ubicacion: e.target.value })} />
-          <p className="text-xs text-ink-muted mt-1">Visible para el cliente al confirmar la reserva</p>
+        <div className="space-y-2">
+          <div>
+            <label className={labelCls}>Dirección / Ubicación</label>
+            <div className="relative">
+              <input
+                className={inputCls}
+                placeholder="Ej. Av. Arequipa 123, Lima"
+                value={form.ubicacion}
+                onChange={(e) => handleAddressInput(e.target.value)}
+              />
+              {geocoding && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted pointer-events-none">
+                  Buscando...
+                </span>
+              )}
+            </div>
+            {geocodingError ? (
+              <p className="text-xs text-red-500 mt-1">{geocodingError}</p>
+            ) : locationConfirmed ? (
+              <p className="text-xs text-emerald-600 mt-1">✓ Ubicación confirmada en el mapa</p>
+            ) : (
+              <p className="text-xs text-ink-muted mt-1">
+                Escribí la dirección para ubicarla en el mapa, o arrastrá el pin
+              </p>
+            )}
+          </div>
+          <MapPicker
+            lat={form.latitud}
+            lng={form.longitud}
+            onDragEnd={handleMapDragEnd}
+          />
         </div>
       )}
 
@@ -535,8 +711,12 @@ function ServiceForm({
           className="border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink transition-colors cursor-pointer">
           Cancelar
         </button>
-        <button onClick={onSave} disabled={saving}
-          className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer">
+        <button
+          onClick={onSave}
+          disabled={!canSave}
+          title={needsLocation && !locationConfirmed ? "Confirmá la ubicación en el mapa" : undefined}
+          className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+        >
           {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear servicio"}
         </button>
       </div>
