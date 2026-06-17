@@ -503,7 +503,7 @@ function PackageForm({
                       <label className={labelCls}>Dirección / Ubicación</label>
                       <input
                         className={inputCls}
-                        placeholder="Ej. Av. Corrientes 1234, CABA"
+                        placeholder="Ej. Av. 18 de Julio 1290, Montevideo"
                         value={item.ubicacion}
                         onChange={(e) => updateItem(item.servicio_id, { ubicacion: e.target.value })}
                       />

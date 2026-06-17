@@ -124,7 +124,7 @@ export default function Login() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm font-semibold text-ink">Contraseña</label>
-                <a href="#" className="text-sm text-ink-muted underline">¿Olvidaste tu contraseña?</a>
+                 {/*<a href="#" className="text-sm text-ink-muted underline">¿Olvidaste tu contraseña?</a>  */}
               </div>
               <input
                 type="password"

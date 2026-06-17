@@ -20,6 +20,8 @@ interface Servicio {
   pausa: number;
   modalidad: string;
   profesional: Profesional | null;
+  promedio?: number;
+  cantidad_calificaciones?: number;
 }
 
 interface PackageItem {
@@ -63,7 +65,7 @@ export default function Discover() {
   const [servicios, setServicios]               = useState<Servicio[]>([]);
   const [paquetes, setPaquetes]                 = useState<Paquete[]>([]);
   const [loadingSvc, setLoadingSvc]             = useState(true);
-  const [loadingPkg, setLoadingPkg]             = useState(false);
+  const [loadingPkg, setLoadingPkg]             = useState(true);
   const [error, setError]                       = useState<string | null>(null);
   const [errorPkg, setErrorPkg]                 = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes]       = useState<string[]>([]);
@@ -331,6 +333,15 @@ export default function Discover() {
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-ink">{servicio.nombre}</p>
                             <p className="text-xs text-ink-muted">{servicio.tipo}</p>
+                            {servicio.cantidad_calificaciones ? (
+                                <p className="text-xs text-ink-muted mt-1">
+                                  ⭐ {servicio.promedio?.toFixed(1)} ({servicio.cantidad_calificaciones})
+                                </p>
+                              ) : (
+                                <p className="text-xs text-ink-muted mt-1">
+                                  Sin reseñas
+                                </p>
+                              )}
                           </div>
                         </div>
                         {servicio.descripcion && (

@@ -70,6 +70,7 @@ function handleRequest(request, responseStatusCode, responseHeaders, routerConte
 //#endregion
 //#region app/lib/api.ts
 var BASE_URL = "http://localhost:8000/api";
+var APP_BASE_URL = BASE_URL.replace(/\/api\/?$/, "");
 var cache = /* @__PURE__ */ new Map();
 var TTL = 6e4;
 function getCached(key) {
@@ -548,7 +549,7 @@ var login_default = UNSAFE_withComponentProps(function Login() {
 						className: "flex gap-3 mb-6",
 						children: /* @__PURE__ */ jsxs("button", {
 							onClick: () => {
-								window.location.href = `http://localhost:8000/auth/google/redirect?role=${role}`;
+								window.location.href = `${APP_BASE_URL}/auth/google/redirect?role=${role}`;
 							},
 							className: "flex-1 flex items-center justify-center gap-2 border border-border rounded py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink",
 							children: [/* @__PURE__ */ jsx(GoogleIcon, {}), " Google"]
@@ -800,8 +801,20 @@ var auth_google_callback_exports = /* @__PURE__ */ __exportAll({ default: () => 
 var auth_google_callback_default = UNSAFE_withComponentProps(function GoogleCallback() {
 	const { login } = useAuth();
 	const navigate = useNavigate();
+	const [modal, setModal] = useState({
+		open: false,
+		message: ""
+	});
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search);
+		const error = params.get("error");
+		if (error) {
+			setModal({
+				open: true,
+				message: error
+			});
+			return;
+		}
 		const token = params.get("token");
 		const user = {
 			id: Number(params.get("id")),
@@ -817,7 +830,33 @@ var auth_google_callback_default = UNSAFE_withComponentProps(function GoogleCall
 			else navigate("/client");
 		}
 	}, []);
-	return /* @__PURE__ */ jsx("p", { children: "Iniciando sesión..." });
+	return /* @__PURE__ */ jsxs("div", {
+		className: "flex items-center justify-center min-h-screen",
+		children: [/* @__PURE__ */ jsx("p", {
+			className: "text-ink-muted",
+			children: "Iniciando sesión..."
+		}), modal.open && /* @__PURE__ */ jsx("div", {
+			className: "fixed inset-0 bg-black/50 flex items-center justify-center z-50",
+			children: /* @__PURE__ */ jsxs("div", {
+				className: "bg-white rounded-lg shadow-lg p-6 w-[320px] text-center",
+				children: [
+					/* @__PURE__ */ jsx("h2", {
+						className: "text-lg font-bold mb-2 text-red-600",
+						children: "Acceso denegado"
+					}),
+					/* @__PURE__ */ jsx("p", {
+						className: "text-sm text-ink mb-4",
+						children: modal.message
+					}),
+					/* @__PURE__ */ jsx("button", {
+						onClick: () => navigate("/login"),
+						className: "bg-ink text-white px-4 py-2 rounded",
+						children: "Volver al login"
+					})
+				]
+			})
+		})]
+	});
 });
 //#endregion
 //#region app/lib/echo.ts
@@ -834,27 +873,14 @@ function getEcho(token) {
 			wssPort: 8080,
 			forceTLS: false,
 			enabledTransports: ["ws", "wss"],
-			authEndpoint: "http://localhost:8000/broadcasting/auth",
+			authEndpoint: `${APP_BASE_URL}/broadcasting/auth`,
 			auth: { headers: {
 				Authorization: token ? `Bearer ${token}` : "",
 				Accept: "application/json"
-			} }
+			} },
+			withCredentials: true
 		});
 	}
-	echo = new Echo({
-		broadcaster: "reverb",
-		key: "cgux9icc65a7v6i6ia0v",
-		wsHost: "127.0.0.1",
-		wsPort: 8080,
-		forceTLS: false,
-		enabledTransports: ["ws", "wss"],
-		authEndpoint: "http://localhost:8000/broadcasting/auth",
-		auth: { headers: {
-			Authorization: token ? `Bearer ${token}` : "",
-			Accept: "application/json"
-		} },
-		withCredentials: true
-	});
 	return echo;
 }
 //#endregion
@@ -948,12 +974,6 @@ var navItems$2 = [
 		end: true
 	},
 	{
-		to: "/client/messages",
-		label: "Mensajes",
-		icon: MessageIcon$1,
-		disabled: true
-	},
-	{
 		to: "/client/payments",
 		label: "Pagos",
 		icon: CardIcon$1
@@ -961,7 +981,7 @@ var navItems$2 = [
 	{
 		to: "/client/notifications",
 		label: "Notificaciones",
-		icon: BellIcon$2
+		icon: BellIcon$1
 	}
 ];
 function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
@@ -1022,21 +1042,7 @@ function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
 			}),
 			/* @__PURE__ */ jsx("nav", {
 				className: "flex-1 p-2 space-y-0.5",
-				children: navItems$2.map(({ to, label, icon: Icon, end, disabled }) => disabled ? /* @__PURE__ */ jsxs("div", {
-					title: effectiveCollapsed ? label : void 0,
-					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${effectiveCollapsed ? "justify-center px-0" : ""}`,
-					children: [
-						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
-						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
-							className: "flex-1",
-							children: label
-						}),
-						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
-							className: "text-[10px] text-sidebar-muted/60 font-normal",
-							children: "pronto"
-						})
-					]
-				}, to) : /* @__PURE__ */ jsxs(NavLink, {
+				children: navItems$2.map(({ to, label, icon: Icon, end }) => /* @__PURE__ */ jsxs(NavLink, {
 					to,
 					end,
 					title: effectiveCollapsed ? label : void 0,
@@ -1181,16 +1187,6 @@ function CalendarIcon$1({ className }) {
 		]
 	});
 }
-function MessageIcon$1({ className }) {
-	return /* @__PURE__ */ jsx("svg", {
-		className,
-		fill: "none",
-		viewBox: "0 0 24 24",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		children: /* @__PURE__ */ jsx("path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" })
-	});
-}
 function CardIcon$1({ className }) {
 	return /* @__PURE__ */ jsxs("svg", {
 		className,
@@ -1212,7 +1208,7 @@ function CardIcon$1({ className }) {
 		})]
 	});
 }
-function BellIcon$2({ className }) {
+function BellIcon$1({ className }) {
 	return /* @__PURE__ */ jsx("svg", {
 		className,
 		fill: "none",
@@ -1265,7 +1261,7 @@ function ChevronRightIcon$2({ className }) {
 //#region app/routes/client/_layout.tsx
 var _layout_exports$2 = /* @__PURE__ */ __exportAll({ default: () => _layout_default$2 });
 var _layout_default$2 = UNSAFE_withComponentProps(function ClientLayout() {
-	const { user, token, isLoading } = useAuth();
+	const { user, isLoading } = useAuth();
 	const navigate = useNavigate();
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [mobileOpen, setMobileOpen] = useState(false);
@@ -1283,7 +1279,6 @@ var _layout_default$2 = UNSAFE_withComponentProps(function ClientLayout() {
 	});
 	return /* @__PURE__ */ jsx(NotificationProvider, {
 		userId: user?.id,
-		token: token ?? void 0,
 		children: /* @__PURE__ */ jsxs("div", {
 			className: "flex min-h-screen bg-bg",
 			children: [/* @__PURE__ */ jsx(ClientSidebar, {
@@ -1355,14 +1350,22 @@ var dashboard_default$2 = UNSAFE_withComponentProps(function ClientDashboard() {
 	const [bookings, setBookings] = useState([]);
 	const [packages, setPackages] = useState([]);
 	const now = /* @__PURE__ */ new Date();
+	const load = async () => {
+		if (!token) return;
+		const [reservasRes, paquetesRes] = await Promise.all([api.get("/mis-reservas", token), api.get("/mis-compras-paquetes", token)]);
+		setBookings(reservasRes.data);
+		setPackages(paquetesRes);
+	};
 	useEffect(() => {
-		const load = async () => {
-			if (!token) return;
-			const [reservasRes, paquetesRes] = await Promise.all([api.get("/mis-reservas", token), api.get("/mis-compras-paquetes", token)]);
-			setBookings(reservasRes.data);
-			setPackages(paquetesRes);
-		};
 		load();
+	}, [token]);
+	useEffect(() => {
+		const handler = () => {
+			console.log("CLIENT DASHBOARD REFRESH");
+			load();
+		};
+		window.addEventListener("reserva-updated", handler);
+		return () => window.removeEventListener("reserva-updated", handler);
 	}, [token]);
 	const upcomingBookings = bookings.filter((b) => {
 		const date = /* @__PURE__ */ new Date(`${b.fecha}T${b.hora}`);
@@ -1669,7 +1672,7 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 	const [servicios, setServicios] = useState([]);
 	const [paquetes, setPaquetes] = useState([]);
 	const [loadingSvc, setLoadingSvc] = useState(true);
-	const [loadingPkg, setLoadingPkg] = useState(false);
+	const [loadingPkg, setLoadingPkg] = useState(true);
 	const [error, setError] = useState(null);
 	const [errorPkg, setErrorPkg] = useState(null);
 	const [selectedTypes, setSelectedTypes] = useState([]);
@@ -1711,7 +1714,7 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 	});
 	const filteredPkg = paquetes.filter((p) => Number(p.precio_total) <= priceRange);
 	const resetFilters = () => {
-		setSelectedTypes(serviceTypes.map((t) => t.key));
+		setSelectedTypes([]);
 		setSelectedModality("Todas");
 		setPriceRange(maxPrice);
 	};
@@ -1813,21 +1816,15 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 		}), /* @__PURE__ */ jsxs("div", {
 			className: "flex-1 overflow-y-auto p-6",
 			children: [
-				/* @__PURE__ */ jsxs("div", {
+				/* @__PURE__ */ jsx("div", {
 					className: "flex items-start justify-between mb-5",
-					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
+					children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
 						className: "font-display italic text-3xl text-ink mb-1",
 						children: activeTab === "servicios" ? "Encontrá a tu profesional" : "Paquetes"
 					}), /* @__PURE__ */ jsx("p", {
 						className: "text-ink-muted text-sm",
 						children: activeTab === "servicios" ? loadingSvc ? "Cargando servicios..." : `${filteredSvc.length} servicio${filteredSvc.length !== 1 ? "s" : ""} disponible${filteredSvc.length !== 1 ? "s" : ""}` : loadingPkg ? "Cargando paquetes..." : `${filteredPkg.length} paquete${filteredPkg.length !== 1 ? "s" : ""} disponible${filteredPkg.length !== 1 ? "s" : ""}`
-					})] }), /* @__PURE__ */ jsx("button", {
-						className: "relative p-2 rounded-xl border border-border bg-surface hover:bg-bg cursor-pointer",
-						children: /* @__PURE__ */ jsx("ion-icon", {
-							name: "notifications-outline",
-							style: { fontSize: "18px" }
-						})
-					})]
+					})] })
 				}),
 				/* @__PURE__ */ jsx("div", {
 					className: "flex gap-1 border-b border-border mb-6",
@@ -1933,13 +1930,29 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 												children: initials
 											}), /* @__PURE__ */ jsxs("div", {
 												className: "min-w-0",
-												children: [/* @__PURE__ */ jsx("p", {
-													className: "text-sm font-semibold text-ink",
-													children: servicio.nombre
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted",
-													children: servicio.tipo
-												})]
+												children: [
+													/* @__PURE__ */ jsx("p", {
+														className: "text-sm font-semibold text-ink",
+														children: servicio.nombre
+													}),
+													/* @__PURE__ */ jsx("p", {
+														className: "text-xs text-ink-muted",
+														children: servicio.tipo
+													}),
+													servicio.cantidad_calificaciones ? /* @__PURE__ */ jsxs("p", {
+														className: "text-xs text-ink-muted mt-1",
+														children: [
+															"⭐ ",
+															servicio.promedio?.toFixed(1),
+															" (",
+															servicio.cantidad_calificaciones,
+															")"
+														]
+													}) : /* @__PURE__ */ jsx("p", {
+														className: "text-xs text-ink-muted mt-1",
+														children: "Sin reseñas"
+													})
+												]
 											})]
 										}),
 										servicio.descripcion && /* @__PURE__ */ jsx("p", {
@@ -2201,7 +2214,7 @@ function MiniCalendar({ year, month, availableDays, selectedDate, onSelect, onPr
 				if (!day) return /* @__PURE__ */ jsx("div", {}, i);
 				const date = new Date(year, month, day);
 				const dateStr = toDateStr$1(year, month, day);
-				const isPast = date <= today;
+				const isPast = date < today;
 				const dow = DOW_MAP[date.getDay()];
 				const isAvailable = availableDays.has(dow) && !isPast;
 				const isSelected = selectedDate === dateStr;
@@ -2260,6 +2273,7 @@ function BookingModal({ service, date, slot, onClose, token, compraItemId }) {
 				compra_item_paquete_id: compraItemId ? Number(compraItemId) : null
 			}, token);
 			if (!res.success) throw new Error(res.message ?? "Error al crear la reserva");
+			window.dispatchEvent(new CustomEvent("reserva-updated"));
 			setSuccess(true);
 		} catch (e) {
 			setError(e.message ?? "Error al reservar");
@@ -2373,6 +2387,10 @@ function BookingModal({ service, date, slot, onClose, token, compraItemId }) {
 							})
 						]
 					}),
+					error && /* @__PURE__ */ jsx("div", {
+						className: "rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600",
+						children: error
+					}),
 					/* @__PURE__ */ jsxs("button", {
 						onClick: confirmSitio,
 						disabled: loading,
@@ -2414,6 +2432,19 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 	const [loadingSlots, setLoadingSlots] = useState(false);
 	const [selectedSlot, setSelectedSlot] = useState(null);
 	const [slotsError, setSlotsError] = useState(null);
+	const [calificaciones, setCalificaciones] = useState([]);
+	const [promedio, setPromedio] = useState(0);
+	const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
+	const [loadingCalificaciones, setLoadingCalificaciones] = useState(false);
+	useEffect(() => {
+		if (!id || !token) return;
+		setLoadingCalificaciones(true);
+		api.get(`/profesionales/${id}/calificaciones`, token).then((res) => {
+			setCalificaciones(res.data ?? []);
+			setPromedio(res.promedio ?? 0);
+			setCantidadCalificaciones(res.cantidad ?? 0);
+		}).catch(console.error).finally(() => setLoadingCalificaciones(false));
+	}, [id, token]);
 	useEffect(() => {
 		if (!id) return;
 		api.get(`/profesionales/${id}`).then((res) => {
@@ -2446,6 +2477,20 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 		api.get(`/servicios/${selectedService.servicio_id}/slots?fecha=${selectedDate}`).then((res) => {
 			if (res.success) setSlots(res.data);
 		}).catch((e) => setSlotsError(e.message ?? "Error al cargar horarios")).finally(() => setLoadingSlots(false));
+	}, [selectedDate, selectedService]);
+	useEffect(() => {
+		if (!selectedDate || !selectedService) return;
+		const handler = async () => {
+			console.log("SLOTS REFRESH");
+			try {
+				const res = await api.get(`/servicios/${selectedService.servicio_id}/slots?fecha=${selectedDate}`);
+				if (res.success) setSlots(res.data);
+			} catch (e) {
+				console.error(e);
+			}
+		};
+		window.addEventListener("reserva-updated", handler);
+		return () => window.removeEventListener("reserva-updated", handler);
 	}, [selectedDate, selectedService]);
 	useEffect(() => {
 		if (!reprogramarId) return;
@@ -2594,9 +2639,13 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 						}), /* @__PURE__ */ jsxs("div", {
 							className: "p-6",
 							children: [
-								activeTab === "Acerca de" && /* @__PURE__ */ jsx("p", {
+								activeTab === "Acerca de" && /* @__PURE__ */ jsxs("p", {
 									className: "text-sm text-ink leading-relaxed",
-									children: profesional?.descripcion ?? "Este profesional aún no ha completado su descripción."
+									children: [
+										"Descripción:",
+										" ",
+										profesional?.descripcion ?? "Este profesional aún no ha completado su descripción."
+									]
 								}),
 								activeTab === "Servicios" && /* @__PURE__ */ jsx("div", {
 									className: "space-y-3",
@@ -2648,18 +2697,72 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 									})
 								}),
 								activeTab === "Reseñas" && /* @__PURE__ */ jsxs("div", {
-									className: "flex flex-col items-center py-8 text-center",
-									children: [/* @__PURE__ */ jsx("ion-icon", {
-										name: "star-outline",
-										style: {
-											fontSize: "36px",
-											color: "var(--color-ink-muted)",
-											marginBottom: "8px"
-										}
-									}), /* @__PURE__ */ jsx("p", {
-										className: "text-ink-muted text-sm",
-										children: "Las reseñas estarán disponibles próximamente."
-									})]
+									className: "space-y-4",
+									children: [
+										/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center justify-between",
+											children: [/* @__PURE__ */ jsx("h3", {
+												className: "font-display text-lg text-ink",
+												children: "Reseñas"
+											}), /* @__PURE__ */ jsxs("div", {
+												className: "text-sm text-ink-muted",
+												children: [
+													"⭐ ",
+													promedio.toFixed(1),
+													" · ",
+													cantidadCalificaciones,
+													" opiniones"
+												]
+											})]
+										}),
+										loadingCalificaciones && /* @__PURE__ */ jsx("div", {
+											className: "text-sm text-ink-muted py-6",
+											children: "Cargando reseñas..."
+										}),
+										!loadingCalificaciones && calificaciones.length === 0 && /* @__PURE__ */ jsxs("div", {
+											className: "flex flex-col items-center py-8 text-center",
+											children: [/* @__PURE__ */ jsx("ion-icon", {
+												name: "star-outline",
+												style: {
+													fontSize: "36px",
+													color: "var(--color-ink-muted)"
+												}
+											}), /* @__PURE__ */ jsx("p", {
+												className: "text-sm text-ink-muted mt-2",
+												children: "Este profesional aún no tiene reseñas"
+											})]
+										}),
+										/* @__PURE__ */ jsx("div", {
+											className: "space-y-2",
+											children: calificaciones.map((c) => /* @__PURE__ */ jsxs("div", {
+												className: "p-4 border border-border rounded-xl bg-bg",
+												children: [
+													/* @__PURE__ */ jsxs("div", {
+														className: "flex items-center justify-between",
+														children: [/* @__PURE__ */ jsx("p", {
+															className: "text-sm font-semibold text-ink",
+															children: c.cliente_nombre ?? "Cliente"
+														}), /* @__PURE__ */ jsxs("span", {
+															className: "text-amber-500 text-sm font-bold",
+															children: [
+																"⭐ ",
+																c.puntuacion,
+																"/5"
+															]
+														})]
+													}),
+													c.comentario && /* @__PURE__ */ jsx("p", {
+														className: "text-sm text-ink-muted mt-2",
+														children: c.comentario
+													}),
+													/* @__PURE__ */ jsx("p", {
+														className: "text-[11px] text-ink-muted mt-2",
+														children: c.reserva?.servicio?.nombre
+													})
+												]
+											}, c.calificacion_id))
+										})
+									]
 								})
 							]
 						})]
@@ -4585,7 +4688,7 @@ var ESTADO_STYLE = {
 		cls: "bg-red-50 text-red-400 border-red-200"
 	},
 	realizada: {
-		label: "Realizada",
+		label: "No aceptada",
 		cls: "bg-green-50 text-green-600 border-green-200"
 	}
 };
@@ -4593,7 +4696,7 @@ var TERMINAL = new Set([
 	"cancelada",
 	"finalizada",
 	"no_asistida",
-	"realizada"
+	"no aceptada"
 ]);
 var MONTH_NAMES$1 = [
 	"ene",
@@ -4915,7 +5018,7 @@ var mis_reservas_default = UNSAFE_withComponentProps(function MisReservas() {
 						const puedeCalificar = isPast && r.estado === "finalizada" && !r.calificacion;
 						const canReschedule = ["confirmada", "pagada"].includes(r.estado) && !isPast;
 						const isCancelled = r.estado === "cancelada" || r.estado === "no_asistida";
-						const displayEstado = isPast && !TERMINAL.has(r.estado) ? "realizada" : r.estado;
+						const displayEstado = isPast && !TERMINAL.has(r.estado) ? "no aceptada" : r.estado;
 						const badge = ESTADO_STYLE[displayEstado] ?? {
 							label: displayEstado,
 							cls: "bg-surface text-ink-muted border-border"
@@ -5267,15 +5370,9 @@ var navItems$1 = [
 		icon: CardIcon
 	},
 	{
-		to: "/professional/messages",
-		label: "Mensajes",
-		icon: MessageIcon,
-		disabled: true
-	},
-	{
 		to: "/professional/notifications",
 		label: "Notificaciones",
-		icon: BellIcon$1
+		icon: BellIcon
 	}
 ];
 function ProfessionalSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }) {
@@ -5332,21 +5429,7 @@ function ProfessionalSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose 
 			}),
 			/* @__PURE__ */ jsx("nav", {
 				className: "flex-1 p-2 space-y-0.5",
-				children: navItems$1.map(({ to, label, icon: Icon, end, disabled }) => disabled ? /* @__PURE__ */ jsxs("div", {
-					title: effectiveCollapsed ? label : void 0,
-					className: `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-sidebar-muted ${effectiveCollapsed ? "justify-center px-0" : ""}`,
-					children: [
-						/* @__PURE__ */ jsx(Icon, { className: "w-4 h-4 shrink-0" }),
-						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
-							className: "flex-1",
-							children: label
-						}),
-						!effectiveCollapsed && /* @__PURE__ */ jsx("span", {
-							className: "text-[10px] text-sidebar-muted/60 font-normal",
-							children: "pronto"
-						})
-					]
-				}, to) : /* @__PURE__ */ jsxs(NavLink, {
+				children: navItems$1.map(({ to, label, icon: Icon, end }) => /* @__PURE__ */ jsxs(NavLink, {
 					to,
 					end,
 					title: effectiveCollapsed ? label : void 0,
@@ -5551,17 +5634,7 @@ function CardIcon({ className }) {
 		})]
 	});
 }
-function MessageIcon({ className }) {
-	return /* @__PURE__ */ jsx("svg", {
-		className,
-		fill: "none",
-		viewBox: "0 0 24 24",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		children: /* @__PURE__ */ jsx("path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" })
-	});
-}
-function BellIcon$1({ className }) {
+function BellIcon({ className }) {
 	return /* @__PURE__ */ jsx("svg", {
 		className,
 		fill: "none",
@@ -5614,7 +5687,7 @@ function ChevronRightIcon$1({ className }) {
 //#region app/routes/professional/_layout.tsx
 var _layout_exports$1 = /* @__PURE__ */ __exportAll({ default: () => _layout_default$1 });
 var _layout_default$1 = UNSAFE_withComponentProps(function ProfessionalLayout() {
-	const { user, token, isLoading } = useAuth();
+	const { user, isLoading } = useAuth();
 	const navigate = useNavigate();
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [mobileOpen, setMobileOpen] = useState(false);
@@ -5632,7 +5705,6 @@ var _layout_default$1 = UNSAFE_withComponentProps(function ProfessionalLayout() 
 	});
 	return /* @__PURE__ */ jsx(NotificationProvider, {
 		userId: user?.id,
-		token: token ?? void 0,
 		children: /* @__PURE__ */ jsxs("div", {
 			className: "flex min-h-screen bg-bg",
 			children: [/* @__PURE__ */ jsx(ProfessionalSidebar, {
@@ -5796,7 +5868,8 @@ function getInitials$2(nombre) {
 var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 	const { token } = useAuth();
 	const [reservas, setReservas] = useState([]);
-	const [clients, setClients] = useState([]);
+	const [clientesProximos, setClientesProximos] = useState([]);
+	const [clientesHistoricos, setClientesHistoricos] = useState([]);
 	const [agendaLoading, setAgendaLoading] = useState(true);
 	const [clientsLoading, setClientsLoading] = useState(true);
 	const [weekStart, setWeekStart] = useState(() => toMonday(/* @__PURE__ */ new Date()));
@@ -5814,14 +5887,34 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 			if (res.success) setReservas(res.data);
 		}).catch(() => {}).finally(() => setAgendaLoading(false));
 	};
+	const fetchClientes = () => {
+		if (!token) return;
+		setClientsLoading(true);
+		api.get("/clientes", token).then((data) => {
+			setClientesProximos(data.proximos || []);
+			setClientesHistoricos(data.historicos || []);
+		}).catch(() => {
+			setClientesProximos([]);
+			setClientesHistoricos([]);
+		}).finally(() => setClientsLoading(false));
+	};
 	useEffect(() => {
 		setMobileStartDay(0);
 	}, [weekStart]);
 	useEffect(() => {
 		if (!token) return;
 		fetchAgenda();
-		setClientsLoading(true);
-		api.get("/clientes", token).then((data) => setClients(Array.isArray(data) ? data : [])).catch(() => setClients([])).finally(() => setClientsLoading(false));
+		fetchClientes();
+	}, [token]);
+	useEffect(() => {
+		if (!token) return;
+		const handler = () => {
+			console.log("CLIENTES REFRESH");
+			fetchAgenda();
+			fetchClientes();
+		};
+		window.addEventListener("reserva-updated", handler);
+		return () => window.removeEventListener("reserva-updated", handler);
 	}, [token]);
 	const cambiarEstado = async (reservaId, estado) => {
 		try {
@@ -5842,6 +5935,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 		}
 	};
 	const cancelarReserva = async (reservaId) => {
+		console.log("CANCELAR RESERVA", reservaId);
 		await api.put(`/reservas/${reservaId}/cancelar`, {}, token);
 	};
 	const weekDates = getWeekDates(weekStart);
@@ -5856,14 +5950,14 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 		if (from.getMonth() === to.getMonth()) return `${from.getDate()}–${to.getDate()} ${MONTH_NAMES[from.getMonth()]} ${from.getFullYear()}`;
 		return `${from.getDate()} ${MONTH_NAMES[from.getMonth()]} – ${to.getDate()} ${MONTH_NAMES[to.getMonth()]} ${to.getFullYear()}`;
 	})();
-	const filteredClients = clients.filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()));
+	[...clientesProximos, ...clientesHistoricos].filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()));
 	const clientColorMap = {};
-	clients.forEach((c, i) => {
+	[...clientesProximos, ...clientesHistoricos].forEach((c, i) => {
 		clientColorMap[c.nombre] = CLIENT_COLORS[i % CLIENT_COLORS.length];
 	});
 	const clientReservas = selectedClient ? reservas.filter((r) => r.cliente_nombre === selectedClient.nombre) : [];
 	const handleReservaClick = (r) => {
-		const client = clients.find((c) => c.nombre === r.cliente_nombre) ?? null;
+		const client = [...clientesProximos, ...clientesHistoricos].find((c) => c.nombre === r.cliente_nombre) ?? null;
 		if (selectedReserva?.reserva_id === r.reserva_id) {
 			setSelectedReserva(null);
 			setSelectedClient(null);
@@ -5897,7 +5991,9 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 	};
 	const mobileDays = weekDates.slice(mobileStartDay, mobileStartDay + 3);
 	const panelOpen = !!selectedClient;
-	const panelClientColor = selectedClient ? CLIENT_COLORS[Math.max(clients.findIndex((c) => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length] : CLIENT_COLORS[0];
+	const panelClientColor = selectedClient ? CLIENT_COLORS[Math.max([...clientesProximos, ...clientesHistoricos].findIndex((c) => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length] : CLIENT_COLORS[0];
+	const filteredProximos = clientesProximos.filter((c) => `${c.nombre} ${c.email}`.toLowerCase().includes(search.toLowerCase()));
+	const filteredHistoricos = clientesHistoricos.filter((c) => `${c.nombre} ${c.email}`.toLowerCase().includes(search.toLowerCase()));
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8",
 		children: [/* @__PURE__ */ jsxs("div", {
@@ -6160,7 +6256,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 						className: "font-display text-xl text-ink shrink-0",
 						children: ["Clientes", /* @__PURE__ */ jsx("span", {
 							className: "ml-2 text-sm font-normal text-ink-muted",
-							children: !clientsLoading && `${clients.length} activos`
+							children: !clientsLoading && `${clientesProximos.length + clientesHistoricos.length} clientes`
 						})]
 					}), /* @__PURE__ */ jsx("input", {
 						className: "flex-1 border border-border rounded px-3 py-1.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink",
@@ -6171,99 +6267,179 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 				}), clientsLoading ? /* @__PURE__ */ jsx("div", {
 					className: "bg-surface border border-border rounded p-8 text-center text-ink-muted text-sm",
 					children: "Cargando clientes..."
-				}) : filteredClients.length === 0 ? /* @__PURE__ */ jsx("div", {
-					className: "bg-surface border border-border rounded p-8 text-center",
-					children: /* @__PURE__ */ jsx("p", {
-						className: "text-sm text-ink-muted",
-						children: search ? `Sin resultados para "${search}"` : "Tus clientes aparecerán aquí"
-					})
-				}) : /* @__PURE__ */ jsx("div", {
-					className: "bg-surface border border-border rounded overflow-hidden",
-					children: /* @__PURE__ */ jsx("div", {
-						className: "overflow-x-auto",
-						children: /* @__PURE__ */ jsxs("div", {
-							className: "min-w-[580px]",
-							children: [/* @__PURE__ */ jsx("div", {
-								className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
-								children: [
-									{
-										label: "CLIENTE",
-										span: "col-span-3"
-									},
-									{
-										label: "EMAIL",
-										span: "col-span-3"
-									},
-									{
-										label: "SESIONES",
-										span: "col-span-2 flex items-center justify-center"
-									},
-									{
-										label: "PRÓXIMA SESIÓN",
-										span: "col-span-3"
-									},
-									{
-										label: "ESTADO",
-										span: "col-span-1 flex items-center justify-center"
-									}
-								].map((h) => /* @__PURE__ */ jsx("div", {
-									className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
-									children: h.label
-								}, h.label))
-							}), filteredClients.map((c, index) => {
-								const isSelected = selectedClient?.cliente_id === c.cliente_id;
-								const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
-								return /* @__PURE__ */ jsxs("div", {
-									onClick: () => handleClientClick(c),
-									className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`,
+				}) : /* @__PURE__ */ jsxs("div", {
+					className: "space-y-8",
+					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", {
+						className: "text-lg font-semibold text-ink mb-3",
+						children: [
+							"Próximas reservas (",
+							filteredProximos.length,
+							")"
+						]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "bg-surface border border-border rounded overflow-hidden",
+						children: /* @__PURE__ */ jsx("div", {
+							className: "overflow-x-auto",
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "min-w-[580px]",
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
 									children: [
-										/* @__PURE__ */ jsxs("div", {
-											className: "col-span-3 flex items-center gap-3",
-											children: [/* @__PURE__ */ jsx("div", {
-												className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
-												children: getInitials$2(c.nombre)
-											}), /* @__PURE__ */ jsx("span", {
-												className: "text-sm font-semibold text-ink truncate",
-												children: c.nombre
-											})]
-										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "col-span-3",
-											children: /* @__PURE__ */ jsx("span", {
-												className: "text-sm text-ink-muted truncate block",
-												children: c.email
+										{
+											label: "CLIENTE",
+											span: "col-span-3"
+										},
+										{
+											label: "EMAIL",
+											span: "col-span-3"
+										},
+										{
+											label: "PRÓXIMA SESIÓN",
+											span: "col-span-3"
+										},
+										{
+											label: "ESTADO",
+											span: "col-span-1 flex items-center justify-center"
+										}
+									].map((h) => /* @__PURE__ */ jsx("div", {
+										className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
+										children: h.label
+									}, h.label))
+								}), filteredProximos.length === 0 ? /* @__PURE__ */ jsx("div", {
+									className: "p-8 text-center text-sm text-ink-muted",
+									children: "No hay clientes con reservas futuras"
+								}) : filteredProximos.map((c, index) => {
+									const isSelected = selectedClient?.cliente_id === c.cliente_id;
+									const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
+									return /* @__PURE__ */ jsxs("div", {
+										onClick: () => handleClientClick(c),
+										className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent}
+                      ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`,
+										children: [
+											/* @__PURE__ */ jsxs("div", {
+												className: "col-span-3 flex items-center gap-3",
+												children: [/* @__PURE__ */ jsx("div", {
+													className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
+													children: getInitials$2(c.nombre)
+												}), /* @__PURE__ */ jsx("span", {
+													className: "text-sm font-semibold text-ink truncate",
+													children: c.nombre
+												})]
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-3",
+												children: /* @__PURE__ */ jsx("span", {
+													className: "text-sm text-ink-muted truncate block",
+													children: c.email
+												})
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-3",
+												children: /* @__PURE__ */ jsxs("span", {
+													className: "text-sm text-ink",
+													children: [
+														c.proxima_sesion,
+														" ",
+														c.hora_proxima_sesion?.slice(0, 5) ?? ""
+													]
+												})
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-1 flex justify-center",
+												children: /* @__PURE__ */ jsx("span", {
+													className: `badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`,
+													children: c.estado
+												})
 											})
-										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "col-span-2 flex justify-center",
-											children: /* @__PURE__ */ jsx("span", {
-												className: "text-sm font-semibold text-ink",
-												children: c.sesiones_restantes
-											})
-										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "col-span-3",
-											children: /* @__PURE__ */ jsxs("span", {
-												className: "text-sm text-ink",
-												children: [
-													c.proxima_sesion,
-													" ",
-													c.hora_proxima_sesion?.slice(0, 5) ?? ""
-												]
-											})
-										}),
-										/* @__PURE__ */ jsx("div", {
-											className: "col-span-1 flex justify-center",
-											children: /* @__PURE__ */ jsx("span", {
-												className: `badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`,
-												children: c.estado
-											})
-										})
-									]
-								}, c.cliente_id);
-							})]
+										]
+									}, c.cliente_id);
+								})]
+							})
 						})
-					})
+					})] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", {
+						className: "text-lg font-semibold text-ink mb-3",
+						children: [
+							"Historial de clientes (",
+							filteredHistoricos.length,
+							")"
+						]
+					}), /* @__PURE__ */ jsx("div", {
+						className: "bg-surface border border-border rounded overflow-hidden",
+						children: /* @__PURE__ */ jsx("div", {
+							className: "overflow-x-auto",
+							children: /* @__PURE__ */ jsxs("div", {
+								className: "min-w-[580px]",
+								children: [/* @__PURE__ */ jsx("div", {
+									className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
+									children: [
+										{
+											label: "CLIENTE",
+											span: "col-span-3"
+										},
+										{
+											label: "EMAIL",
+											span: "col-span-3"
+										},
+										{
+											label: "ÚLTIMA SESIÓN",
+											span: "col-span-3"
+										},
+										{
+											label: "ESTADO",
+											span: "col-span-1 flex items-center justify-center"
+										}
+									].map((h) => /* @__PURE__ */ jsx("div", {
+										className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
+										children: h.label
+									}, h.label))
+								}), filteredHistoricos.length === 0 ? /* @__PURE__ */ jsx("div", {
+									className: "p-8 text-center text-sm text-ink-muted",
+									children: "No hay clientes históricos"
+								}) : filteredHistoricos.map((c, index) => {
+									const isSelected = selectedClient?.cliente_id === c.cliente_id;
+									const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
+									return /* @__PURE__ */ jsxs("div", {
+										onClick: () => handleClientClick(c),
+										className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent}
+                      ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`,
+										children: [
+											/* @__PURE__ */ jsxs("div", {
+												className: "col-span-3 flex items-center gap-3",
+												children: [/* @__PURE__ */ jsx("div", {
+													className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
+													children: getInitials$2(c.nombre)
+												}), /* @__PURE__ */ jsx("span", {
+													className: "text-sm font-semibold text-ink truncate",
+													children: c.nombre
+												})]
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-3",
+												children: /* @__PURE__ */ jsx("span", {
+													className: "text-sm text-ink-muted truncate block",
+													children: c.email
+												})
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-3",
+												children: /* @__PURE__ */ jsx("span", {
+													className: "text-sm text-ink-muted",
+													children: "Sin reservas futuras"
+												})
+											}),
+											/* @__PURE__ */ jsx("div", {
+												className: "col-span-1 flex justify-center",
+												children: /* @__PURE__ */ jsx("span", {
+													className: "badge",
+													children: "Histórico"
+												})
+											})
+										]
+									}, c.cliente_id);
+								})]
+							})
+						})
+					})] })]
 				})] })]
 			}), /* @__PURE__ */ jsx("div", {
 				className: "lg:sticky lg:top-8 space-y-3",
@@ -6722,18 +6898,36 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 	const [promedio, setPromedio] = useState(0);
 	const [openCalificaciones, setOpenCalificaciones] = useState(false);
 	const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
-	useEffect(() => {
+	const loadDashboard = async () => {
 		if (!token || !user?.id) return;
-		Promise.all([
-			api.get("/mi-agenda", token).then((res) => setAllReservas(res.data ?? [])).catch(() => {}),
-			api.get("/reservas/pendientes", token).then((res) => setPendientes(res.data ?? [])).catch(() => {}),
-			api.get(`/profesionales/${user.id}/calificaciones`, token).then((res) => {
-				const payload = res;
-				setCalificaciones(payload.data ?? []);
-				setPromedio(payload.promedio ?? 0);
-				setCantidadCalificaciones(payload.cantidad ?? 0);
-			}).catch(() => {})
-		]).finally(() => setLoading(false));
+		try {
+			const [agendaRes, pendientesRes, calificacionesRes] = await Promise.all([
+				api.get("/mi-agenda", token),
+				api.get("/reservas/pendientes", token),
+				api.get(`/profesionales/${user.id}/calificaciones`, token)
+			]);
+			const agenda = agendaRes;
+			const pendientesData = pendientesRes;
+			const calificacionesData = calificacionesRes;
+			setAllReservas(agenda.data ?? []);
+			setPendientes(pendientesData.data ?? []);
+			setCalificaciones(calificacionesData.data ?? []);
+			setPromedio(calificacionesData.promedio ?? 0);
+			setCantidadCalificaciones(calificacionesData.cantidad ?? 0);
+		} finally {
+			setLoading(false);
+		}
+	};
+	useEffect(() => {
+		loadDashboard();
+	}, [token, user?.id]);
+	useEffect(() => {
+		const handler = () => {
+			console.log("PRO DASHBOARD REFRESH");
+			loadDashboard();
+		};
+		window.addEventListener("reserva-updated", handler);
+		return () => window.removeEventListener("reserva-updated", handler);
 	}, [token, user?.id]);
 	const hoy = todayStr();
 	const semanaDesde = startOfWeekStr();
@@ -6785,19 +6979,13 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 				}), /* @__PURE__ */ jsx("p", {
 					className: "text-ink-muted mt-1",
 					children: sesionesHoy > 0 ? `Tenés ${sesionesHoy} sesión${sesionesHoy !== 1 ? "es" : ""} hoy` : "Sin sesiones hoy"
-				})] }), /* @__PURE__ */ jsxs("div", {
+				})] }), /* @__PURE__ */ jsx("div", {
 					className: "flex flex-wrap items-center gap-2 sm:gap-3",
-					children: [/* @__PURE__ */ jsxs("button", {
-						className: "relative p-2 border border-border rounded bg-surface hover:bg-bg",
-						children: [/* @__PURE__ */ jsx(BellIcon, {}), pendientes.length > 0 && /* @__PURE__ */ jsx("span", {
-							className: "absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold",
-							children: pendientes.length
-						})]
-					}), /* @__PURE__ */ jsxs(Link, {
+					children: /* @__PURE__ */ jsxs(Link, {
 						to: "/professional/services",
 						className: "flex items-center gap-2 border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink",
 						children: [/* @__PURE__ */ jsx(PlusIcon, {}), "Nuevo servicio"]
-					})]
+					})
 				})]
 			}),
 			/* @__PURE__ */ jsx("div", {
@@ -7104,19 +7292,6 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 		]
 	});
 });
-function BellIcon() {
-	return /* @__PURE__ */ jsxs("svg", {
-		width: "18",
-		height: "18",
-		viewBox: "0 0 24 24",
-		fill: "none",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		strokeLinecap: "round",
-		strokeLinejoin: "round",
-		children: [/* @__PURE__ */ jsx("path", { d: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" }), /* @__PURE__ */ jsx("path", { d: "M13.73 21a2 2 0 0 1-3.46 0" })]
-	});
-}
 function PlusIcon() {
 	return /* @__PURE__ */ jsxs("svg", {
 		width: "15",
@@ -7231,32 +7406,120 @@ function XIcon() {
 //#endregion
 //#region app/routes/professional/services.tsx
 var services_exports = /* @__PURE__ */ __exportAll({ default: () => services_default });
+var GMAPS_KEY = "AIzaSyBWf1wjKY5nMYkBi0f-1enF1k5k7xDXkq0";
+var API_BASE = "http://localhost:8000/api";
 var EMPTY_FORM$1 = {
 	nombre: "",
 	descripcion: "",
 	modalidad: "presencial",
 	tipo: "",
+	tipoPersonalizado: "",
 	precio: "",
 	duracion: "",
 	pausa: "",
 	min_cancelacion: "",
-	ubicacion: ""
+	ubicacion: "",
+	latitud: null,
+	longitud: null
 };
 var MODALIDAD_CLS = {
 	presencial: "bg-emerald-100 text-emerald-800",
 	virtual: "bg-orange-100  text-orange-700",
 	hibrido: "bg-amber-100   text-amber-800"
 };
+var TIPOS_SERVICIO = [
+	"Psicología",
+	"Nutrición",
+	"Tarot",
+	"Astrología",
+	"Entrenamiento Personal",
+	"Yoga",
+	"Pilates",
+	"Fisioterapia",
+	"Masoterapia",
+	"Clases Particulares",
+	"Idiomas",
+	"Música",
+	"Consultoría",
+	"Asesoría Legal",
+	"Belleza y Estética",
+	"Fotografía",
+	"Otro"
+];
 var inputCls$1 = "w-full border border-border rounded px-3 py-2 text-sm bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 var labelCls$1 = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
-function Toggle$1({ checked, onChange }) {
-	return /* @__PURE__ */ jsx("button", {
-		onClick: (e) => {
-			e.stopPropagation();
-			onChange();
-		},
-		className: `relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors cursor-pointer ${checked ? "bg-green-500" : "bg-gray-300"}`,
-		children: /* @__PURE__ */ jsx("span", { className: `inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[18px]" : "translate-x-0.5"}` })
+function useGoogleMaps() {
+	const [ready, setReady] = useState(() => !!window.google?.maps);
+	useEffect(() => {
+		if (window.google?.maps) {
+			setReady(true);
+			return;
+		}
+		if (document.getElementById("gmap-sdk")) return;
+		const script = document.createElement("script");
+		script.id = "gmap-sdk";
+		script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places`;
+		script.async = true;
+		script.onload = () => setReady(true);
+		document.head.appendChild(script);
+	}, []);
+	return ready;
+}
+function MapPicker({ lat, lng, onDragEnd }) {
+	const mapsReady = useGoogleMaps();
+	const containerRef = useRef(null);
+	const mapRef = useRef(null);
+	const markerRef = useRef(null);
+	const onDragEndRef = useRef(onDragEnd);
+	onDragEndRef.current = onDragEnd;
+	useEffect(() => {
+		if (!mapsReady || !containerRef.current) return;
+		const g = window.google.maps;
+		const center = {
+			lat: lat ?? -34.9011,
+			lng: lng ?? -56.1645
+		};
+		const map = new g.Map(containerRef.current, {
+			center,
+			zoom: 15
+		});
+		const marker = new g.Marker({
+			position: center,
+			map,
+			draggable: true
+		});
+		marker.addListener("dragend", async () => {
+			const pos = marker.getPosition();
+			const newLat = pos.lat();
+			const newLng = pos.lng();
+			try {
+				const res = await fetch(`${API_BASE}/geocoding/reverse?lat=${newLat}&lng=${newLng}`);
+				const json = await res.json();
+				if (res.ok && json.success) onDragEndRef.current(newLat, newLng, json.data.direccion_formateada);
+				else onDragEndRef.current(newLat, newLng, "Ubicación personalizada");
+			} catch {
+				onDragEndRef.current(newLat, newLng, "Ubicación personalizada");
+			}
+		});
+		mapRef.current = map;
+		markerRef.current = marker;
+		return () => {
+			marker.setMap(null);
+		};
+	}, [mapsReady]);
+	useEffect(() => {
+		if (!markerRef.current || lat === null || lng === null) return;
+		const pos = new window.google.maps.LatLng(lat, lng);
+		markerRef.current.setPosition(pos);
+		mapRef.current?.panTo(pos);
+	}, [lat, lng]);
+	if (!mapsReady) return /* @__PURE__ */ jsx("div", {
+		className: "w-full h-56 rounded border border-border bg-gray-100 flex items-center justify-center text-xs text-ink-muted animate-pulse",
+		children: "Cargando mapa..."
+	});
+	return /* @__PURE__ */ jsx("div", {
+		ref: containerRef,
+		className: "w-full h-56 rounded border border-border"
 	});
 }
 var services_default = UNSAFE_withComponentProps(function Services() {
@@ -7305,12 +7568,15 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 			nombre: s.nombre,
 			descripcion: s.descripcion,
 			modalidad: s.modalidad,
-			tipo: s.tipo,
+			tipo: TIPOS_SERVICIO.includes(s.tipo) ? s.tipo : "Otro",
+			tipoPersonalizado: TIPOS_SERVICIO.includes(s.tipo) ? "" : s.tipo,
 			precio: String(s.precio),
 			duracion: String(s.duracion),
 			pausa: String(s.pausa),
 			min_cancelacion: String(s.min_cancelacion),
-			ubicacion: s.ubicacion ?? ""
+			ubicacion: s.ubicacion ?? "",
+			latitud: s.latitud ?? null,
+			longitud: s.longitud ?? null
 		});
 		setEditingId(id);
 	};
@@ -7325,23 +7591,29 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 	}));
 	const needsLocation = ["presencial", "hibrido"].includes(form.modalidad.toLowerCase());
 	const handleSave = async () => {
+		const tipoFinal = form.tipo === "Otro" ? form.tipoPersonalizado.trim() : form.tipo;
 		if (!form.nombre.trim()) return showToast("El nombre es requerido", false);
-		if (!form.tipo.trim()) return showToast("El tipo es requerido", false);
+		if (!tipoFinal.trim()) return showToast("El tipo es requerido", false);
 		if (!form.precio) return showToast("El precio es requerido", false);
 		if (!form.duracion) return showToast("La duración es requerida", false);
+		if (needsLocation && (form.latitud === null || form.longitud === null)) return showToast("Confirmá la ubicación en el mapa", false);
 		setSaving(true);
 		try {
 			const body = {
 				nombre: form.nombre,
 				descripcion: form.descripcion,
 				modalidad: form.modalidad.toLowerCase(),
-				tipo: form.tipo,
+				tipo: tipoFinal,
 				precio: Number(form.precio),
 				duracion: Number(form.duracion),
 				pausa: Number(form.pausa),
 				min_cancelacion: Number(form.min_cancelacion)
 			};
-			if (needsLocation && form.ubicacion.trim()) body.ubicacion = form.ubicacion.trim();
+			if (needsLocation) {
+				body.direccion = form.ubicacion.trim();
+				body.latitud = form.latitud;
+				body.longitud = form.longitud;
+			}
 			if (editingId === "new") {
 				await api.post("/servicios", body, token);
 				showToast("Servicio creado");
@@ -7369,12 +7641,6 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 		} finally {
 			setSaving(false);
 		}
-	};
-	const toggleActivo = (s) => {
-		setServices((prev) => prev.map((x) => x.servicio_id === s.servicio_id ? {
-			...x,
-			activo: !(x.activo ?? true)
-		} : x));
 	};
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8 max-w-6xl mx-auto",
@@ -7460,12 +7726,9 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 									className: `grid px-5 py-4 items-center ${isEditing || isDeleting ? "bg-accent/10" : ""}`,
 									style: { gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" },
 									children: [
-										/* @__PURE__ */ jsxs("div", {
+										/* @__PURE__ */ jsx("div", {
 											className: "flex items-center gap-3 min-w-0",
-											children: [/* @__PURE__ */ jsx(Toggle$1, {
-												checked: activo,
-												onChange: () => toggleActivo(s)
-											}), /* @__PURE__ */ jsxs("div", {
+											children: /* @__PURE__ */ jsxs("div", {
 												className: "min-w-0",
 												children: [/* @__PURE__ */ jsx("p", {
 													className: `text-sm font-semibold truncate ${activo ? "text-ink" : "text-ink-muted"}`,
@@ -7478,7 +7741,7 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 														s.ubicacion
 													]
 												})]
-											})]
+											})
 										}),
 										/* @__PURE__ */ jsxs("div", {
 											className: "text-sm text-ink",
@@ -7569,6 +7832,53 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 	});
 });
 function ServiceForm({ form, setF, saving, isEdit, onSave, onCancel, needsLocation }) {
+	const [geocodingError, setGeocodingError] = useState(null);
+	const [geocoding, setGeocoding] = useState(false);
+	const debounceRef = useRef(null);
+	useEffect(() => () => {
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+	}, []);
+	const handleAddressInput = (value) => {
+		setF({
+			ubicacion: value,
+			latitud: null,
+			longitud: null
+		});
+		setGeocodingError(null);
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		if (!value.trim()) return;
+		debounceRef.current = setTimeout(async () => {
+			setGeocoding(true);
+			try {
+				const res = await fetch(`${API_BASE}/geocoding?address=${encodeURIComponent(value)}`);
+				const json = await res.json();
+				if (res.status === 404) {
+					setGeocodingError("No se encontró la dirección, intentá con más detalle");
+					return;
+				}
+				if (res.ok && json.success) {
+					setF({
+						ubicacion: json.data.direccion_formateada,
+						latitud: json.data.latitud,
+						longitud: json.data.longitud
+					});
+					setGeocodingError(null);
+				}
+			} catch {} finally {
+				setGeocoding(false);
+			}
+		}, 600);
+	};
+	const handleMapDragEnd = (lat, lng, address) => {
+		setF({
+			latitud: lat,
+			longitud: lng,
+			ubicacion: address
+		});
+		setGeocodingError(null);
+	};
+	const locationConfirmed = form.latitud !== null && form.longitud !== null;
+	const canSave = !saving && (!needsLocation || locationConfirmed);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "bg-white border border-border rounded p-5 space-y-4",
 		children: [
@@ -7593,15 +7903,33 @@ function ServiceForm({ form, setF, saving, isEdit, onSave, onCancel, needsLocati
 					placeholder: "Ej. Sesión individual",
 					value: form.nombre,
 					onChange: (e) => setF({ nombre: e.target.value })
-				})] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-					className: labelCls$1,
-					children: "Tipo"
-				}), /* @__PURE__ */ jsx("input", {
-					className: inputCls$1,
-					placeholder: "Ej. Consulta, Terapia...",
-					value: form.tipo,
-					onChange: (e) => setF({ tipo: e.target.value })
-				})] })]
+				})] }), /* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsx("label", {
+						className: labelCls$1,
+						children: "Tipo"
+					}),
+					/* @__PURE__ */ jsxs("select", {
+						className: inputCls$1,
+						value: form.tipo,
+						onChange: (e) => setF({
+							tipo: e.target.value,
+							tipoPersonalizado: ""
+						}),
+						children: [/* @__PURE__ */ jsx("option", {
+							value: "",
+							children: "Seleccionar tipo"
+						}), TIPOS_SERVICIO.map((tipo) => /* @__PURE__ */ jsx("option", {
+							value: tipo,
+							children: tipo
+						}, tipo))]
+					}),
+					form.tipo === "Otro" && /* @__PURE__ */ jsx("input", {
+						className: `${inputCls$1} mt-2`,
+						placeholder: "Especifique el tipo de servicio",
+						value: form.tipoPersonalizado,
+						onChange: (e) => setF({ tipoPersonalizado: e.target.value })
+					})
+				] })]
 			}),
 			/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
 				className: labelCls$1,
@@ -7662,22 +7990,41 @@ function ServiceForm({ form, setF, saving, isEdit, onSave, onCancel, needsLocati
 					})] })
 				]
 			}),
-			needsLocation && /* @__PURE__ */ jsxs("div", { children: [
-				/* @__PURE__ */ jsx("label", {
-					className: labelCls$1,
-					children: "Dirección / Ubicación"
-				}),
-				/* @__PURE__ */ jsx("input", {
-					className: inputCls$1,
-					placeholder: "Ej. Av. Corrientes 1234, CABA",
-					value: form.ubicacion,
-					onChange: (e) => setF({ ubicacion: e.target.value })
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "text-xs text-ink-muted mt-1",
-					children: "Visible para el cliente al confirmar la reserva"
-				})
-			] }),
+			needsLocation && /* @__PURE__ */ jsxs("div", {
+				className: "space-y-2",
+				children: [/* @__PURE__ */ jsxs("div", { children: [
+					/* @__PURE__ */ jsx("label", {
+						className: labelCls$1,
+						children: "Dirección / Ubicación"
+					}),
+					/* @__PURE__ */ jsxs("div", {
+						className: "relative",
+						children: [/* @__PURE__ */ jsx("input", {
+							className: inputCls$1,
+							placeholder: "Ej. Av. Arequipa 123, Lima",
+							value: form.ubicacion,
+							onChange: (e) => handleAddressInput(e.target.value)
+						}), geocoding && /* @__PURE__ */ jsx("span", {
+							className: "absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted pointer-events-none",
+							children: "Buscando..."
+						})]
+					}),
+					geocodingError ? /* @__PURE__ */ jsx("p", {
+						className: "text-xs text-red-500 mt-1",
+						children: geocodingError
+					}) : locationConfirmed ? /* @__PURE__ */ jsx("p", {
+						className: "text-xs text-emerald-600 mt-1",
+						children: "✓ Ubicación confirmada en el mapa"
+					}) : /* @__PURE__ */ jsx("p", {
+						className: "text-xs text-ink-muted mt-1",
+						children: "Escribí la dirección para ubicarla en el mapa, o arrastrá el pin"
+					})
+				] }), /* @__PURE__ */ jsx(MapPicker, {
+					lat: form.latitud,
+					lng: form.longitud,
+					onDragEnd: handleMapDragEnd
+				})]
+			}),
 			/* @__PURE__ */ jsxs("div", {
 				className: "grid grid-cols-2 gap-4",
 				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
@@ -7710,8 +8057,9 @@ function ServiceForm({ form, setF, saving, isEdit, onSave, onCancel, needsLocati
 					children: "Cancelar"
 				}), /* @__PURE__ */ jsx("button", {
 					onClick: onSave,
-					disabled: saving,
-					className: "bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer",
+					disabled: !canSave,
+					title: needsLocation && !locationConfirmed ? "Confirmá la ubicación en el mapa" : void 0,
+					className: "bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed",
 					children: saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear servicio"
 				})]
 			})
@@ -8511,25 +8859,21 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 	const dragMoved = useRef(false);
 	const [rules, setRules] = useState({
 		aviso: "24",
-		buffer: "15",
 		reservas: "60",
 		cancelacion: "24"
-	});
-	const [toggles, setToggles] = useState({
-		aceptacionAuto: true,
-		enFeriados: false,
-		horaCompleta: true
 	});
 	const [showExcepciones, setShowExcepciones] = useState(false);
 	const [showNuevaExcepcion, setShowNuevaExcepcion] = useState(false);
 	const [nuevaExcepcion, setNuevaExcepcion] = useState({
-		fecha: "",
+		fecha_inicio: "",
+		fecha_fin: "",
 		diaCompleto: true,
 		hora_inicio: "",
 		hora_fin: "",
 		motivo: ""
 	});
 	const [excepciones, setExcepciones] = useState([]);
+	const [errorExcepcion, setErrorExcepcion] = useState("");
 	useEffect(() => {
 		setLoadingServicios(true);
 		api.get("/mis-servicios", token).then((res) => {
@@ -8546,6 +8890,15 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 		api.get(`/servicios/${selectedId}/disponibilidad`).then((res) => {
 			setSlots(res.success && res.data.length > 0 ? dispsToSlots(res.data) : structuredClone(DEFAULT_SLOTS));
 		}).catch(() => setSlots(structuredClone(DEFAULT_SLOTS))).finally(() => setLoadingDisp(false));
+	}, [selectedId, servicios]);
+	useEffect(() => {
+		const servicio = servicios.find((s) => s.servicio_id === selectedId);
+		if (!servicio) return;
+		setRules({
+			aviso: String(servicio.min_aviso ?? 24),
+			reservas: String(servicio.max_anticipacion_dias ?? 60),
+			cancelacion: String(servicio.min_cancelacion ?? 24)
+		});
 	}, [selectedId, servicios]);
 	useEffect(() => {
 		if (!showExcepciones) return;
@@ -8757,7 +9110,12 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 		setSaving(true);
 		setError(null);
 		try {
-			const res = await api.put(`/servicios/${selectedId}/disponibilidad`, { disponibilidades: slotsToDisps(slots) }, token);
+			const res = await api.put(`/servicios/${selectedId}/disponibilidad`, {
+				disponibilidades: slotsToDisps(slots),
+				min_aviso: Number(rules.aviso),
+				min_cancelacion: Number(rules.cancelacion),
+				max_anticipacion_dias: Number(rules.reservas)
+			}, token);
 			if (res.success) {
 				setSaved(true);
 				setTimeout(() => setSaved(false), 3e3);
@@ -8768,20 +9126,22 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 			setSaving(false);
 		}
 	};
+	const hoy = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
 	const handleCrearExcepcion = async () => {
-		if (!nuevaExcepcion.fecha) return;
+		if (!nuevaExcepcion.fecha_inicio || !nuevaExcepcion.fecha_fin) return;
 		try {
 			await api.post("/excepciones", {
-				fecha: nuevaExcepcion.fecha,
-				hora_inicio: nuevaExcepcion.diaCompleto ? void 0 : nuevaExcepcion.hora_inicio,
-				hora_fin: nuevaExcepcion.diaCompleto ? void 0 : nuevaExcepcion.hora_fin,
+				fecha_desde: nuevaExcepcion.fecha_inicio,
+				fecha_hasta: nuevaExcepcion.fecha_fin,
+				hora_inicio: nuevaExcepcion.diaCompleto ? null : nuevaExcepcion.hora_inicio,
+				hora_fin: nuevaExcepcion.diaCompleto ? null : nuevaExcepcion.hora_fin,
 				motivo: nuevaExcepcion.motivo
 			}, token);
 			setShowNuevaExcepcion(false);
 			const res = await api.get("/excepciones", token);
 			if (res.success) setExcepciones(res.data);
 		} catch (e) {
-			alert("Error al crear excepción");
+			setErrorExcepcion(e instanceof Error ? e.message : "Error al crear excepción");
 		}
 	};
 	const handleDeleteExcepcion = async (id) => {
@@ -8810,7 +9170,10 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 						className: "font-display text-3xl text-ink",
 						children: "Disponibilidad"
 					}), /* @__PURE__ */ jsx("button", {
-						onClick: () => setShowExcepciones(true),
+						onClick: () => {
+							setErrorExcepcion("");
+							setShowNuevaExcepcion(true);
+						},
 						className: "self-start sm:self-auto px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200",
 						children: "Excepciones"
 					})]
@@ -8851,9 +9214,9 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 							children: excepciones.map((e) => /* @__PURE__ */ jsxs("div", {
 								className: "border rounded-xl p-4",
 								children: [
-									/* @__PURE__ */ jsx("div", {
+									/* @__PURE__ */ jsxs("div", {
 										className: "font-medium",
-										children: e.fecha
+										children: [e.fecha_desde, e.fecha_desde !== e.fecha_hasta && ` al ${e.fecha_hasta}`]
 									}),
 									/* @__PURE__ */ jsx("div", {
 										className: "text-sm text-ink-muted",
@@ -8895,13 +9258,27 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 						children: [
 							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
 								className: "block text-sm font-medium mb-1",
-								children: "Fecha"
+								children: "Desde"
 							}), /* @__PURE__ */ jsx("input", {
 								type: "date",
-								value: nuevaExcepcion.fecha,
+								min: hoy,
+								value: nuevaExcepcion.fecha_inicio,
 								onChange: (e) => setNuevaExcepcion({
 									...nuevaExcepcion,
-									fecha: e.target.value
+									fecha_inicio: e.target.value
+								}),
+								className: "w-full border rounded-lg px-3 py-2"
+							})] }),
+							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+								className: "block text-sm font-medium mb-1",
+								children: "Hasta"
+							}), /* @__PURE__ */ jsx("input", {
+								type: "date",
+								min: hoy,
+								value: nuevaExcepcion.fecha_fin,
+								onChange: (e) => setNuevaExcepcion({
+									...nuevaExcepcion,
+									fecha_fin: e.target.value
 								}),
 								className: "w-full border rounded-lg px-3 py-2"
 							})] }),
@@ -8951,6 +9328,10 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 								rows: 3,
 								className: "w-full border rounded-lg px-3 py-2"
 							})] }),
+							errorExcepcion && /* @__PURE__ */ jsx("div", {
+								className: "bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm",
+								children: errorExcepcion
+							}),
 							/* @__PURE__ */ jsxs("div", {
 								className: "flex justify-end gap-2 pt-2",
 								children: [/* @__PURE__ */ jsx("button", {
@@ -9285,202 +9666,133 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 						})(),
 						/* @__PURE__ */ jsxs("div", {
 							className: "bg-surface border border-border rounded-2xl p-5",
-							children: [
-								/* @__PURE__ */ jsx("h3", {
-									className: "text-sm font-bold text-ink mb-4",
-									children: "Reglas de la agenda"
-								}),
-								/* @__PURE__ */ jsxs("div", {
-									className: "space-y-4",
-									children: [
-										/* @__PURE__ */ jsxs("div", {
-											className: "flex items-start justify-between gap-3",
-											children: [/* @__PURE__ */ jsxs("div", {
-												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ jsx("p", {
-													className: "text-sm font-semibold text-ink",
-													children: "Duración mínima de aviso"
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted mt-0.5",
-													children: "¿Cuánta anticipación al reservar?"
-												})]
-											}), /* @__PURE__ */ jsxs("select", {
-												value: rules.aviso,
-												onChange: (e) => setRules((r) => ({
-													...r,
-													aviso: e.target.value
-												})),
-												className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
-												children: [
-													/* @__PURE__ */ jsx("option", {
-														value: "1",
-														children: "1 hora"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "2",
-														children: "2 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "12",
-														children: "12 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "24",
-														children: "24 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "48",
-														children: "48 horas"
-													})
-												]
+							children: [/* @__PURE__ */ jsx("h3", {
+								className: "text-sm font-bold text-ink mb-4",
+								children: "Reglas de la agenda"
+							}), /* @__PURE__ */ jsxs("div", {
+								className: "space-y-4",
+								children: [
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex items-start justify-between gap-3",
+										children: [/* @__PURE__ */ jsxs("div", {
+											className: "flex-1 min-w-0",
+											children: [/* @__PURE__ */ jsx("p", {
+												className: "text-sm font-semibold text-ink",
+												children: "Duración mínima de aviso"
+											}), /* @__PURE__ */ jsx("p", {
+												className: "text-xs text-ink-muted mt-0.5",
+												children: "¿Cuánta anticipación al reservar?"
 											})]
-										}),
-										/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
-										/* @__PURE__ */ jsxs("div", {
-											className: "flex items-start justify-between gap-3",
-											children: [/* @__PURE__ */ jsxs("div", {
-												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ jsx("p", {
-													className: "text-sm font-semibold text-ink",
-													children: "Buffer entre Sesiones"
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted mt-0.5",
-													children: "Tiempo de descanso entre sesiones"
-												})]
-											}), /* @__PURE__ */ jsxs("select", {
-												value: rules.buffer,
-												onChange: (e) => setRules((r) => ({
-													...r,
-													buffer: e.target.value
-												})),
-												className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
-												children: [
-													/* @__PURE__ */ jsx("option", {
-														value: "0",
-														children: "0 min"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "5",
-														children: "5 min"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "10",
-														children: "10 min"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "15",
-														children: "15 min"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "30",
-														children: "30 min"
-													})
-												]
-											})]
-										}),
-										/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
-										/* @__PURE__ */ jsxs("div", {
-											className: "flex items-start justify-between gap-3",
-											children: [/* @__PURE__ */ jsxs("div", {
-												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ jsx("p", {
-													className: "text-sm font-semibold text-ink",
-													children: "Reservas Anticipadas"
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted mt-0.5",
-													children: "Máximo de días a futuro"
-												})]
-											}), /* @__PURE__ */ jsxs("select", {
-												value: rules.reservas,
-												onChange: (e) => setRules((r) => ({
-													...r,
-													reservas: e.target.value
-												})),
-												className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
-												children: [
-													/* @__PURE__ */ jsx("option", {
-														value: "7",
-														children: "7 días"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "14",
-														children: "14 días"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "30",
-														children: "30 días"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "60",
-														children: "60 días"
-													})
-												]
-											})]
-										}),
-										/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
-										/* @__PURE__ */ jsxs("div", {
-											className: "flex items-start justify-between gap-3",
-											children: [/* @__PURE__ */ jsxs("div", {
-												className: "flex-1 min-w-0",
-												children: [/* @__PURE__ */ jsx("p", {
-													className: "text-sm font-semibold text-ink",
-													children: "Política de Cancelación"
-												}), /* @__PURE__ */ jsx("p", {
-													className: "text-xs text-ink-muted mt-0.5",
-													children: "Tiempo mínimo sin cargo"
-												})]
-											}), /* @__PURE__ */ jsxs("select", {
-												value: rules.cancelacion,
-												onChange: (e) => setRules((r) => ({
-													...r,
-													cancelacion: e.target.value
-												})),
-												className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
-												children: [
-													/* @__PURE__ */ jsx("option", {
-														value: "12",
-														children: "12 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "24",
-														children: "24 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "48",
-														children: "48 horas"
-													}),
-													/* @__PURE__ */ jsx("option", {
-														value: "72",
-														children: "72 horas"
-													})
-												]
-											})]
-										})
-									]
-								}),
-								/* @__PURE__ */ jsx("div", {
-									className: "mt-4 pt-4 border-t border-border/40 space-y-3",
-									children: [{
-										key: "aceptacionAuto",
-										label: "Aceptar automáticamente"
-									}, {
-										key: "enFeriados",
-										label: "Permitir reservas en días Feriados"
-									}].map(({ key, label }) => /* @__PURE__ */ jsxs("div", {
-										className: "flex items-center justify-between",
-										children: [/* @__PURE__ */ jsx("span", {
-											className: "text-sm text-ink",
-											children: label
-										}), /* @__PURE__ */ jsx(Toggle, {
-											checked: toggles[key],
-											onChange: () => setToggles((t) => ({
-												...t,
-												[key]: !t[key]
-											}))
+										}), /* @__PURE__ */ jsxs("select", {
+											value: rules.aviso,
+											onChange: (e) => setRules((r) => ({
+												...r,
+												aviso: e.target.value
+											})),
+											className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
+											children: [
+												/* @__PURE__ */ jsx("option", {
+													value: "1",
+													children: "1 hora"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "2",
+													children: "2 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "12",
+													children: "12 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "24",
+													children: "24 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "48",
+													children: "48 horas"
+												})
+											]
 										})]
-									}, key))
-								})
-							]
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex items-start justify-between gap-3",
+										children: [/* @__PURE__ */ jsxs("div", {
+											className: "flex-1 min-w-0",
+											children: [/* @__PURE__ */ jsx("p", {
+												className: "text-sm font-semibold text-ink",
+												children: "Reservas Anticipadas"
+											}), /* @__PURE__ */ jsx("p", {
+												className: "text-xs text-ink-muted mt-0.5",
+												children: "Máximo de días a futuro"
+											})]
+										}), /* @__PURE__ */ jsxs("select", {
+											value: rules.reservas,
+											onChange: (e) => setRules((r) => ({
+												...r,
+												reservas: e.target.value
+											})),
+											className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
+											children: [
+												/* @__PURE__ */ jsx("option", {
+													value: "7",
+													children: "7 días"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "14",
+													children: "14 días"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "30",
+													children: "30 días"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "60",
+													children: "60 días"
+												})
+											]
+										})]
+									}),
+									/* @__PURE__ */ jsx("div", { className: "border-t border-border/30" }),
+									/* @__PURE__ */ jsxs("div", {
+										className: "flex items-start justify-between gap-3",
+										children: [/* @__PURE__ */ jsxs("div", {
+											className: "flex-1 min-w-0",
+											children: [/* @__PURE__ */ jsx("p", {
+												className: "text-sm font-semibold text-ink",
+												children: "Política de Cancelación"
+											}), /* @__PURE__ */ jsx("p", {
+												className: "text-xs text-ink-muted mt-0.5",
+												children: "Tiempo mínimo sin cargo"
+											})]
+										}), /* @__PURE__ */ jsxs("select", {
+											value: rules.cancelacion,
+											onChange: (e) => setRules((r) => ({
+												...r,
+												cancelacion: e.target.value
+											})),
+											className: "text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0",
+											children: [
+												/* @__PURE__ */ jsx("option", {
+													value: "12",
+													children: "12 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "24",
+													children: "24 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "48",
+													children: "48 horas"
+												}),
+												/* @__PURE__ */ jsx("option", {
+													value: "72",
+													children: "72 horas"
+												})
+											]
+										})]
+									})
+								]
+							})]
 						}),
 						/* @__PURE__ */ jsxs("button", {
 							onClick: handleSave,
@@ -9497,81 +9809,56 @@ var availability_default = UNSAFE_withComponentProps(function Availability() {
 //#endregion
 //#region app/routes/professional/payments.tsx
 var payments_exports$1 = /* @__PURE__ */ __exportAll({ default: () => payments_default$1 });
-var transactions = [
-	{
-		date: "22 may",
-		client: "Lucía Pérez",
-		service: "Sesión individual · paquete",
-		amount: 40,
-		status: "liquidado"
-	},
-	{
-		date: "21 may",
-		client: "Carlos Ruiz",
-		service: "Primera consulta",
-		amount: 55,
-		status: "pendiente"
-	},
-	{
-		date: "20 may",
-		client: "Marta López",
-		service: "Sesión de pareja",
-		amount: 78,
-		status: "liquidado"
-	},
-	{
-		date: "19 may",
-		client: "Joaquín Vega",
-		service: "Sesión individual",
-		amount: 48,
-		status: "liquidado"
-	},
-	{
-		date: "18 may",
-		client: "Sol Méndez",
-		service: "Seguimiento breve",
-		amount: 28,
-		status: "pendiente"
-	}
-];
 var badgeCls$1 = {
-	liquidado: "badge badge-confirmada",
+	aprobado: "badge badge-confirmada",
 	pendiente: "badge badge-pendiente"
 };
 var payments_default$1 = UNSAFE_withComponentProps(function Payments() {
+	const { token, user } = useAuth();
+	const [transactions, setTransactions] = useState([]);
+	const [resumen, setResumen] = useState({
+		total_mes: 0,
+		pagado: 0,
+		pendiente: 0
+	});
+	const [loading, setLoading] = useState(true);
+	useEffect(() => {
+		if (!token || !user) return;
+		Promise.all([api.get("/profesional/pagos", token), api.get("/profesional/pagos/resumen", token)]).then(([pagosRes, resumenRes]) => {
+			setTransactions(pagosRes.data ?? []);
+			setResumen(resumenRes.data ?? {});
+		}).catch(console.error).finally(() => setLoading(false));
+	}, [token, user]);
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8 max-w-5xl mx-auto",
 		children: [
-			/* @__PURE__ */ jsxs("div", {
+			/* @__PURE__ */ jsx("div", {
 				className: "flex items-center justify-between mb-6",
-				children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
+				children: /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("h1", {
 					className: "font-display text-3xl text-ink",
 					children: "Cobros"
 				}), /* @__PURE__ */ jsx("p", {
 					className: "text-ink-muted mt-1",
 					children: "Historial de pagos y liquidaciones"
-				})] }), /* @__PURE__ */ jsx("button", {
-					className: "border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink",
-					children: "Exportar"
-				})]
+				})] })
 			}),
 			/* @__PURE__ */ jsx("div", {
 				className: "grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8",
 				children: [
 					{
 						label: "INGRESOS DEL MES",
-						value: "€2.840",
-						sub: "38 sesiones"
+						value: `$${resumen.total_mes}`,
+						sub: "Total generado"
 					},
 					{
-						label: "PENDIENTE LIQUIDACIÓN",
-						value: "€890",
-						sub: "Se acreditan el viernes"
+						label: "PAGADO",
+						value: `$${resumen.pagado}`,
+						sub: "Ya acreditado"
 					},
 					{
-						label: "PRÓXIMA LIQUIDACIÓN",
-						value: "24 may",
-						sub: "€420 estimados"
+						label: "PENDIENTE",
+						value: `$${resumen.pendiente}`,
+						sub: "Por liquidar"
 					}
 				].map((c) => /* @__PURE__ */ jsxs("div", {
 					className: "bg-surface border border-border rounded p-5",
@@ -9592,61 +9879,64 @@ var payments_default$1 = UNSAFE_withComponentProps(function Payments() {
 				}, c.label))
 			}),
 			/* @__PURE__ */ jsx("div", {
-				className: "border border-border rounded overflow-x-auto",
-				children: /* @__PURE__ */ jsxs("div", {
-					style: { minWidth: "520px" },
-					children: [/* @__PURE__ */ jsx("div", {
-						className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
-						children: [
-							"FECHA",
-							"CLIENTE",
-							"SERVICIO",
-							"MONTO",
-							"ESTADO"
-						].map((h, i) => /* @__PURE__ */ jsx("div", {
-							className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-1" : i === 1 ? "col-span-3" : i === 2 ? "col-span-4" : i === 3 ? "col-span-2" : "col-span-2"}`,
-							children: h
-						}, i))
-					}), transactions.map((t, i) => /* @__PURE__ */ jsxs("div", {
-						className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
-						children: [
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-1",
-								children: /* @__PURE__ */ jsx("span", {
-									className: "text-sm text-ink-muted",
-									children: t.date
+				className: "border border-border rounded overflow-x-auto bg-surface",
+				children: /* @__PURE__ */ jsx("div", {
+					className: "min-w-[520px] w-full",
+					children: /* @__PURE__ */ jsxs("div", {
+						className: "bg-bg border-b border-border w-full",
+						children: [/* @__PURE__ */ jsx("div", {
+							className: "grid grid-cols-12 px-5 py-3 w-full",
+							children: [
+								"FECHA",
+								"CLIENTE",
+								"SERVICIO",
+								"MONTO",
+								"ESTADO"
+							].map((h, i) => /* @__PURE__ */ jsx("div", {
+								className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-2" : i === 1 ? "col-span-3" : i === 2 ? "col-span-4" : i === 3 ? "col-span-2" : "col-span-1 text-center"}`,
+								children: h
+							}, i))
+						}), transactions.map((t, i) => /* @__PURE__ */ jsxs("div", {
+							className: "grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
+							children: [
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-2",
+									children: /* @__PURE__ */ jsx("span", {
+										className: "text-sm text-ink-muted whitespace-nowrap",
+										children: t.fecha
+									})
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-3",
+									children: /* @__PURE__ */ jsx("span", {
+										className: "text-sm font-semibold text-ink text-center",
+										children: t.cliente
+									})
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-4",
+									children: /* @__PURE__ */ jsx("span", {
+										className: "text-sm text-ink-muted",
+										children: t.servicio
+									})
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-2",
+									children: /* @__PURE__ */ jsxs("span", {
+										className: "font-display text-lg font-bold text-ink",
+										children: ["$", t.monto]
+									})
+								}),
+								/* @__PURE__ */ jsx("div", {
+									className: "col-span-1 text-center",
+									children: /* @__PURE__ */ jsx("span", {
+										className: badgeCls$1[t.estado] ?? "badge",
+										children: t.estado.toUpperCase()
+									})
 								})
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-3",
-								children: /* @__PURE__ */ jsx("span", {
-									className: "text-sm font-semibold text-ink",
-									children: t.client
-								})
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-4",
-								children: /* @__PURE__ */ jsx("span", {
-									className: "text-sm text-ink-muted",
-									children: t.service
-								})
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2",
-								children: /* @__PURE__ */ jsxs("span", {
-									className: "font-display text-lg font-bold text-ink",
-									children: ["€", t.amount]
-								})
-							}),
-							/* @__PURE__ */ jsx("div", {
-								className: "col-span-2",
-								children: /* @__PURE__ */ jsx("span", {
-									className: badgeCls$1[t.status],
-									children: t.status.toUpperCase()
-								})
-							})
-						]
-					}, i))]
+							]
+						}, i))]
+					})
 				})
 			})
 		]
@@ -10652,6 +10942,7 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 	const { token } = useAuth();
 	const [clients, setClients] = useState([]);
 	const [professionals, setProfessionals] = useState([]);
+	const [loadingId, setLoadingId] = useState(null);
 	useEffect(() => {
 		if (!token) return;
 		const loadUsers = async () => {
@@ -10665,6 +10956,32 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 		};
 		loadUsers();
 	}, [token]);
+	const [modal, setModal] = useState({
+		open: false,
+		message: ""
+	});
+	const blockUser = async (id) => {
+		try {
+			setLoadingId(id);
+			const res = await api.post(`/admin/blockUser/${id}`, {}, token);
+			if (res.success) {
+				const toggle = (list) => list.map((u) => u.id === id ? {
+					...u,
+					activo: !u.activo
+				} : u);
+				setClients(toggle(clients));
+				setProfessionals(toggle(professionals));
+				setModal({
+					open: true,
+					message: res.message
+				});
+			}
+		} catch (e) {
+			console.error("Error cambiando estado:", e);
+		} finally {
+			setLoadingId(null);
+		}
+	};
 	const getInitials = (name) => name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 	const Table = ({ title, data }) => /* @__PURE__ */ jsxs("div", {
 		className: "mb-10",
@@ -10682,16 +10999,17 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 						"EMAIL",
 						"SESIONES",
 						"DESDE",
+						"ESTADO",
 						""
 					].map((h, i) => /* @__PURE__ */ jsx("div", {
-						className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-7" : i === 1 ? "col-span-7" : i === 2 ? "col-span-3 text-center" : i === 3 ? "col-span-5 text-center" : "col-span-2"}`,
+						className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${i === 0 ? "col-span-6" : i === 1 ? "col-span-6" : i === 2 ? "col-span-3 text-center" : i === 3 ? "col-span-4 text-center" : i === 4 ? "col-span-3 text-center" : "col-span-2"}`,
 						children: h
 					}, i))
 				}), data.map((u) => /* @__PURE__ */ jsxs("div", {
 					className: "grid grid-cols-24 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface",
 					children: [
 						/* @__PURE__ */ jsxs("div", {
-							className: "col-span-7 flex items-center gap-3",
+							className: "col-span-6 flex items-center gap-3",
 							children: [/* @__PURE__ */ jsx("div", {
 								className: "w-9 h-9 rounded-lg bg-violet-500 flex items-center justify-center text-white text-xs font-bold",
 								children: getInitials(u.name)
@@ -10701,7 +11019,7 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 							})]
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "col-span-7 min-w-0",
+							className: "col-span-6 min-w-0",
 							children: /* @__PURE__ */ jsx("span", {
 								className: "text-sm text-ink-muted block truncate sm:truncate-none sm:break-words",
 								children: u.email
@@ -10715,17 +11033,29 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 							})
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "col-span-5 text-center",
+							className: "col-span-4 text-center",
 							children: /* @__PURE__ */ jsx("span", {
 								className: "text-sm text-ink-muted justify items-center",
 								children: u.joined
 							})
 						}),
 						/* @__PURE__ */ jsx("div", {
-							className: "col-span-1",
+							className: "col-span-3 text-center",
+							children: u.activo ? /* @__PURE__ */ jsx("span", {
+								className: "text-xs px-2 py-1 rounded bg-green-500 text-white",
+								children: "Activo"
+							}) : /* @__PURE__ */ jsx("span", {
+								className: "text-xs px-2 py-1 rounded bg-red-500 text-white",
+								children: "Bloqueado"
+							})
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "col-span-2",
 							children: /* @__PURE__ */ jsx("button", {
-								className: "text-ink-muted hover:text-ink p-1",
-								children: "⋯"
+								onClick: () => blockUser(Number(u.id)),
+								disabled: loadingId === u.id,
+								className: `text-xs px-2 py-1 rounded text-white ${u.activo ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"} ${loadingId === u.id ? "opacity-60 cursor-not-allowed" : ""}`,
+								children: loadingId === u.id ? "Cargando..." : u.activo ? "Bloquear" : "Activar"
 							})
 						})
 					]
@@ -10753,6 +11083,23 @@ var users_default = UNSAFE_withComponentProps(function AdminUsers() {
 			/* @__PURE__ */ jsx(Table, {
 				title: "Profesionales",
 				data: professionals
+			}),
+			modal.open && /* @__PURE__ */ jsx("div", {
+				className: "fixed inset-0 bg-black/40 flex items-center justify-center z-50",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "bg-white rounded-lg p-6 shadow-lg w-[300px] text-center",
+					children: [/* @__PURE__ */ jsx("p", {
+						className: "text-sm text-ink mb-4",
+						children: modal.message
+					}), /* @__PURE__ */ jsx("button", {
+						onClick: () => setModal({
+							open: false,
+							message: ""
+						}),
+						className: "bg-violet-500 text-white px-4 py-2 rounded",
+						children: "OK"
+					})]
+				})
 			})
 		]
 	});
@@ -10834,7 +11181,7 @@ var payments_default = UNSAFE_withComponentProps(function AdminPayments() {
 				children: /* @__PURE__ */ jsxs("div", {
 					style: { minWidth: "640px" },
 					children: [/* @__PURE__ */ jsxs("div", {
-						className: "flex px-5 py-3 border-b border-border bg-bg text-xs font-bold text-ink-muted uppercase tracking-widest",
+						className: "flex px-5 py-3 border-b border-border bg-bg text-xs font-bold text-ink-muted uppercase tracking-widest items-center",
 						children: [
 							/* @__PURE__ */ jsx("div", {
 								className: "w-24",
@@ -11399,9 +11746,9 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-Dtx0gCyo.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
-			"css": ["/assets/root-DFPc2p_x.css"],
+			"module": "/assets/root-CgdQvbnh.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
+			"css": ["/assets/root-6VFZ2a-t.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -11420,8 +11767,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/home-9mke8Zm0.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/home-jbRgOG_y.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11441,8 +11788,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/login-DVItVFRt.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/login-DLGBmClL.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11462,8 +11809,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/register-CuGZr4gQ.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/register-DgngsB-s.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11483,8 +11830,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/auth.google.callback-CrgL6Eyt.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/auth.google.callback-CjDD0zji.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11504,11 +11851,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-BI2HZE8D.js",
+			"module": "/assets/_layout-D1AwYk45.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-DJ39hRro.js"
+				"/assets/AuthContext-NE5TAd_g.js",
+				"/assets/NotificationContext-Bop2CCqz.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11529,8 +11876,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-nQ-iQGHH.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/dashboard-BuCkQy9F.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11550,8 +11897,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/discover-Dle6i-Ul.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/discover-Bq7jFXMc.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11571,8 +11918,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/professional._id-CEJcnmTT.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/professional._id-C46H-u4s.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11613,8 +11960,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/package._id.pay-Didvq8NR.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/package._id.pay-BiYyckyf.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11634,8 +11981,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/compra-package._id.pay-BiXF3jVr.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/compra-package._id.pay-poVMicct.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11655,8 +12002,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/packages-DdZVNa-F.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/packages-DufKLb16.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11697,10 +12044,10 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-CxyeqdLc.js",
+			"module": "/assets/payments-BdvKjozo.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/AuthContext-DzGty-Aa.js",
+				"/assets/AuthContext-NE5TAd_g.js",
 				"/assets/ReactToastify-CH_hjN7z.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
@@ -11722,12 +12069,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-D4MNgO-S.js",
+			"module": "/assets/notifications-BimVkBZI.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/NotificationContext-DJ39hRro.js",
+				"/assets/NotificationContext-Bop2CCqz.js",
 				"/assets/bell-B_0dwYTY.js",
-				"/assets/AuthContext-DzGty-Aa.js"
+				"/assets/AuthContext-NE5TAd_g.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11748,10 +12095,10 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/mis-reservas-BRGXzagT.js",
+			"module": "/assets/mis-reservas-BbEP9JLZ.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/AuthContext-DzGty-Aa.js",
+				"/assets/AuthContext-NE5TAd_g.js",
 				"/assets/ReactToastify-CH_hjN7z.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
@@ -11773,8 +12120,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-BsMrt6hg.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/profile-ADk_YCeL.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11794,11 +12141,11 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-BbIdu2a1.js",
+			"module": "/assets/_layout-C6BL7_YU.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/AuthContext-DzGty-Aa.js",
-				"/assets/NotificationContext-DJ39hRro.js"
+				"/assets/AuthContext-NE5TAd_g.js",
+				"/assets/NotificationContext-Bop2CCqz.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -11819,8 +12166,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/clients-DuA52wGB.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/clients-kr9Ruq1R.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11840,8 +12187,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-4PaDtDbU.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/dashboard-B2bZDwoc.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11861,8 +12208,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/services-CWNrNP8T.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/services-BVCn45eV.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11882,8 +12229,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/service-packages-B9IP5cmX.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/service-packages-DLgNAinG.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11903,8 +12250,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-CrpxNiGO.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/availability-G46YMYGq.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11924,8 +12271,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-lBwLL4Rd.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js"],
+			"module": "/assets/payments-rzFqIB1H.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11966,8 +12313,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-BSZI_Fun.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/profile-BCBnq8CS.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -11987,12 +12334,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-BGXg4K2W.js",
+			"module": "/assets/notifications-WdDElHmW.js",
 			"imports": [
 				"/assets/jsx-runtime-B75Xqy3m.js",
-				"/assets/NotificationContext-DJ39hRro.js",
+				"/assets/NotificationContext-Bop2CCqz.js",
 				"/assets/bell-B_0dwYTY.js",
-				"/assets/AuthContext-DzGty-Aa.js"
+				"/assets/AuthContext-NE5TAd_g.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12013,8 +12360,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-DUi0RfrJ.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/_layout-0BabZFh8.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12034,8 +12381,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-B6uF7RTo.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/dashboard--3b9XTSK.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12055,8 +12402,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/users-BfExO8CR.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/users-BBq742c0.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12076,8 +12423,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-CZPjdXSL.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/payments-BZr3QybX.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12097,8 +12444,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/videollamada-7TRJu2nm.js",
-			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-DzGty-Aa.js"],
+			"module": "/assets/videollamada-CGbHxjVZ.js",
+			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -12148,8 +12495,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-e1cc3276.js",
-	"version": "e1cc3276",
+	"url": "/assets/manifest-c6109759.js",
+	"version": "c6109759",
 	"sri": void 0
 };
 //#endregion

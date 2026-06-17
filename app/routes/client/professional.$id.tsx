@@ -107,7 +107,7 @@ function MiniCalendar({
           if (!day) return <div key={i} />;
           const date = new Date(year, month, day);
           const dateStr = toDateStr(year, month, day);
-          const isPast = date <= today;
+          const isPast = date < today;
           const dow = DOW_MAP[date.getDay()];
           const isAvailable = availableDays.has(dow) && !isPast;
           const isSelected = selectedDate === dateStr;
@@ -160,7 +160,7 @@ function BookingModal({
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
   const [success, setSuccess]       = useState(false);
-
+ 
   
   // Step 1: create the reservation (only for "sitio"; PayPal does it in createOrder)
   const confirmSitio = async () => {
@@ -188,7 +188,12 @@ function BookingModal({
         throw new Error(res.message ?? "Error al crear la reserva");
       }
 
+      window.dispatchEvent(
+        new CustomEvent("reserva-updated")
+      );
+
       setSuccess(true);
+
     } catch (e: any) {
       setError(e.message ?? "Error al reservar");
     } finally {
@@ -261,8 +266,13 @@ function BookingModal({
                 </div>
                 <p className="text-base font-bold text-ink pt-1">$ {Number(service.precio).toFixed(0)}</p>
               </div>
-
+               {error && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                  {error}
+                </div>
+              )}
               {/* Confirm button — only for "sitio" */}
+             
                 <button
                   onClick={confirmSitio}
                   disabled={loading}
@@ -317,6 +327,25 @@ export default function ProfessionalDetail() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ hora: string; modalidad: string } | null>(null);
   const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [calificaciones, setCalificaciones] = useState<any[]>([]);
+  const [promedio, setPromedio] = useState(0);
+  const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
+  const [loadingCalificaciones, setLoadingCalificaciones] = useState(false);
+
+  useEffect(() => {
+    if (!id || !token) return;
+    setLoadingCalificaciones(true);
+
+    api
+      .get(`/profesionales/${id}/calificaciones`, token)
+      .then((res: any) => {
+        setCalificaciones(res.data ?? []);
+        setPromedio(res.promedio ?? 0);
+        setCantidadCalificaciones(res.cantidad ?? 0);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingCalificaciones(false));
+  }, [id, token]);
 
   // Load profile
   useEffect(() => {
@@ -376,6 +405,40 @@ export default function ProfessionalDetail() {
         setSlotsError(e.message ?? "Error al cargar horarios")
       )
       .finally(() => setLoadingSlots(false));
+  }, [selectedDate, selectedService]);
+
+  useEffect(() => {
+    if (!selectedDate || !selectedService) return;
+
+    const handler = async () => {
+      console.log("SLOTS REFRESH");
+
+      try {
+        const res = await api.get<{
+          success: boolean;
+          data: { hora: string; modalidad: string }[];
+        }>(
+          `/servicios/${selectedService.servicio_id}/slots?fecha=${selectedDate}`
+        );
+
+        if (res.success) {
+          setSlots(res.data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    window.addEventListener(
+      "reserva-updated",
+      handler
+    );
+
+    return () =>
+      window.removeEventListener(
+        "reserva-updated",
+        handler
+      );
   }, [selectedDate, selectedService]);
 
   useEffect(() => {
@@ -535,7 +598,7 @@ export default function ProfessionalDetail() {
             <div className="p-6">
               {activeTab === "Acerca de" && (
                 <p className="text-sm text-ink leading-relaxed">
-                  {profesional?.descripcion ?? "Este profesional aún no ha completado su descripción."}
+                  {"Descripción:"} {profesional?.descripcion ?? "Este profesional aún no ha completado su descripción."}
                 </p>
               )}
 
@@ -593,9 +656,69 @@ export default function ProfessionalDetail() {
               )}
 
               {activeTab === "Reseñas" && (
-                <div className="flex flex-col items-center py-8 text-center">
-                  <ion-icon name="star-outline" style={{ fontSize: "36px", color: "var(--color-ink-muted)", marginBottom: "8px" }} />
-                  <p className="text-ink-muted text-sm">Las reseñas estarán disponibles próximamente.</p>
+                <div className="space-y-4">
+
+                  {/* Header igual concepto dashboard */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display text-lg text-ink">
+                      Reseñas
+                    </h3>
+
+                    <div className="text-sm text-ink-muted">
+                      ⭐ {promedio.toFixed(1)} · {cantidadCalificaciones} opiniones
+                    </div>
+                  </div>
+
+                  {/* Loading */}
+                  {loadingCalificaciones && (
+                    <div className="text-sm text-ink-muted py-6">
+                      Cargando reseñas...
+                    </div>
+                  )}
+
+                  {/* Empty */}
+                  {!loadingCalificaciones && calificaciones.length === 0 && (
+                    <div className="flex flex-col items-center py-8 text-center">
+                      <ion-icon
+                        name="star-outline"
+                        style={{ fontSize: "36px", color: "var(--color-ink-muted)" }}
+                      />
+                      <p className="text-sm text-ink-muted mt-2">
+                        Este profesional aún no tiene reseñas
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Lista estilo dashboard profesional */}
+                  <div className="space-y-2">
+                    {calificaciones.map((c) => (
+                      <div
+                        key={c.calificacion_id}
+                        className="p-4 border border-border rounded-xl bg-bg"
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-ink">
+                            {c.cliente_nombre ?? "Cliente"}
+                          </p>
+
+                          <span className="text-amber-500 text-sm font-bold">
+                            ⭐ {c.puntuacion}/5
+                          </span>
+                        </div>
+
+                        {c.comentario && (
+                          <p className="text-sm text-ink-muted mt-2">
+                            {c.comentario}
+                          </p>
+                        )}
+
+                        <p className="text-[11px] text-ink-muted mt-2">
+                          {c.reserva?.servicio?.nombre}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
                 </div>
               )}
             </div>

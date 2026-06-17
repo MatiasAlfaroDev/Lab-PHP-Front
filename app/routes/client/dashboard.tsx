@@ -36,9 +36,8 @@ export default function ClientDashboard() {
   const [bookings, setBookings] = useState<Reserva[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const now = new Date();
-  
-  useEffect(() => {
-    const load = async () => {
+
+ const load = async () => {
       if (!token) return;
 
       const [reservasRes, paquetesRes] =
@@ -56,9 +55,29 @@ export default function ClientDashboard() {
       setBookings(reservasRes.data);
       setPackages(paquetesRes);
     };
-
+  
+  useEffect(() => {
     load();
   }, [token]);
+
+  useEffect(() => {
+    const handler = () => {
+      console.log("CLIENT DASHBOARD REFRESH");
+      load();
+    };
+
+    window.addEventListener(
+      "reserva-updated",
+      handler
+    );
+
+    return () =>
+      window.removeEventListener(
+        "reserva-updated",
+        handler
+      );
+  }, [token]);
+
   const upcomingBookings = bookings
   .filter((b) => {
     const date = new Date(`${b.fecha}T${b.hora}`);

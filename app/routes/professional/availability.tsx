@@ -10,6 +10,9 @@ interface Servicio {
   duracion: number;
   pausa: number;
   modalidad: "presencial" | "virtual" | "hibrido";
+  min_aviso?: number;
+  min_cancelacion?: number;
+  max_anticipacion_dias?: number;
 }
 
 interface Block {
@@ -38,16 +41,10 @@ interface DragState {
 
 interface Rules {
   aviso:       string;
-  buffer:      string;
   reservas:    string;
   cancelacion: string;
 }
 
-interface Toggles {
-  aceptacionAuto:   boolean;
-  enFeriados:       boolean;
-  horaCompleta:     boolean;
-}
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const DAYS = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
@@ -235,21 +232,21 @@ export default function Availability() {
   const [selectedBlock,    setSelectedBlock]    = useState<{ day: string; bi: number } | null>(null);
   const dragMoved = useRef(false);
   const [rules,            setRules]            = useState<Rules>({
-    aviso: "24", buffer: "15", reservas: "60", cancelacion: "24",
+    aviso: "24", reservas: "60", cancelacion: "24",
   });
-  const [toggles, setToggles] = useState<Toggles>({
-    aceptacionAuto: true, enFeriados: false, horaCompleta: true,
-  });
+ 
   const [showExcepciones, setShowExcepciones] = useState(false);
   const [showNuevaExcepcion, setShowNuevaExcepcion] = useState(false);
   const [nuevaExcepcion, setNuevaExcepcion] = useState({
-    fecha: "",
-    diaCompleto: true,
-    hora_inicio: "",
-    hora_fin: "",
-    motivo: "",
-  });
+  fecha_inicio: "",
+  fecha_fin: "",
+  diaCompleto: true,
+  hora_inicio: "",
+  hora_fin: "",
+  motivo: "",
+});
   const [excepciones, setExcepciones] = useState([]);
+  const [errorExcepcion, setErrorExcepcion] = useState("");
 
   // ── Load services ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -282,6 +279,23 @@ export default function Availability() {
       .catch(() => setSlots(structuredClone(DEFAULT_SLOTS)))
       .finally(() => setLoadingDisp(false));
   }, [selectedId, servicios]);
+
+    
+  useEffect(() => {
+    const servicio = servicios.find(
+      (s) => s.servicio_id === selectedId
+    );
+
+    if (!servicio) return;
+
+    setRules({
+      aviso: String(servicio.min_aviso ?? 24),
+      reservas: String(servicio.max_anticipacion_dias ?? 60),
+      cancelacion: String(servicio.min_cancelacion ?? 24),
+    });
+  }, [selectedId, servicios]);
+
+
 
   useEffect(() => {
     if (!showExcepciones) return;
@@ -466,7 +480,11 @@ export default function Availability() {
     try {
       const res = await api.put<{ success: boolean; message?: string }>(
         `/servicios/${selectedId}/disponibilidad`,
-        { disponibilidades: slotsToDisps(slots) },
+        { disponibilidades: slotsToDisps(slots),
+          min_aviso: Number(rules.aviso),
+          min_cancelacion: Number(rules.cancelacion),
+          max_anticipacion_dias: Number(rules.reservas),
+         },
         token
       );
       if (res.success) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
@@ -478,22 +496,35 @@ export default function Availability() {
     }
   };
 
+  
+  const hoy = new Date().toISOString().split("T")[0];
   const handleCrearExcepcion = async () => {
-    if (!nuevaExcepcion.fecha) return;
-    try {
-      await api.post("/excepciones", {
-        fecha: nuevaExcepcion.fecha,
-        hora_inicio: nuevaExcepcion.diaCompleto ? undefined : nuevaExcepcion.hora_inicio,
-        hora_fin: nuevaExcepcion.diaCompleto ? undefined : nuevaExcepcion.hora_fin,
-        motivo: nuevaExcepcion.motivo,
-      }, token);
+  if (
+    !nuevaExcepcion.fecha_inicio ||
+    !nuevaExcepcion.fecha_fin
+  ) {
+    return;
+  }
+
+  try {
+   await api.post("/excepciones", {
+  fecha_desde: nuevaExcepcion.fecha_inicio,
+  fecha_hasta: nuevaExcepcion.fecha_fin,
+  hora_inicio: nuevaExcepcion.diaCompleto ? null : nuevaExcepcion.hora_inicio,
+  hora_fin: nuevaExcepcion.diaCompleto ? null : nuevaExcepcion.hora_fin,
+  motivo: nuevaExcepcion.motivo,
+}, token);
       setShowNuevaExcepcion(false);
       // Recargar excepciones
       const res:any = await api.get<{ success: boolean; data: any[] }>("/excepciones", token);
       if (res.success) setExcepciones(res.data);
-    } catch (e) {
-      alert("Error al crear excepción");
-    }
+    }catch (e: unknown) {
+  setErrorExcepcion(
+    e instanceof Error
+      ? e.message
+      : "Error al crear excepción"
+  );
+}
   };
 
   const handleDeleteExcepcion = async (id: number) => {
@@ -527,7 +558,10 @@ export default function Availability() {
           </h1>
 
           <button
-            onClick={() => setShowExcepciones(true)}
+            onClick={() => {
+                setErrorExcepcion("");
+                setShowNuevaExcepcion(true);
+              }}
             className="self-start sm:self-auto px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
           >
             Excepciones
@@ -575,8 +609,10 @@ export default function Availability() {
                     className="border rounded-xl p-4"
                   >
                     <div className="font-medium">
-                      {e.fecha}
-                    </div>
+                    {e.fecha_desde}
+                    {e.fecha_desde !== e.fecha_hasta &&
+                      ` al ${e.fecha_hasta}`}
+                  </div>
 
                     <div className="text-sm text-ink-muted">
                       {e.hora_inicio && e.hora_fin
@@ -623,22 +659,42 @@ export default function Availability() {
       <div className="space-y-4">
 
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Fecha
-          </label>
+  <label className="block text-sm font-medium mb-1">
+    Desde
+  </label>
 
-          <input
-            type="date"
-            value={nuevaExcepcion.fecha}
-            onChange={(e) =>
-              setNuevaExcepcion({
-                ...nuevaExcepcion,
-                fecha: e.target.value,
-              })
-            }
-            className="w-full border rounded-lg px-3 py-2"
-          />
-        </div>
+  <input
+    type="date"
+    min={hoy}
+    value={nuevaExcepcion.fecha_inicio}
+    onChange={(e) =>
+      setNuevaExcepcion({
+        ...nuevaExcepcion,
+        fecha_inicio: e.target.value,
+      })
+    }
+    className="w-full border rounded-lg px-3 py-2"
+  />
+</div>
+
+<div>
+  <label className="block text-sm font-medium mb-1">
+    Hasta
+  </label>
+
+  <input
+    type="date"
+    min={hoy}
+    value={nuevaExcepcion.fecha_fin}
+    onChange={(e) =>
+      setNuevaExcepcion({
+        ...nuevaExcepcion,
+        fecha_fin: e.target.value,
+      })
+    }
+    className="w-full border rounded-lg px-3 py-2"
+  />
+</div>
 
         <div className="flex items-center gap-2">
           <input
@@ -712,6 +768,12 @@ export default function Availability() {
             className="w-full border rounded-lg px-3 py-2"
           />
         </div>
+
+            {errorExcepcion && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
+              {errorExcepcion}
+            </div>
+          )}
 
         <div className="flex justify-end gap-2 pt-2">
           <button
@@ -1035,29 +1097,6 @@ export default function Availability() {
                 </select>
               </div>
 
-              <div className="border-t border-border/30" />
-
-              {/* Buffer entre sesiones */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-ink">Buffer entre Sesiones</p>
-                  <p className="text-xs text-ink-muted mt-0.5">Tiempo de descanso entre sesiones</p>
-                </div>
-                <select
-                  value={rules.buffer}
-                  onChange={(e) => setRules((r) => ({ ...r, buffer: e.target.value }))}
-                  className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0"
-                >
-                  <option value="0">0 min</option>
-                  <option value="5">5 min</option>
-                  <option value="10">10 min</option>
-                  <option value="15">15 min</option>
-                  <option value="30">30 min</option>
-                </select>
-              </div>
-
-              <div className="border-t border-border/30" />
-
               {/* Reservas anticipadas */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
@@ -1098,20 +1137,7 @@ export default function Availability() {
             </div>
 
             {/* Toggles */}
-            <div className="mt-4 pt-4 border-t border-border/40 space-y-3">
-              {[
-                { key: "aceptacionAuto" as const, label: "Aceptar automáticamente" },
-                { key: "enFeriados"     as const, label: "Permitir reservas en días Feriados" },
-              ].map(({ key, label }) => (
-                <div key={key} className="flex items-center justify-between">
-                  <span className="text-sm text-ink">{label}</span>
-                  <Toggle
-                    checked={toggles[key]}
-                    onChange={() => setToggles((t) => ({ ...t, [key]: !t[key] }))}
-                  />
-                </div>
-              ))}
-            </div>
+           
           </div>
 
           {/* Save button */}

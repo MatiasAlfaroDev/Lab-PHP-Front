@@ -156,8 +156,34 @@ export default function ProfessionalDashboard() {
   const [openCalificaciones, setOpenCalificaciones] = useState(false);
   const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
 
-  useEffect(() => {
+  const loadDashboard = async () => {
     if (!token || !user?.id) return;
+
+    try {
+      const [agendaRes, pendientesRes, calificacionesRes] =
+        await Promise.all([
+          api.get("/mi-agenda", token),
+          api.get("/reservas/pendientes", token),
+          api.get(`/profesionales/${user.id}/calificaciones`, token),
+        ]);
+
+      const agenda: any = agendaRes;
+      const pendientesData: any = pendientesRes;
+      const calificacionesData: any = calificacionesRes;
+
+      setAllReservas(agenda.data ?? []);
+      setPendientes(pendientesData.data ?? []);
+
+      setCalificaciones(calificacionesData.data ?? []);
+      setPromedio(calificacionesData.promedio ?? 0);
+      setCantidadCalificaciones(calificacionesData.cantidad ?? 0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+   /* if (!token || !user?.id) return;
     Promise.all([
       api.get("/mi-agenda", token).then((res: any) => setAllReservas(res.data ?? [])).catch(() => {}),
       api.get("/reservas/pendientes", token).then((res: any) => setPendientes(res.data ?? [])).catch(() => {}),
@@ -167,7 +193,26 @@ export default function ProfessionalDashboard() {
         setPromedio(payload.promedio ?? 0);
         setCantidadCalificaciones(payload.cantidad ?? 0);
       }).catch(() => {}),
-    ]).finally(() => setLoading(false));
+    ]).finally(() => setLoading(false)); */
+    loadDashboard();
+  }, [token, user?.id]);
+
+  useEffect(() => {
+    const handler = () => {
+      console.log("PRO DASHBOARD REFRESH");
+      loadDashboard();
+    };
+
+    window.addEventListener(
+      "reserva-updated",
+      handler
+    );
+
+    return () =>
+      window.removeEventListener(
+        "reserva-updated",
+        handler
+      );
   }, [token, user?.id]);
 
   const hoy        = todayStr();
@@ -216,14 +261,6 @@ export default function ProfessionalDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button className="relative p-2 border border-border rounded bg-surface hover:bg-bg">
-            <BellIcon />
-            {pendientes.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold">
-                {pendientes.length}
-              </span>
-            )}
-          </button>
           <Link
             to="/professional/services"
             className="flex items-center gap-2 border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink"
@@ -484,14 +521,6 @@ export default function ProfessionalDashboard() {
 }
 
 // ── Icons ──────────────────────────────────────────────────────────────────
-function BellIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    </svg>
-  );
-}
 function PlusIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">

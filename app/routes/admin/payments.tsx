@@ -79,7 +79,7 @@ export default function AdminPayments() {
       <div className="border border-border rounded overflow-x-auto">
         <div style={{ minWidth: "640px" }}>
           {/* HEADER */}
-          <div className="flex px-5 py-3 border-b border-border bg-bg text-xs font-bold text-ink-muted uppercase tracking-widest">
+          <div className="flex px-5 py-3 border-b border-border bg-bg text-xs font-bold text-ink-muted uppercase tracking-widest items-center">
   
             <div className="w-24">FECHA</div>
             <div className="flex-[2]">DE</div>

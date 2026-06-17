@@ -55,14 +55,45 @@ export default function Agenda() {
   const [mobileStartDay, setMobileStartDay] = useState(0);
   const touchStartX = useRef(0);
 
-  useEffect(() => {
+  const fetchAgenda = async () => {
     if (!token) return;
+
     setLoading(true);
-    api
-      .get<{ success: boolean; data: Reserva[] }>("/mi-agenda", token)
-      .then((res) => { if (res.success) setReservas(res.data); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+
+    try {
+      const res = await api.get<{
+        success: boolean;
+        data: Reserva[];
+      }>("/mi-agenda", token);
+
+      if (res.success) {
+        setReservas(res.data);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAgenda();
+  }, [token]);
+
+  useEffect(() => {
+    const handler = () => {
+      console.log("AGENDA REFRESH");
+      fetchAgenda();
+    };
+
+    window.addEventListener(
+      "reserva-updated",
+      handler
+    );
+
+    return () =>
+      window.removeEventListener(
+        "reserva-updated",
+        handler
+      );
   }, [token]);
 
   useEffect(() => { setMobileStartDay(0); }, [weekStart]);
