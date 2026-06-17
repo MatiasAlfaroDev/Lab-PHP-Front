@@ -541,7 +541,7 @@ function ServiceForm({
     setF({ ubicacion: value, latitud: null, longitud: null });
     setGeocodingError(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!value.trim()) return;
+    if (!value.trim() || value.trim().length < 8) return;
 
     debounceRef.current = setTimeout(async () => {
       setGeocoding(true);
@@ -663,7 +663,7 @@ function ServiceForm({
             <div className="relative">
               <input
                 className={inputCls}
-                placeholder="Ej. Av. Arequipa 123, Lima"
+                placeholder="Ej. Av. 18 de Julio 1290, Montevideo"
                 value={form.ubicacion}
                 onChange={(e) => handleAddressInput(e.target.value)}
               />
