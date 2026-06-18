@@ -57,6 +57,126 @@ function getInitials(text: string) { return text.split(" ").map((w) => w[0]).joi
 function normalizeModality(m: string) {
   return ({ presencial: "Presencial", virtual: "Virtual", hibrido: "Híbrida", híbrido: "Híbrida" } as Record<string, string>)[m.toLowerCase()] ?? m;
 }
+function FiltersPanel({
+  loadingSvc,
+  serviceTypes,
+  selectedTypes,
+  toggleType,
+  selectedModality,
+  setSelectedModality,
+  MODALITIES,
+  priceRange,
+  setPriceRange,
+  maxPrice,
+  resetFilters,
+  activeTab,
+}: any) {
+  return (
+    <div className="px-5 pb-5 space-y-5 flex-1">
+      {/* Tipo de servicio */}
+      <div>
+        <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
+          Tipo de servicio
+        </p>
+
+        {loadingSvc ? (
+          <p className="text-xs text-ink-muted">Cargando...</p>
+        ) : serviceTypes.length === 0 ? (
+          <p className="text-xs text-ink-muted">Sin tipos disponibles</p>
+        ) : (
+          <div className="space-y-2">
+            {serviceTypes.map(({ label, count, key }: any) => (
+              <label key={key} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedTypes.includes(key)}
+                  onChange={() => toggleType(key)}
+                  className="w-4 h-4 rounded accent-primary"
+                />
+                <span className="text-sm text-ink flex-1">{label}</span>
+                <span className="text-xs text-ink-muted">{count}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modalidad */}
+      <div>
+        <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
+          Modalidad
+        </p>
+
+        <div className="flex flex-wrap gap-1.5">
+          {MODALITIES.map((m: string) => (
+            <button
+              key={m}
+              onClick={() => setSelectedModality(m)}
+              className={`text-xs px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
+                selectedModality === m
+                  ? "bg-ink text-white border-ink"
+                  : "border-border text-ink-muted hover:border-ink hover:text-ink"
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Precio */}
+      <div>
+        <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
+          {activeTab === "paquetes"
+            ? "Precio del paquete"
+            : "Precio por sesión"}
+        </p>
+
+        <input
+          type="range"
+          min={0}
+          max={maxPrice}
+          value={priceRange}
+          onChange={(e) => setPriceRange(Number(e.target.value))}
+          className="w-full accent-primary"
+        />
+
+        <div className="flex justify-between text-xs text-ink-muted mt-1">
+          <span>$ 0</span>
+          <span>$ {priceRange}</span>
+        </div>
+      </div>
+
+      {/* Ubicación */}
+      {activeTab === "servicios" && (
+        <div>
+          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
+            Ubicación
+          </p>
+
+          <div className="flex items-center gap-2 border border-border rounded-xl px-3 py-2 bg-bg">
+            <ion-icon
+              name="location-outline"
+              style={{ fontSize: "16px", color: "var(--color-ink-muted)" }}
+            />
+            <input
+              className="flex-1 bg-transparent text-sm text-ink placeholder-ink-muted outline-none"
+              placeholder="Ciudad o zona..."
+            />
+          </div>
+        </div>
+      )}
+
+      {/* limpiar */}
+      <button
+        className="text-xs text-primary underline cursor-pointer"
+        onClick={resetFilters}
+      >
+        Limpiar filtros
+      </button>
+    </div>
+  );
+}
 
 export default function Discover() {
   const navigate = useNavigate();
@@ -74,6 +194,7 @@ export default function Discover() {
   const [priceRange, setPriceRange]             = useState(1000);
   const [buyingPackageId, setBuyingPackageId] = useState<number | null>(null);
   const [searchParams]                          = useSearchParams();
+  const [showFilters, setShowFilters] = useState(false);
 
 
   // Fetch servicios + paquetes en paralelo al montar
@@ -136,102 +257,46 @@ export default function Discover() {
     setSelectedModality("Todas");
     setPriceRange(maxPrice);
   };
+  
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden">
 
       {/* Filters sidebar — siempre visible */}
-      <aside className="w-64 bg-surface border-r border-border shrink-0 flex flex-col overflow-y-auto">
+      <aside className="hidden md:flex md:w-52 lg:w-64 bg-surface border-r border-border flex-col overflow-y-auto">
         <div className="flex items-center justify-between p-5 pb-4">
-          <h3 className="text-sm font-semibold text-ink uppercase tracking-wide">Filtros</h3>
-          <button className="text-xs text-primary underline cursor-pointer" onClick={resetFilters}>
-            Limpiar
-          </button>
+          <h3 className="text-sm font-semibold text-ink uppercase tracking-wide">
+            Filtros
+          </h3>
         </div>
 
-        <div className="px-5 pb-5 space-y-5 flex-1">
-          {/* Tipo de servicio */}
-          <div>
-            <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">Tipo de servicio</p>
-            {loadingSvc ? (
-              <p className="text-xs text-ink-muted">Cargando...</p>
-            ) : serviceTypes.length === 0 ? (
-              <p className="text-xs text-ink-muted">Sin tipos disponibles</p>
-            ) : (
-              <div className="space-y-2">
-                {serviceTypes.map(({ label, count, key }) => (
-                  <label key={key} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedTypes.includes(key)}
-                      onChange={() => toggleType(key)}
-                      className="w-4 h-4 rounded accent-primary"
-                    />
-                    <span className="text-sm text-ink flex-1">{label}</span>
-                    <span className="text-xs text-ink-muted">{count}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Modalidad */}
-          <div>
-            <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">Modalidad</p>
-            <div className="flex flex-wrap gap-1.5">
-              {MODALITIES.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setSelectedModality(m)}
-                  className={`text-xs px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
-                    selectedModality === m
-                      ? "bg-ink text-white border-ink"
-                      : "border-border text-ink-muted hover:border-ink hover:text-ink"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Precio */}
-          <div>
-            <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
-              {activeTab === "paquetes" ? "Precio del paquete" : "Precio por sesión"}
-            </p>
-            <input
-              type="range"
-              min={0}
-              max={maxPrice}
-              value={priceRange}
-              onChange={(e) => setPriceRange(Number(e.target.value))}
-              className="w-full accent-primary"
-            />
-            <div className="flex justify-between text-xs text-ink-muted mt-1">
-              <span>$ 0</span>
-              <span>$ {priceRange}</span>
-            </div>
-          </div>
-
-          {/* Ubicación (solo servicios) */}
-          {activeTab === "servicios" && (
-            <div>
-              <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">Ubicación</p>
-              <div className="flex items-center gap-2 border border-border rounded-xl px-3 py-2 bg-bg">
-                <ion-icon name="location-outline" style={{ fontSize: "16px", color: "var(--color-ink-muted)" }} />
-                <input
-                  className="flex-1 bg-transparent text-sm text-ink placeholder-ink-muted outline-none"
-                  placeholder="Ciudad o zona..."
-                />
-              </div>
-            </div>
-          )}
-        </div>
+        <FiltersPanel
+          loadingSvc={loadingSvc}
+          serviceTypes={serviceTypes}
+          selectedTypes={selectedTypes}
+          toggleType={toggleType}
+          selectedModality={selectedModality}
+          setSelectedModality={setSelectedModality}
+          MODALITIES={MODALITIES}
+          priceRange={priceRange}
+          setPriceRange={setPriceRange}
+          maxPrice={maxPrice}
+          resetFilters={resetFilters}
+          activeTab={activeTab}
+        />
       </aside>
 
       {/* Main content */}
       <div className="flex-1 overflow-y-auto p-6">
+        {/* Botón filtros (solo mobile) */}
+          <div className="md:hidden mb-4">
+            <button
+              onClick={() => setShowFilters(true)}
+              className="text-sm bg-ink text-white px-3 py-2 rounded-lg"
+            >
+              Filtros
+            </button>
+          </div>
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>
@@ -306,7 +371,7 @@ export default function Discover() {
             )}
 
             {!loadingSvc && !error && filteredSvc.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredSvc.map((servicio) => {
                   const colors        = getCardColors(servicio.servicio_id);
                   const initials      = getInitials(servicio.nombre);
@@ -412,7 +477,7 @@ export default function Discover() {
               </div>
             )}
             {!loadingPkg && !errorPkg && filteredPkg.length > 0 && (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredPkg.map((paquete) => (
                   <div
                     key={paquete.paquete_id}
@@ -470,6 +535,35 @@ export default function Discover() {
           </>
         )}
       </div>
+      {showFilters && (
+  <div className="fixed inset-0 bg-black/40 z-50 md:hidden">
+    <div className="absolute left-0 top-0 w-72 h-full bg-surface overflow-y-auto p-5">
+
+      {/* Cerrar */}
+      <button
+        className="mb-4 text-sm text-primary underline"
+        onClick={() => setShowFilters(false)}
+      >
+        Cerrar
+      </button>
+        <FiltersPanel
+          loadingSvc={loadingSvc}
+          serviceTypes={serviceTypes}
+          selectedTypes={selectedTypes}
+          toggleType={toggleType}
+          selectedModality={selectedModality}
+          setSelectedModality={setSelectedModality}
+          MODALITIES={MODALITIES}
+          priceRange={priceRange}
+          setPriceRange={setPriceRange}
+          maxPrice={maxPrice}
+          resetFilters={resetFilters}
+          activeTab={activeTab}
+        />
+
+    </div>
+  </div>
+)}
     </div>
   );
 }

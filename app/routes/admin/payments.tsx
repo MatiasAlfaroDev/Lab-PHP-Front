@@ -51,7 +51,7 @@ export default function AdminPayments() {
             TOTAL
           </p>
           <p className="font-display text-2xl text-ink font-bold">
-            €{summary?.total ?? 0}
+            ${summary?.total ?? 0}
           </p>
         </div>
 
@@ -60,7 +60,7 @@ export default function AdminPayments() {
             PAGADO
           </p>
           <p className="font-display text-2xl text-ink font-bold text-green-600">
-            €{summary?.pagado ?? 0}
+            ${summary?.pagado ?? 0}
           </p>
         </div>
 
@@ -69,7 +69,7 @@ export default function AdminPayments() {
             PENDIENTE
           </p>
           <p className="font-display text-2xl text-ink font-bold text-yellow-600">
-            €{summary?.pendiente ?? 0}
+            ${summary?.pendiente ?? 0}
           </p>
         </div>
 
