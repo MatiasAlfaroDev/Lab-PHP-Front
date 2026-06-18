@@ -304,6 +304,7 @@ export default function ProfessionalDetail() {
   const [reprogramado, setReprogramado] = useState(false);
   const [reservaOriginal, setReservaOriginal] = useState<any>(null);
   const [loadingReserva, setLoadingReserva] = useState(false);
+  const [procesando, setProcesando] = useState(false);
 
   // Booking modal
   const [showModal, setShowModal] = useState(false);
@@ -488,6 +489,7 @@ export default function ProfessionalDetail() {
   if (!reprogramarId || !selectedService || !selectedDate || !selectedSlot) return;
 
   try {
+   setProcesando(true);
    const res = await api.put<{
       success: boolean;
       message?: string;
@@ -521,6 +523,9 @@ export default function ProfessionalDetail() {
       );
       console.error(e);
         toast.error("Error al reprogramar la reserva");
+    }
+    finally {
+      setProcesando(false);
     }
 };
 
@@ -909,9 +914,9 @@ export default function ProfessionalDetail() {
                 )}
 
                 <button
-                  disabled={!selectedSlot}
+                  disabled={!selectedSlot || procesando}
                   onClick={() => {
-                    if (!selectedSlot) return;
+                    if (!selectedSlot || procesando) return;
 
                     if (isReprogramando) {
                       handleReprogramar();
@@ -920,12 +925,18 @@ export default function ProfessionalDetail() {
                     }
                   }}
                   className={`w-full font-medium py-3 rounded-xl transition-colors ${
-                    selectedSlot
+                    selectedSlot && !procesando
                       ? "bg-primary hover:bg-primary-hover text-white"
                       : "bg-primary/30 text-white cursor-not-allowed"
                   }`}
                 >
-                  {selectedSlot ? "Reservar" : "Seleccioná fecha y horario"}
+                  {procesando
+                    ? "Reprogramando..."
+                    : isReprogramando
+                      ? "Confirmar reprogramación"
+                      : selectedSlot
+                        ? "Reservar"
+                        : "Seleccioná fecha y horario"}
                 </button>
               </>
             ) : (
