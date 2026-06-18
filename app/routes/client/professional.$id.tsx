@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { useLocation } from "react-router";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Servicio {
@@ -188,11 +191,11 @@ function BookingModal({
         throw new Error(res.message ?? "Error al crear la reserva");
       }
 
+      setSuccess(true);
+
       window.dispatchEvent(
         new CustomEvent("reserva-updated")
       );
-
-      setSuccess(true);
 
     } catch (e: any) {
       setError(e.message ?? "Error al reservar");
@@ -297,6 +300,7 @@ export default function ProfessionalDetail() {
   const compraItemId = searchParams.get("compraItem");
   const reprogramarId = searchParams.get("reprogramar");
   const isReprogramando = !!reprogramarId;
+  const [reprogramError, setReprogramError] = useState("");
   const [reprogramado, setReprogramado] = useState(false);
   const [reservaOriginal, setReservaOriginal] = useState<any>(null);
   const [loadingReserva, setLoadingReserva] = useState(false);
@@ -332,6 +336,9 @@ export default function ProfessionalDetail() {
   const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
   const [loadingCalificaciones, setLoadingCalificaciones] = useState(false);
 
+  const location = useLocation();
+  const servicioIdPreseleccionado = location.state?.servicioId;
+
   useEffect(() => {
     if (!id || !token) return;
     setLoadingCalificaciones(true);
@@ -355,9 +362,14 @@ export default function ProfessionalDetail() {
       .then((res) => {
         if (res.success) {
           setProfile(res.data);
-          const first = res.data.profesional?.servicios?.[0] ?? null;
+          const servicios = res.data.profesional?.servicios ?? [];
+          const seleccionado =
+            servicios.find(
+              s => s.servicio_id === Number(servicioIdPreseleccionado)
+            ) ?? servicios[0] ?? null;
+
           if (!reprogramarId) {
-            setSelectedService(first);
+            setSelectedService(seleccionado);
           }
         } else {
           setProfileError("Profesional no encontrado");
@@ -365,7 +377,7 @@ export default function ProfessionalDetail() {
       })
       .catch((e) => setProfileError(e.message))
       .finally(() => setLoadingProfile(false));
-  }, [id]);
+  }, [id, servicioIdPreseleccionado]);
 
   // Load available days when service changes
   useEffect(() => {
@@ -476,7 +488,10 @@ export default function ProfessionalDetail() {
   if (!reprogramarId || !selectedService || !selectedDate || !selectedSlot) return;
 
   try {
-    await api.put(
+   const res = await api.put<{
+      success: boolean;
+      message?: string;
+    }>(
       `/reservas/${reprogramarId}/reprogramar`,
       {
         servicio_id: selectedService.servicio_id,
@@ -487,10 +502,26 @@ export default function ProfessionalDetail() {
       token
     );
 
+    if (!res.success) {
+      setReprogramError(
+        res.message ?? "Error al reprogramar la reserva"
+      );
+      return;
+    }
+
     setReprogramado(true);
-  } catch (e) {
-    console.error(e);
-  }
+    toast.success("Reserva reprogramada correctamente");
+
+    window.dispatchEvent(
+      new CustomEvent("reserva-updated")
+    );
+  } catch (e: any) {
+      setReprogramError(
+        e?.message || "Error al reprogramar la reserva"
+      );
+      console.error(e);
+        toast.error("Error al reprogramar la reserva");
+    }
 };
 
   // ── Loading / error states ────────────────────────────────────────────
@@ -527,8 +558,22 @@ export default function ProfessionalDetail() {
 
   const { name, profesional } = profile;
   const servicios = profesional?.servicios ?? [];
+  const serviciosAMostrar = isReprogramando
+  ? servicios.filter(
+      s => s.servicio_id === reservaOriginal?.servicio_id
+    )
+  : servicios;
 
   return (
+    <>  
+    <ToastContainer
+      position="top-right"
+      autoClose={3500}
+      hideProgressBar={false}
+      closeOnClick
+      pauseOnHover
+    />
+
     <div className="p-6 max-w-6xl mx-auto">
       {/* Breadcrumb */}
       <nav className="text-sm text-ink-muted mb-4 flex items-center gap-2">
@@ -607,7 +652,7 @@ export default function ProfessionalDetail() {
                   {servicios.length === 0 ? (
                     <p className="text-sm text-ink-muted">Sin servicios publicados.</p>
                   ) : (
-                    servicios.map((s) => {
+                    serviciosAMostrar.map((s) => {
                       const modality = normalizeModality(s.modalidad);
                       const isSelected = selectedService?.servicio_id === s.servicio_id;
                       return (
@@ -774,6 +819,11 @@ export default function ProfessionalDetail() {
                     Reserva reprogramada correctamente ✔
                   </div>
                 )}
+                {reprogramError && (
+                  <div className="mb-3 bg-red-100 text-red-700 px-3 py-2 rounded-xl text-sm">
+                    {reprogramError}
+                  </div>
+                )}
                 {/* Calendar */}
                 <div>
                   <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-3">
@@ -901,5 +951,6 @@ export default function ProfessionalDetail() {
         />
       )}
     </div>
+  </>
   );
 }

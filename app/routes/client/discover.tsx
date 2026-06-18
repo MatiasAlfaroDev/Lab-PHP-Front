@@ -314,7 +314,7 @@ export default function Discover() {
                   return (
                     <div
                       key={servicio.servicio_id}
-                      onClick={() => navigate(`/client/professional/${servicio.profesional_id}`)}
+                      onClick={() => navigate(`/client/professional/${servicio.profesional_id}`, {state: {servicioId: servicio.servicio_id}})}
                       className="bg-surface border border-border rounded-2xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                     >
                       <div className={`h-28 bg-gradient-to-br ${colors.bg} relative`}>
