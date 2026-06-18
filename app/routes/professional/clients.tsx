@@ -107,6 +107,7 @@ export default function ClientsAndAgenda() {
   const [clientsLoading, setClientsLoading] = useState(true);
   const [weekStart,      setWeekStart]      = useState(() => toMonday(new Date()));
   const [search,         setSearch]         = useState("");
+  const [asistio, setAsistio] = useState<boolean | null>(null);
 
   // Selección: cliente y/o turno específico
   const [selectedClient,  setSelectedClient]  = useState<Client | null>(null);
@@ -855,14 +856,15 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                   />
 
                   {/* SOLO SI ESTÁ EN CURSO O FINALIZADA */}
-                  {(selectedReserva.estado === "en_curso" ||
+                  {!asistio &&
+                    (selectedReserva.estado === "en_curso" ||
                     selectedReserva.estado === "finalizada") && (
                     <>
                       {/* ───── ASISTENCIA ───── */}
                       <div className="flex gap-2 mt-3">
                         <button
                           className="flex-1 bg-green-600 text-white rounded py-1.5 text-xs font-semibold"
-                          onClick={() => setSelectedReserva(null)}
+                          onClick={() => setAsistio(true)}
                         >
                           Asistió
                         </button>
@@ -873,7 +875,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                             const r = selectedReserva;
 
                             await api.put(
-                              `/reservas/${r.reserva_id}/estado`,
+                              `/reservas/${r.reserva_id}/no-asistida`,
                               { estado: "no_asistida" },
                               token
                             );
