@@ -87,22 +87,36 @@ export default function ServicePackages() {
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
-      const [svcRes, pkgRes]: any[] = await Promise.all([
-        api.get("/mis-servicios", token),
-        api.get("/mis-paquetes", token),
+ const fetchAll = async () => {
+  setLoading(true);
+
+  try {
+    const [svcRes, pkgRes]: any[] = await Promise.all([
+      api.get("/mis-servicios", token),
+      api.get("/mis-paquetes", token),
+    ]);
+
+    if (svcRes?.success) {
+      setServicios([
+        ...(svcRes.data?.activos ?? []),
+        ...(svcRes.data?.desactivados ?? []),
       ]);
-      if (svcRes?.success) setServicios(svcRes.data);
-      if (Array.isArray(pkgRes)) setPaquetes(pkgRes);
-      else if (pkgRes?.success) setPaquetes(pkgRes.data);
-    } catch {
-      setPaquetes([]);
-    } finally {
-      setLoading(false);
+    } else {
+      setServicios([]);
     }
-  };
+
+    if (Array.isArray(pkgRes)) {
+      setPaquetes(pkgRes);
+    } else if (pkgRes?.success) {
+      setPaquetes(pkgRes.data);
+    }
+  } catch (error) {
+    setServicios([]);
+    setPaquetes([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => { fetchAll(); }, [token]);
 

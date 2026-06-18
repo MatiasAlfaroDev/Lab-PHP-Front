@@ -493,16 +493,12 @@ var login_default = UNSAFE_withComponentProps(function Login() {
 								placeholder: "maria.ortiz@cita.pro",
 								className: "w-full px-4 py-3 border border-border bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink rounded"
 							})] }),
-							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("div", {
+							/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("div", {
 								className: "flex items-center justify-between mb-1",
-								children: [/* @__PURE__ */ jsx("label", {
+								children: /* @__PURE__ */ jsx("label", {
 									className: "text-sm font-semibold text-ink",
 									children: "Contraseña"
-								}), /* @__PURE__ */ jsx("a", {
-									href: "#",
-									className: "text-sm text-ink-muted underline",
-									children: "¿Olvidaste tu contraseña?"
-								})]
+								})
 							}), /* @__PURE__ */ jsx("input", {
 								type: "password",
 								value: password,
@@ -5870,6 +5866,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 	const [reservas, setReservas] = useState([]);
 	const [clientesProximos, setClientesProximos] = useState([]);
 	const [clientesHistoricos, setClientesHistoricos] = useState([]);
+	const [clientesPaquetes, setClientesPaquetes] = useState([]);
 	const [agendaLoading, setAgendaLoading] = useState(true);
 	const [clientsLoading, setClientsLoading] = useState(true);
 	const [weekStart, setWeekStart] = useState(() => toMonday(/* @__PURE__ */ new Date()));
@@ -5887,34 +5884,22 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 			if (res.success) setReservas(res.data);
 		}).catch(() => {}).finally(() => setAgendaLoading(false));
 	};
-	const fetchClientes = () => {
-		if (!token) return;
-		setClientsLoading(true);
-		api.get("/clientes", token).then((data) => {
-			setClientesProximos(data.proximos || []);
-			setClientesHistoricos(data.historicos || []);
-		}).catch(() => {
-			setClientesProximos([]);
-			setClientesHistoricos([]);
-		}).finally(() => setClientsLoading(false));
-	};
 	useEffect(() => {
 		setMobileStartDay(0);
 	}, [weekStart]);
 	useEffect(() => {
 		if (!token) return;
 		fetchAgenda();
-		fetchClientes();
-	}, [token]);
-	useEffect(() => {
-		if (!token) return;
-		const handler = () => {
-			console.log("CLIENTES REFRESH");
-			fetchAgenda();
-			fetchClientes();
-		};
-		window.addEventListener("reserva-updated", handler);
-		return () => window.removeEventListener("reserva-updated", handler);
+		setClientsLoading(true);
+		api.get("/clientes", token).then((data) => {
+			setClientesProximos(data.sesiones || []);
+			setClientesHistoricos(data.historicos || []);
+			setClientesPaquetes(data.paquetes || []);
+		}).catch(() => {
+			setClientesProximos([]);
+			setClientesHistoricos([]);
+			setClientesPaquetes([]);
+		}).finally(() => setClientsLoading(false));
 	}, [token]);
 	const cambiarEstado = async (reservaId, estado) => {
 		try {
@@ -5950,14 +5935,26 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 		if (from.getMonth() === to.getMonth()) return `${from.getDate()}–${to.getDate()} ${MONTH_NAMES[from.getMonth()]} ${from.getFullYear()}`;
 		return `${from.getDate()} ${MONTH_NAMES[from.getMonth()]} – ${to.getDate()} ${MONTH_NAMES[to.getMonth()]} ${to.getFullYear()}`;
 	})();
-	[...clientesProximos, ...clientesHistoricos].filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()));
+	[
+		...clientesProximos,
+		...clientesHistoricos,
+		...clientesPaquetes
+	].filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()));
 	const clientColorMap = {};
-	[...clientesProximos, ...clientesHistoricos].forEach((c, i) => {
+	[
+		...clientesProximos,
+		...clientesHistoricos,
+		...clientesPaquetes
+	].forEach((c, i) => {
 		clientColorMap[c.nombre] = CLIENT_COLORS[i % CLIENT_COLORS.length];
 	});
 	const clientReservas = selectedClient ? reservas.filter((r) => r.cliente_nombre === selectedClient.nombre) : [];
 	const handleReservaClick = (r) => {
-		const client = [...clientesProximos, ...clientesHistoricos].find((c) => c.nombre === r.cliente_nombre) ?? null;
+		const client = [
+			...clientesProximos,
+			...clientesHistoricos,
+			...clientesPaquetes
+		].find((c) => c.nombre === r.cliente_nombre) ?? null;
 		if (selectedReserva?.reserva_id === r.reserva_id) {
 			setSelectedReserva(null);
 			setSelectedClient(null);
@@ -5991,9 +5988,14 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 	};
 	const mobileDays = weekDates.slice(mobileStartDay, mobileStartDay + 3);
 	const panelOpen = !!selectedClient;
-	const panelClientColor = selectedClient ? CLIENT_COLORS[Math.max([...clientesProximos, ...clientesHistoricos].findIndex((c) => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length] : CLIENT_COLORS[0];
+	const panelClientColor = selectedClient ? CLIENT_COLORS[Math.max([
+		...clientesProximos,
+		...clientesHistoricos,
+		...clientesPaquetes
+	].findIndex((c) => c.cliente_id === selectedClient.cliente_id), 0) % CLIENT_COLORS.length] : CLIENT_COLORS[0];
 	const filteredProximos = clientesProximos.filter((c) => `${c.nombre} ${c.email}`.toLowerCase().includes(search.toLowerCase()));
 	const filteredHistoricos = clientesHistoricos.filter((c) => `${c.nombre} ${c.email}`.toLowerCase().includes(search.toLowerCase()));
+	const filteredpaquete = clientesPaquetes.filter((c) => `${c.nombre} ${c.email}`.toLowerCase().includes(search.toLowerCase()));
 	return /* @__PURE__ */ jsxs("div", {
 		className: "p-4 md:p-8",
 		children: [/* @__PURE__ */ jsxs("div", {
@@ -6256,7 +6258,7 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 						className: "font-display text-xl text-ink shrink-0",
 						children: ["Clientes", /* @__PURE__ */ jsx("span", {
 							className: "ml-2 text-sm font-normal text-ink-muted",
-							children: !clientsLoading && `${clientesProximos.length + clientesHistoricos.length} clientes`
+							children: !clientsLoading && `${clientesProximos.length + clientesHistoricos.length + clientesPaquetes.length} clientes`
 						})]
 					}), /* @__PURE__ */ jsx("input", {
 						className: "flex-1 border border-border rounded px-3 py-1.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink",
@@ -6269,177 +6271,279 @@ var clients_default = UNSAFE_withComponentProps(function ClientsAndAgenda() {
 					children: "Cargando clientes..."
 				}) : /* @__PURE__ */ jsxs("div", {
 					className: "space-y-8",
-					children: [/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", {
-						className: "text-lg font-semibold text-ink mb-3",
-						children: [
-							"Próximas reservas (",
-							filteredProximos.length,
-							")"
-						]
-					}), /* @__PURE__ */ jsx("div", {
-						className: "bg-surface border border-border rounded overflow-hidden",
-						children: /* @__PURE__ */ jsx("div", {
-							className: "overflow-x-auto",
-							children: /* @__PURE__ */ jsxs("div", {
-								className: "min-w-[580px]",
-								children: [/* @__PURE__ */ jsx("div", {
-									className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
-									children: [
-										{
-											label: "CLIENTE",
-											span: "col-span-3"
-										},
-										{
-											label: "EMAIL",
-											span: "col-span-3"
-										},
-										{
-											label: "PRÓXIMA SESIÓN",
-											span: "col-span-3"
-										},
-										{
-											label: "ESTADO",
-											span: "col-span-1 flex items-center justify-center"
-										}
-									].map((h) => /* @__PURE__ */ jsx("div", {
-										className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
-										children: h.label
-									}, h.label))
-								}), filteredProximos.length === 0 ? /* @__PURE__ */ jsx("div", {
-									className: "p-8 text-center text-sm text-ink-muted",
-									children: "No hay clientes con reservas futuras"
-								}) : filteredProximos.map((c, index) => {
-									const isSelected = selectedClient?.cliente_id === c.cliente_id;
-									const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
-									return /* @__PURE__ */ jsxs("div", {
-										onClick: () => handleClientClick(c),
-										className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent}
-                      ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`,
+					children: [
+						/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", {
+							className: "text-lg font-semibold text-ink mb-3",
+							children: [
+								"Próximas reservas de servicio (",
+								filteredProximos.length,
+								")"
+							]
+						}), /* @__PURE__ */ jsx("div", {
+							className: "bg-surface border border-border rounded overflow-hidden",
+							children: /* @__PURE__ */ jsx("div", {
+								className: "overflow-x-auto",
+								children: /* @__PURE__ */ jsxs("div", {
+									className: "min-w-[580px]",
+									children: [/* @__PURE__ */ jsx("div", {
+										className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
 										children: [
-											/* @__PURE__ */ jsxs("div", {
-												className: "col-span-3 flex items-center gap-3",
-												children: [/* @__PURE__ */ jsx("div", {
-													className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
-													children: getInitials$2(c.nombre)
-												}), /* @__PURE__ */ jsx("span", {
-													className: "text-sm font-semibold text-ink truncate",
-													children: c.nombre
-												})]
-											}),
-											/* @__PURE__ */ jsx("div", {
-												className: "col-span-3",
-												children: /* @__PURE__ */ jsx("span", {
-													className: "text-sm text-ink-muted truncate block",
-													children: c.email
-												})
-											}),
-											/* @__PURE__ */ jsx("div", {
-												className: "col-span-3",
-												children: /* @__PURE__ */ jsxs("span", {
-													className: "text-sm text-ink",
-													children: [
-														c.proxima_sesion,
-														" ",
-														c.hora_proxima_sesion?.slice(0, 5) ?? ""
-													]
-												})
-											}),
-											/* @__PURE__ */ jsx("div", {
-												className: "col-span-1 flex justify-center",
-												children: /* @__PURE__ */ jsx("span", {
-													className: `badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`,
-													children: c.estado
-												})
-											})
-										]
-									}, c.cliente_id);
-								})]
-							})
-						})
-					})] }), /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", {
-						className: "text-lg font-semibold text-ink mb-3",
-						children: [
-							"Historial de clientes (",
-							filteredHistoricos.length,
-							")"
-						]
-					}), /* @__PURE__ */ jsx("div", {
-						className: "bg-surface border border-border rounded overflow-hidden",
-						children: /* @__PURE__ */ jsx("div", {
-							className: "overflow-x-auto",
-							children: /* @__PURE__ */ jsxs("div", {
-								className: "min-w-[580px]",
-								children: [/* @__PURE__ */ jsx("div", {
-									className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
-									children: [
-										{
-											label: "CLIENTE",
-											span: "col-span-3"
-										},
-										{
-											label: "EMAIL",
-											span: "col-span-3"
-										},
-										{
-											label: "ÚLTIMA SESIÓN",
-											span: "col-span-3"
-										},
-										{
-											label: "ESTADO",
-											span: "col-span-1 flex items-center justify-center"
-										}
-									].map((h) => /* @__PURE__ */ jsx("div", {
-										className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
-										children: h.label
-									}, h.label))
-								}), filteredHistoricos.length === 0 ? /* @__PURE__ */ jsx("div", {
-									className: "p-8 text-center text-sm text-ink-muted",
-									children: "No hay clientes históricos"
-								}) : filteredHistoricos.map((c, index) => {
-									const isSelected = selectedClient?.cliente_id === c.cliente_id;
-									const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
-									return /* @__PURE__ */ jsxs("div", {
-										onClick: () => handleClientClick(c),
-										className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent}
+											{
+												label: "CLIENTE",
+												span: "col-span-3"
+											},
+											{
+												label: "EMAIL",
+												span: "col-span-3"
+											},
+											{
+												label: "PRÓXIMA SESIÓN",
+												span: "col-span-3"
+											},
+											{
+												label: "ESTADO",
+												span: "col-span-1 flex items-center justify-center"
+											}
+										].map((h) => /* @__PURE__ */ jsx("div", {
+											className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
+											children: h.label
+										}, h.label))
+									}), filteredProximos.length === 0 ? /* @__PURE__ */ jsx("div", {
+										className: "p-8 text-center text-sm text-ink-muted",
+										children: "No hay clientes con reservas futuras"
+									}) : filteredProximos.map((c, index) => {
+										const isSelected = selectedClient?.cliente_id === c.cliente_id;
+										const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
+										return /* @__PURE__ */ jsxs("div", {
+											onClick: () => handleClientClick(c),
+											className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent}
                       ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`,
-										children: [
-											/* @__PURE__ */ jsxs("div", {
-												className: "col-span-3 flex items-center gap-3",
-												children: [/* @__PURE__ */ jsx("div", {
-													className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
-													children: getInitials$2(c.nombre)
-												}), /* @__PURE__ */ jsx("span", {
-													className: "text-sm font-semibold text-ink truncate",
-													children: c.nombre
-												})]
-											}),
-											/* @__PURE__ */ jsx("div", {
-												className: "col-span-3",
-												children: /* @__PURE__ */ jsx("span", {
-													className: "text-sm text-ink-muted truncate block",
-													children: c.email
+											children: [
+												/* @__PURE__ */ jsxs("div", {
+													className: "col-span-3 flex items-center gap-3",
+													children: [/* @__PURE__ */ jsx("div", {
+														className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
+														children: getInitials$2(c.nombre)
+													}), /* @__PURE__ */ jsx("span", {
+														className: "text-sm font-semibold text-ink truncate",
+														children: c.nombre
+													})]
+												}),
+												/* @__PURE__ */ jsx("div", {
+													className: "col-span-3",
+													children: /* @__PURE__ */ jsx("span", {
+														className: "text-sm text-ink-muted truncate block",
+														children: c.email
+													})
+												}),
+												/* @__PURE__ */ jsx("div", {
+													className: "col-span-3",
+													children: /* @__PURE__ */ jsxs("span", {
+														className: "text-sm text-ink",
+														children: [
+															c.proxima_sesion,
+															" ",
+															c.hora_proxima_sesion?.slice(0, 5) ?? ""
+														]
+													})
+												}),
+												/* @__PURE__ */ jsx("div", {
+													className: "col-span-1 flex justify-center",
+													children: /* @__PURE__ */ jsx("span", {
+														className: `badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`,
+														children: c.estado
+													})
 												})
-											}),
-											/* @__PURE__ */ jsx("div", {
-												className: "col-span-3",
-												children: /* @__PURE__ */ jsx("span", {
-													className: "text-sm text-ink-muted",
-													children: "Sin reservas futuras"
-												})
-											}),
-											/* @__PURE__ */ jsx("div", {
-												className: "col-span-1 flex justify-center",
-												children: /* @__PURE__ */ jsx("span", {
-													className: "badge",
-													children: "Histórico"
-												})
-											})
-										]
-									}, c.cliente_id);
-								})]
+											]
+										}, c.cliente_id);
+									})]
+								})
 							})
-						})
-					})] })]
+						})] }),
+						/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", {
+							className: "text-lg font-semibold text-ink mb-3",
+							children: [
+								"Próximas reservas de paquete (",
+								filteredpaquete.length,
+								")"
+							]
+						}), /* @__PURE__ */ jsx("div", {
+							className: "bg-surface border border-border rounded overflow-hidden",
+							children: /* @__PURE__ */ jsx("div", {
+								className: "overflow-x-auto",
+								children: /* @__PURE__ */ jsxs("div", {
+									className: "min-w-[580px]",
+									children: [/* @__PURE__ */ jsx("div", {
+										className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
+										children: [
+											{
+												label: "CLIENTE",
+												span: "col-span-3"
+											},
+											{
+												label: "EMAIL",
+												span: "col-span-3"
+											},
+											{
+												label: "PRÓXIMA SESIÓN",
+												span: "col-span-3"
+											},
+											{
+												label: "SESIONES RESTANTES",
+												span: "col-span-2"
+											},
+											{
+												label: "ESTADO",
+												span: "col-span-1 flex items-center justify-center"
+											}
+										].map((h) => /* @__PURE__ */ jsx("div", {
+											className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
+											children: h.label
+										}, h.label))
+									}), filteredpaquete.length === 0 ? /* @__PURE__ */ jsx("div", {
+										className: "p-8 text-center text-sm text-ink-muted",
+										children: "No hay clientes con reservas de paquete futuras"
+									}) : filteredpaquete.map((c, index) => {
+										const isSelected = selectedClient?.cliente_id === c.cliente_id;
+										const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
+										return /* @__PURE__ */ jsxs("div", {
+											onClick: () => handleClientClick(c),
+											className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent}
+                      ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`,
+											children: [
+												/* @__PURE__ */ jsxs("div", {
+													className: "col-span-3 flex items-center gap-3",
+													children: [/* @__PURE__ */ jsx("div", {
+														className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
+														children: getInitials$2(c.nombre)
+													}), /* @__PURE__ */ jsx("span", {
+														className: "text-sm font-semibold text-ink truncate",
+														children: c.nombre
+													})]
+												}),
+												/* @__PURE__ */ jsx("div", {
+													className: "col-span-3",
+													children: /* @__PURE__ */ jsx("span", {
+														className: "text-sm text-ink-muted truncate block",
+														children: c.email
+													})
+												}),
+												/* @__PURE__ */ jsx("div", {
+													className: "col-span-3",
+													children: /* @__PURE__ */ jsxs("span", {
+														className: "text-sm text-ink",
+														children: [
+															c.proxima_sesion,
+															" ",
+															c.hora_proxima_sesion?.slice(0, 5) ?? ""
+														]
+													})
+												}),
+												/* @__PURE__ */ jsx("div", {
+													className: "col-span-2",
+													children: /* @__PURE__ */ jsx("span", {
+														className: "text-sm text-ink-muted truncate block",
+														children: c.sesiones_restantes
+													})
+												}),
+												/* @__PURE__ */ jsx("div", {
+													className: "col-span-1 flex justify-center",
+													children: /* @__PURE__ */ jsx("span", {
+														className: `badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`,
+														children: c.estado
+													})
+												})
+											]
+										}, c.cliente_id);
+									})]
+								})
+							})
+						})] }),
+						/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("h3", {
+							className: "text-lg font-semibold text-ink mb-3",
+							children: [
+								"Historial de clientes (",
+								filteredHistoricos.length,
+								")"
+							]
+						}), /* @__PURE__ */ jsx("div", {
+							className: "bg-surface border border-border rounded overflow-hidden",
+							children: /* @__PURE__ */ jsx("div", {
+								className: "overflow-x-auto",
+								children: /* @__PURE__ */ jsxs("div", {
+									className: "min-w-[580px]",
+									children: [/* @__PURE__ */ jsx("div", {
+										className: "grid grid-cols-12 px-5 py-3 border-b border-border bg-bg",
+										children: [
+											{
+												label: "CLIENTE",
+												span: "col-span-3"
+											},
+											{
+												label: "EMAIL",
+												span: "col-span-3"
+											},
+											{
+												label: "ÚLTIMA SESIÓN",
+												span: "col-span-3"
+											},
+											{
+												label: "ESTADO",
+												span: "col-span-1 flex items-center justify-center"
+											}
+										].map((h) => /* @__PURE__ */ jsx("div", {
+											className: `text-xs font-bold text-ink-muted uppercase tracking-widest ${h.span}`,
+											children: h.label
+										}, h.label))
+									}), filteredHistoricos.length === 0 ? /* @__PURE__ */ jsx("div", {
+										className: "p-8 text-center text-sm text-ink-muted",
+										children: "No hay clientes históricos"
+									}) : filteredHistoricos.map((c, index) => {
+										const isSelected = selectedClient?.cliente_id === c.cliente_id;
+										const cc = CLIENT_COLORS[index % CLIENT_COLORS.length];
+										return /* @__PURE__ */ jsxs("div", {
+											onClick: () => handleClientClick(c),
+											className: `grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center cursor-pointer transition-colors border-l-[3px] ${cc.accent}
+                      ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`,
+											children: [
+												/* @__PURE__ */ jsxs("div", {
+													className: "col-span-3 flex items-center gap-3",
+													children: [/* @__PURE__ */ jsx("div", {
+														className: `w-9 h-9 rounded-lg ${cc.avatar} flex items-center justify-center text-white text-xs font-bold shrink-0`,
+														children: getInitials$2(c.nombre)
+													}), /* @__PURE__ */ jsx("span", {
+														className: "text-sm font-semibold text-ink truncate",
+														children: c.nombre
+													})]
+												}),
+												/* @__PURE__ */ jsx("div", {
+													className: "col-span-3",
+													children: /* @__PURE__ */ jsx("span", {
+														className: "text-sm text-ink-muted truncate block",
+														children: c.email
+													})
+												}),
+												/* @__PURE__ */ jsx("div", {
+													className: "col-span-3",
+													children: /* @__PURE__ */ jsx("span", {
+														className: "text-sm text-ink-muted",
+														children: "Sin reservas futuras"
+													})
+												}),
+												/* @__PURE__ */ jsx("div", {
+													className: "col-span-1 flex justify-center",
+													children: /* @__PURE__ */ jsx("span", {
+														className: "badge",
+														children: "Histórico"
+													})
+												})
+											]
+										}, c.cliente_id);
+									})]
+								})
+							})
+						})] })
+					]
 				})] })]
 			}), /* @__PURE__ */ jsx("div", {
 				className: "lg:sticky lg:top-8 space-y-3",
@@ -7714,7 +7818,9 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 							children: h
 						}, h))
 					}), services.map((s, idx) => {
-						const activo = s.activo ?? true;
+						const activo = s.estado === "activo";
+						s.estado;
+						s.estado;
 						const isEditing = editingId === s.servicio_id;
 						const isDeleting = deletingId === s.servicio_id;
 						const isDimmed = typeof editingId === "number" && !isEditing;
@@ -7846,7 +7952,7 @@ function ServiceForm({ form, setF, saving, isEdit, onSave, onCancel, needsLocati
 		});
 		setGeocodingError(null);
 		if (debounceRef.current) clearTimeout(debounceRef.current);
-		if (!value.trim()) return;
+		if (!value.trim() || value.trim().length < 8) return;
 		debounceRef.current = setTimeout(async () => {
 			setGeocoding(true);
 			try {
@@ -8001,7 +8107,7 @@ function ServiceForm({ form, setF, saving, isEdit, onSave, onCancel, needsLocati
 						className: "relative",
 						children: [/* @__PURE__ */ jsx("input", {
 							className: inputCls$1,
-							placeholder: "Ej. Av. Arequipa 123, Lima",
+							placeholder: "Ej. Av. 18 de Julio 1290, Montevideo",
 							value: form.ubicacion,
 							onChange: (e) => handleAddressInput(e.target.value)
 						}), geocoding && /* @__PURE__ */ jsx("span", {
@@ -8576,7 +8682,7 @@ function PackageForm({ form, setForm, servicios, subtotal, saving, isEdit, onSav
 							children: "Dirección / Ubicación"
 						}), /* @__PURE__ */ jsx("input", {
 							className: inputCls,
-							placeholder: "Ej. Av. Corrientes 1234, CABA",
+							placeholder: "Ej. Av. 18 de Julio 1290, Montevideo",
 							value: item.ubicacion,
 							onChange: (e) => updateItem(item.servicio_id, { ubicacion: e.target.value })
 						})] })]
@@ -11788,7 +11894,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/login-DLGBmClL.js",
+			"module": "/assets/login-DnPLy2lE.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12166,7 +12272,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/clients-kr9Ruq1R.js",
+			"module": "/assets/clients-KzDUKkB7.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12208,7 +12314,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/services-BVCn45eV.js",
+			"module": "/assets/services-mFI2n-kN.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12229,7 +12335,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/service-packages-DLgNAinG.js",
+			"module": "/assets/service-packages-CrQUrayV.js",
 			"imports": ["/assets/jsx-runtime-B75Xqy3m.js", "/assets/AuthContext-NE5TAd_g.js"],
 			"css": [],
 			"clientActionModule": void 0,
@@ -12495,8 +12601,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-c6109759.js",
-	"version": "c6109759",
+	"url": "/assets/manifest-49f92704.js",
+	"version": "49f92704",
 	"sri": void 0
 };
 //#endregion

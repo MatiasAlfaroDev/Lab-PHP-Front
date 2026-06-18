@@ -22,7 +22,7 @@ type Servicio = {
   ubicacion?: string;
   latitud?: number;
   longitud?: number;
-  activo?: boolean;
+  estado: "activo" | "desactivado" | "eliminado";
   reservas_count?: number;
 };
 
@@ -200,6 +200,7 @@ export default function Services() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [form,       setForm]       = useState<FormState>({ ...EMPTY_FORM });
   const [toast,      setToast]      = useState<{ msg: string; ok: boolean } | null>(null);
+  
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -210,7 +211,13 @@ export default function Services() {
     try {
       setLoading(true);
       const data: any = await api.get("/mis-servicios", token);
-      if (data.success) setServices(data.data);
+
+if (data.success) {
+  setServices([
+    ...(data.data.activos ?? []),
+    ...(data.data.desactivados ?? []),
+  ]);
+}
     } catch {
       setServices([]);
     } finally {
@@ -321,11 +328,19 @@ export default function Services() {
     }
   };
 
-  const toggleActivo = (s: Servicio) => {
-    setServices((prev) =>
-      prev.map((x) => x.servicio_id === s.servicio_id ? { ...x, activo: !(x.activo ?? true) } : x)
-    );
-  };
+  const toggleEstado = async (s: Servicio) => {
+  try {
+    if (s.estado === "activo") {
+      await api.put(`/servicios/${s.servicio_id}/desactivar`, {}, token);
+    } else {
+      await api.put(`/servicios/${s.servicio_id}/activar`, {}, token);
+    }
+
+    fetchServicios();
+  } catch (err: any) {
+    showToast(err.message ?? "Error al actualizar estado", false);
+  }
+};
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -409,7 +424,9 @@ export default function Services() {
           </div>
 
           {services.map((s, idx) => {
-            const activo     = s.activo ?? true;
+            const activo = s.estado === "activo";
+            const estaDesactivado = s.estado === "desactivado";
+            const estaEliminado = s.estado === "eliminado";
             const isEditing  = editingId === s.servicio_id;
             const isDeleting = deletingId === s.servicio_id;
             const isDimmed   = typeof editingId === "number" && !isEditing;
