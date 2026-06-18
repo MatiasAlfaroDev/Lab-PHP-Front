@@ -9,6 +9,7 @@ export function getEcho(token?: string) {
 
   if (!echo) {
     (window as any).Pusher = Pusher;
+    Pusher.logToConsole = true;
 
     echo = new Echo({
       broadcaster: "reverb",
