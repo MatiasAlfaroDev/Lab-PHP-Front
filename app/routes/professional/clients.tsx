@@ -873,7 +873,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                             const r = selectedReserva;
 
                             await api.put(
-                              `/reservas/${r.reserva_id}/estado`,
+                              `/reservas/${r.reserva_id}/no-asistida`,
                               { estado: "no_asistida" },
                               token
                             );
