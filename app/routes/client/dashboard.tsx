@@ -84,8 +84,13 @@ export default function ClientDashboard() {
 
     const cancelled =
       b.estado === "cancelada" || b.estado === "no_asistida";
+    if (cancelled) return false;
 
-    return date >= now && !cancelled;
+    // una sesión virtual en curso debe seguir visible aunque su hora
+    // agendada ya haya pasado
+    if (b.estado_videollamada === "en_curso") return true;
+
+    return date >= now;
   })
   .sort((a, b) => {
     const dateA = new Date(`${a.fecha}T${a.hora}`);
@@ -94,7 +99,10 @@ export default function ClientDashboard() {
   });
   const upcomingCount = upcomingBookings.length;
   const todaySession = useMemo(() => {
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // fecha local (no UTC) para evitar que en Uruguay (UTC-3) la sesión
+  // de hoy desaparezca pasadas las 21:00
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   return bookings
     .filter((b) => {
