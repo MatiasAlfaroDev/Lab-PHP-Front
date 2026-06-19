@@ -82,8 +82,8 @@ const TIPOS_SERVICIO = [
   "Otro",
 ];
 
-const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
-const labelCls = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
+const inputCls = "w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
+const labelCls = "block text-sm font-semibold text-ink mb-1.5";
 
 // ─── Google Maps hook ─────────────────────────────────────────────────────────
 
@@ -200,6 +200,7 @@ export default function Services() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [form,       setForm]       = useState<FormState>({ ...EMPTY_FORM });
   const [toast,      setToast]      = useState<{ msg: string; ok: boolean } | null>(null);
+  const [search,     setSearch]     = useState("");
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -257,7 +258,7 @@ export default function Services() {
 
   const setF = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
-  const needsLocation = ["presencial", "hibrido"].includes(form.modalidad.toLowerCase());
+  const needsLocation = ["presencial", "hibrido"].includes(form.modalidad.trim().toLowerCase());
 
   // ── Save / Delete ──────────────────────────────────────────────────────────
 
@@ -327,10 +328,14 @@ export default function Services() {
     );
   };
 
+  const filteredServices = services.filter((s) =>
+    s.nombre.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="w-full">
 
       {/* Toast */}
       {toast && (
@@ -341,31 +346,36 @@ export default function Services() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-3xl text-ink">Servicios</h1>
-          <p className="text-sm text-ink-muted mt-0.5">
-            {loading ? "Cargando..." : `${services.length} servicio${services.length !== 1 ? "s" : ""} registrado${services.length !== 1 ? "s" : ""}`}
-          </p>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border">
+        <div className="relative flex-1 max-w-xs">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted">
+            <SearchIcon />
+          </span>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar servicios"
+            className="w-full pl-8 pr-3 py-1.5 text-sm text-ink placeholder-ink-muted bg-transparent focus:outline-none"
+          />
         </div>
         <button
           onClick={openCreate}
-          className={`px-4 py-2 rounded text-sm font-semibold transition-colors cursor-pointer ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer shrink-0 ${
             editingId === "new"
               ? "bg-border text-ink-muted"
-              : "bg-ink-fixed text-white hover:bg-primary"
+              : "bg-accent text-white hover:bg-accent-hover"
           }`}
         >
-          {editingId === "new" ? "Cancelar" : <b>+ Nuevo servicio</b>}
+          {editingId === "new" ? "Cancelar" : <><PlusIcon /> Agregar servicio</>}
         </button>
       </div>
 
-      {/* Form de creación (antes de la tabla) */}
-      {editingId === "new" && (
-        <ServiceForm
+      {/* Drawer de creación/edición */}
+      {editingId !== null && (
+        <ServiceDrawer
           form={form} setF={setF}
-          saving={saving} isEdit={false}
+          saving={saving} isEdit={typeof editingId === "number"}
           onSave={handleSave} onCancel={closeAll}
           needsLocation={needsLocation}
         />
@@ -373,60 +383,73 @@ export default function Services() {
 
       {/* Loading */}
       {loading && (
-        <div className="bg-surface border border-border rounded p-12 text-center text-ink-muted text-sm">
+        <div className="m-4 bg-surface border border-border rounded p-12 text-center text-ink-muted text-sm">
           Cargando servicios...
         </div>
       )}
 
       {/* Empty */}
       {!loading && services.length === 0 && editingId !== "new" && (
-        <div className="bg-surface border border-border rounded p-12 text-center">
+        <div className="m-4 bg-surface border border-border rounded p-12 text-center">
           <p className="font-display text-xl text-ink mb-1">Sin servicios aún</p>
           <p className="text-ink-muted text-sm mb-5">
             Creá tu primer servicio para que los clientes puedan reservar
           </p>
           <button
             onClick={openCreate}
-            className="bg-ink-fixed text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
+            className="bg-accent text-white px-4 py-2 rounded-full hover:bg-accent-hover text-sm font-semibold transition-colors cursor-pointer"
           >
-            + Nuevo servicio
+            + Agregar servicio
           </button>
         </div>
       )}
 
+      {/* Sin resultados de búsqueda */}
+      {!loading && services.length > 0 && filteredServices.length === 0 && editingId !== "new" && (
+        <div className="m-4 bg-surface border border-border rounded p-12 text-center text-ink-muted text-sm">
+          No se encontraron servicios para "{search}"
+        </div>
+      )}
+
       {/* Tabla */}
-      {!loading && services.length > 0 && (
-        <div className="border border-border rounded overflow-x-auto">
-          <div className="bg-surface" style={{ minWidth: "640px" }}>
+      {!loading && filteredServices.length > 0 && (
+        <div className="bg-surface border-t border-border w-full overflow-x-auto">
           {/* Cabecera */}
           <div
-            className="grid px-5 py-2 border-b border-border bg-bg"
-            style={{ gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" }}
+            className="grid px-5 py-2 border-b border-border bg-surface"
+            style={{ gridTemplateColumns: "2fr 90px 110px 120px 110px 72px" }}
           >
-            {["Servicio", "Duración", "Modalidad", "Precio", "Reservas", ""].map((h) => (
-              <div key={h} className="text-xs font-bold text-ink-muted uppercase tracking-widest">{h}</div>
+            {["Nombre", "Precio", "Duración", "Modalidad", "Reservas", ""].map((h) => (
+              <div key={h} className="text-sm text-ink-muted">{h}</div>
             ))}
           </div>
 
-          {services.map((s, idx) => {
+          {/* Sección */}
+          <div className="px-5 py-2 border-b border-border bg-sidebar">
+            <span className="text-sm font-bold text-ink">Servicios</span>
+          </div>
+
+          {filteredServices.map((s, idx) => {
             const activo     = s.activo ?? true;
             const isEditing  = editingId === s.servicio_id;
             const isDeleting = deletingId === s.servicio_id;
-            const isDimmed   = typeof editingId === "number" && !isEditing;
             const modalidad  = s.modalidad?.toLowerCase();
 
             return (
-              <div key={s.servicio_id} className={`${idx > 0 ? "border-t border-border" : ""} ${isDimmed ? "opacity-40 pointer-events-none" : "transition-opacity"}`}>
+              <div key={s.servicio_id} className={idx > 0 ? "border-t border-border" : ""}>
                 {/* Fila */}
                 <div
                   className={`grid px-5 py-4 items-center ${
                     isEditing || isDeleting ? "bg-accent/10" : ""
                   }`}
-                  style={{ gridTemplateColumns: "2fr 90px 130px 80px 130px 72px" }}
+                  style={{ gridTemplateColumns: "2fr 90px 110px 120px 110px 72px" }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-ink-muted/50 shrink-0">
+                      <GripIcon />
+                    </span>
                     <div className="min-w-0">
-                      <p className={`text-sm font-semibold truncate ${activo ? "text-ink" : "text-ink-muted"}`}>
+                      <p className={`text-sm truncate ${activo ? "text-ink" : "text-ink-muted"}`}>
                         {s.nombre}
                       </p>
                       {s.ubicacion && (
@@ -437,7 +460,9 @@ export default function Services() {
                     </div>
                   </div>
 
-                  <div className="text-sm text-ink">{s.duracion} min</div>
+                  <div className="text-sm text-ink">${s.precio}</div>
+
+                  <div className="text-sm text-ink">{s.duracion} minutos</div>
 
                   <div>
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded ${MODALIDAD_CLS[modalidad] ?? "bg-gray-100 text-gray-700"}`}>
@@ -445,18 +470,16 @@ export default function Services() {
                     </span>
                   </div>
 
-                  <div className="font-display text-sm font-bold text-ink">${s.precio}</div>
-
                   <div className="text-sm text-ink-muted">
                     {s.reservas_count != null ? `${s.reservas_count} totales` : "—"}
                   </div>
 
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-3">
                     <button
                       onClick={() => { setDeletingId(null); openEdit(s); }}
                       title="Editar"
-                      className={`p-1.5 rounded transition-colors cursor-pointer ${
-                        isEditing ? "bg-ink-fixed text-white" : "hover:bg-border/40 text-ink-muted hover:text-ink"
+                      className={`transition-colors cursor-pointer ${
+                        isEditing ? "text-ink" : "text-accent-hover hover:text-ink"
                       }`}
                     >
                       <EditIcon />
@@ -464,8 +487,8 @@ export default function Services() {
                     <button
                       onClick={() => { setEditingId(null); setDeletingId(isDeleting ? null : s.servicio_id); }}
                       title="Eliminar"
-                      className={`p-1.5 rounded transition-colors cursor-pointer ${
-                        isDeleting ? "bg-red-500 text-white" : "hover:bg-border/40 text-ink-muted hover:text-red-500"
+                      className={`transition-colors cursor-pointer ${
+                        isDeleting ? "text-red-700" : "text-red-500 hover:text-red-700"
                       }`}
                     >
                       <TrashIcon />
@@ -496,31 +519,18 @@ export default function Services() {
                     </div>
                   </div>
                 )}
-
-                {/* Formulario de edición inline */}
-                {isEditing && (
-                  <div className="border-t border-border">
-                    <ServiceForm
-                      form={form} setF={setF}
-                      saving={saving} isEdit={true}
-                      onSave={handleSave} onCancel={closeAll}
-                      needsLocation={needsLocation}
-                    />
-                  </div>
-                )}
               </div>
             );
           })}
-          </div>
         </div>
       )}
     </div>
   );
 }
 
-// ─── Inline form ──────────────────────────────────────────────────────────────
+// ─── Drawer de creación/edición ────────────────────────────────────────────────
 
-function ServiceForm({
+function ServiceDrawer({
   form, setF, saving, isEdit, onSave, onCancel, needsLocation,
 }: {
   form: FormState;
@@ -529,6 +539,51 @@ function ServiceForm({
   isEdit: boolean;
   onSave: () => void;
   onCancel: () => void;
+  needsLocation: boolean;
+}) {
+  const locationConfirmed = form.latitud !== null && form.longitud !== null;
+  const canSave = !saving && (!needsLocation || locationConfirmed);
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+
+      {/* Panel */}
+      <div className="relative w-full max-w-md bg-surface shadow-xl rounded-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
+          <h2 className="font-display text-2xl text-ink">
+            {isEdit ? "Editar servicio" : "Agregar nuevo servicio"}
+          </h2>
+          <button onClick={onCancel} className="text-ink-muted hover:text-ink transition-colors cursor-pointer">
+            <CloseIcon />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          <ServiceFormFields form={form} setF={setF} needsLocation={needsLocation} />
+        </div>
+
+        <div className="px-6 py-4 border-t border-border shrink-0">
+          <button
+            onClick={onSave}
+            disabled={!canSave}
+            title={needsLocation && !locationConfirmed ? "Confirmá la ubicación en el mapa" : undefined}
+            className="w-full flex items-center justify-center gap-2 bg-accent text-ink-fixed px-4 py-2.5 rounded-xl hover:bg-accent-hover text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          >
+            {saving ? "Guardando..." : <>Guardar <ArrowRightIcon /></>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ServiceFormFields({
+  form, setF, needsLocation,
+}: {
+  form: FormState;
+  setF: (p: Partial<FormState>) => void;
   needsLocation: boolean;
 }) {
   const [geocodingError, setGeocodingError] = useState<string | null>(null);
@@ -574,75 +629,80 @@ function ServiceForm({
   };
 
   const locationConfirmed = form.latitud !== null && form.longitud !== null;
-  const canSave = !saving && (!needsLocation || locationConfirmed);
 
   return (
-    <div className="bg-surface border border-border rounded p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">
-          {isEdit ? "Editar servicio" : "Nuevo servicio"}
-        </p>
-        <button onClick={onCancel} className="text-ink-muted hover:text-ink transition-colors cursor-pointer">
-          <CloseIcon />
-        </button>
-      </div>
-
-      {/* Fila 1: nombre + tipo */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelCls}>Nombre</label>
-          <input className={inputCls} placeholder="Ej. Sesión individual"
-            value={form.nombre} onChange={(e) => setF({ nombre: e.target.value })} />
-        </div>
-        <div>
-          <label className={labelCls}>Tipo</label>
-            <select
-              className={inputCls}
-              value={form.tipo}
-              onChange={(e) =>
-                setF({
-                  tipo: e.target.value,
-                  tipoPersonalizado: "",
-                })
-              }
-            >
-              <option value="">Seleccionar tipo</option>
-
-              {TIPOS_SERVICIO.map((tipo) => (
-                <option key={tipo} value={tipo}>
-                  {tipo}
-                </option>
-              ))}
-            </select>
-            {form.tipo === "Otro" && (
-              <input
-                className={`${inputCls} mt-2`}
-                placeholder="Especifique el tipo de servicio"
-                value={form.tipoPersonalizado}
-                onChange={(e) => setF({ tipoPersonalizado: e.target.value })}
-              />
-            )}
-        </div>
-      </div>
-
-      {/* Descripción */}
+    <>
+      {/* Nombre */}
       <div>
-        <label className={labelCls}>Descripción</label>
-        <textarea rows={2} className={`${inputCls} resize-none`} placeholder="Describe el servicio..."
-          value={form.descripcion} onChange={(e) => setF({ descripcion: e.target.value })} />
+        <label className={labelCls}>Nombre del Servicio</label>
+        <input className={inputCls} placeholder="Ej. Corte de pelo"
+          value={form.nombre} onChange={(e) => setF({ nombre: e.target.value })} />
       </div>
 
-      {/* Fila 2: modalidad + precio + duración */}
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className={labelCls}>Modalidad</label>
-          <select className={inputCls} value={form.modalidad}
-            onChange={(e) => setF({ modalidad: e.target.value })}>
-            <option value="presencial">Presencial</option>
-            <option value="virtual">Virtual</option>
-            <option value="hibrido">Híbrido</option>
-          </select>
+      {/* Categoría */}
+      <div>
+        <label className={labelCls}>Categoría</label>
+        <select
+          className={inputCls}
+          value={form.tipo}
+          onChange={(e) =>
+            setF({
+              tipo: e.target.value,
+              tipoPersonalizado: "",
+            })
+          }
+        >
+          <option value="">Seleccionar categoría</option>
+
+          {TIPOS_SERVICIO.map((tipo) => (
+            <option key={tipo} value={tipo}>
+              {tipo}
+            </option>
+          ))}
+        </select>
+        {form.tipo === "Otro" && (
+          <input
+            className={`${inputCls} mt-2`}
+            placeholder="Especifique la categoría"
+            value={form.tipoPersonalizado}
+            onChange={(e) => setF({ tipoPersonalizado: e.target.value })}
+          />
+        )}
+      </div>
+
+      {/* Modalidad */}
+      <div>
+        <label className={labelCls}>Modalidad</label>
+        <div className="flex items-center gap-6">
+          {[
+            { value: "presencial", label: "Presencial" },
+            { value: "virtual",    label: "Virtual" },
+            { value: "hibrido",    label: "Híbrido" },
+          ].map((opt) => {
+            const checked = form.modalidad.trim().toLowerCase() === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setF({ modalidad: opt.value })}
+                className="flex items-center gap-2 text-sm text-ink cursor-pointer"
+              >
+                <span className={`relative w-4 h-4 rounded-full border-2 shrink-0 ${
+                  checked ? "border-accent-hover" : "border-border"
+                }`}>
+                  {checked && (
+                    <span className="absolute inset-0.5 rounded-full bg-accent-hover" />
+                  )}
+                </span>
+                {opt.label}
+              </button>
+            );
+          })}
         </div>
+      </div>
+
+      {/* Precio / Duración */}
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>Precio ($)</label>
           <input type="number" min={0} className={inputCls} placeholder="0"
@@ -650,7 +710,7 @@ function ServiceForm({
         </div>
         <div>
           <label className={labelCls}>Duración (min)</label>
-          <input type="number" min={1} className={inputCls} placeholder="50"
+          <input type="number" min={1} className={inputCls} placeholder="30"
             value={form.duracion} onChange={(e) => setF({ duracion: e.target.value })} />
         </div>
       </div>
@@ -676,7 +736,7 @@ function ServiceForm({
             {geocodingError ? (
               <p className="text-xs text-red-500 mt-1">{geocodingError}</p>
             ) : locationConfirmed ? (
-              <p className="text-xs text-emerald-600 mt-1">✓ Ubicación confirmada en el mapa</p>
+              <p className="text-xs text-accent-hover mt-1">✓ Ubicación confirmada en el mapa</p>
             ) : (
               <p className="text-xs text-ink-muted mt-1">
                 Escribí la dirección para ubicarla en el mapa, o arrastrá el pin
@@ -691,7 +751,10 @@ function ServiceForm({
         </div>
       )}
 
-      {/* Fila 3: pausa + cancelación */}
+      {/* Divisor */}
+      <hr className="border-t border-dashed border-border" />
+
+      {/* Pausa / Cancelación */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>Pausa entre turnos (min)</label>
@@ -705,26 +768,44 @@ function ServiceForm({
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="flex justify-end gap-2 pt-1">
-        <button onClick={onCancel}
-          className="border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink transition-colors cursor-pointer">
-          Cancelar
-        </button>
-        <button
-          onClick={onSave}
-          disabled={!canSave}
-          title={needsLocation && !locationConfirmed ? "Confirmá la ubicación en el mapa" : undefined}
-          className="bg-ink-fixed text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-        >
-          {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear servicio"}
-        </button>
+      {/* Descripción */}
+      <div>
+        <label className={labelCls}>Descripción</label>
+        <textarea rows={5} className={`${inputCls} resize-none`} placeholder="Describe el servicio..."
+          value={form.descripcion} onChange={(e) => setF({ descripcion: e.target.value })} />
       </div>
-    </div>
+    </>
   );
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
+
+function SearchIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function GripIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="8" cy="6" r="1.5" /><circle cx="8" cy="12" r="1.5" /><circle cx="8" cy="18" r="1.5" />
+      <circle cx="16" cy="6" r="1.5" /><circle cx="16" cy="12" r="1.5" /><circle cx="16" cy="18" r="1.5" />
+    </svg>
+  );
+}
 
 function EditIcon() {
   return (
@@ -742,6 +823,15 @@ function TrashIcon() {
       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
       <path d="M10 11v6M14 11v6" />
       <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
+function ArrowRightIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
     </svg>
   );
 }

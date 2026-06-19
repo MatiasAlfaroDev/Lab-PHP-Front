@@ -14,22 +14,29 @@
   --color-primary: #2b2d3a;
   --color-primary-hover: #1a1c27;
   --color-primary-soft: #e0dff0;
-  --color-accent: #d4e600;
-  --color-accent-hover: #bccf00;
+  --color-accent: #c2d203;
+  --color-accent-hover: #a9b903;
   --color-border: #dbd9d0;
-  --color-sidebar: #1c1c1c;
-  --color-sidebar-text: #f0ece4;
-  --color-sidebar-muted: #8a8a8a;
+  --color-sidebar: #f9fafb;
+  --color-sidebar-text: #1c1c1c;
+  --color-sidebar-muted: #6b6b6b;
+  --color-sidebar-border: #f3f3f3;
+  --color-sidebar-hover: rgba(0, 0, 0, 0.05);
 }
 
-/* Modo oscuro — sobrescribe solo los tokens de superficie/texto de página.
-   Los colores de marca (primary, accent, sidebar, ink-fixed) se mantienen iguales en ambos temas. */
+/* Modo oscuro — sobrescribe los tokens de superficie/texto de página y del sidebar.
+   Los colores de marca (primary, accent, ink-fixed) se mantienen iguales en ambos temas. */
 :root.dark {
   --color-bg: #15151a;
   --color-surface: #1f1f26;
   --color-ink: #f0ece4;
   --color-ink-muted: #9a9a9a;
   --color-border: #34343d;
+  --color-sidebar: #1c1c1c;
+  --color-sidebar-text: #f0ece4;
+  --color-sidebar-muted: #8a8a8a;
+  --color-sidebar-border: rgba(255, 255, 255, 0.1);
+  --color-sidebar-hover: rgba(255, 255, 255, 0.1);
 }
 
 html,
