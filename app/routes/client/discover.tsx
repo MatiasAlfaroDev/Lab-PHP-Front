@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
+import "leaflet/dist/leaflet.css";
 
 interface Profesional {
   user_id: number;
@@ -19,6 +20,9 @@ interface Servicio {
   duracion: number;
   pausa: number;
   modalidad: string;
+  latitud?: number;
+  longitud?: number;
+  direccion?: string;
   profesional: Profesional | null;
   promedio?: number;
   cantidad_calificaciones?: number;
@@ -195,6 +199,14 @@ export default function Discover() {
   const [buyingPackageId, setBuyingPackageId] = useState<number | null>(null);
   const [searchParams]                          = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
+  const center: [number, number] = [-34.9011, -56.1645];
+  const [LeafletMap, setLeafletMap] = useState<any>(null);
+
+  useEffect(() => {
+    import("react-leaflet").then((mod) => {
+      setLeafletMap(mod);
+    });
+  }, []);
 
 
   // Fetch servicios + paquetes en paralelo al montar
@@ -371,11 +383,13 @@ export default function Discover() {
             )}
 
             {!loadingSvc && !error && filteredSvc.length > 0 && (
+               <>
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredSvc.map((servicio) => {
                   const colors        = getCardColors(servicio.servicio_id);
                   const initials      = getInitials(servicio.nombre);
                   const modalityLabel = normalizeModality(servicio.modalidad);
+
                   return (
                     <div
                       key={servicio.servicio_id}
@@ -439,7 +453,69 @@ export default function Discover() {
                   );
                 })}
               </div>
-            )}
+              <div className="mt-8">
+                <h2 className="text-xl font-semibold mb-4">
+                  Servicios en el mapa
+                </h2>
+
+                {LeafletMap && (
+                  <LeafletMap.MapContainer
+                    center={center}
+                    zoom={7}
+                    style={{ height: "500px", width: "100%" }}
+                  >
+                    <LeafletMap.TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+
+                    <LeafletMap.Marker position={[-34.9011, -56.1645]}>
+                      <LeafletMap.Popup>
+                        Montevideo
+                      </LeafletMap.Popup>
+                    </LeafletMap.Marker>
+
+                    {filteredSvc
+                      .filter((s) => s.latitud && s.longitud)
+                      .map((servicio) => (
+                        <LeafletMap.Marker
+                          key={servicio.servicio_id}
+                          position={[
+                            servicio.latitud!,
+                            servicio.longitud!,
+                          ]}
+                        >
+                          <LeafletMap.Popup>
+                            <div className="min-w-[180px]">
+                              <strong>{servicio.nombre}</strong>
+                              <br />
+                              ${servicio.precio}
+                              <br />
+                              {servicio.tipo}
+
+                              <button
+                                className="mt-2 w-full bg-primary text-white px-2 py-1 rounded text-sm"
+                                onClick={() =>
+                                  navigate(
+                                    `/client/professional/${servicio.profesional_id}`,
+                                    {
+                                      state: {
+                                        servicioId: servicio.servicio_id,
+                                      },
+                                    }
+                                  )
+                                }
+                              >
+                                Ver servicio
+                              </button>
+                            </div>
+                          </LeafletMap.Popup>
+                        </LeafletMap.Marker>
+                      ))}
+                  </LeafletMap.MapContainer>
+                )}
+              </div>
+            </>
+          )}         
           </>
         )}
 
