@@ -189,7 +189,7 @@ export default function AdminUsers() {
       <Table title="Profesionales" data={professionals} />
       {modal.open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 shadow-lg w-[300px] text-center">
+          <div className="bg-surface rounded-lg p-6 shadow-lg w-[300px] text-center">
             <p className="text-sm text-ink mb-4">{modal.message}</p>
 
             <button

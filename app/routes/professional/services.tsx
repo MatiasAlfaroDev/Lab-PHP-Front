@@ -82,7 +82,7 @@ const TIPOS_SERVICIO = [
   "Otro",
 ];
 
-const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
+const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 const labelCls = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
 
 // ─── Google Maps hook ─────────────────────────────────────────────────────────
@@ -335,7 +335,7 @@ export default function Services() {
       {/* Toast */}
       {toast && (
         <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded border text-sm font-semibold shadow-lg ${
-          toast.ok ? "bg-accent text-ink border-ink/20" : "bg-red-100 text-red-800 border-red-200"
+          toast.ok ? "bg-accent text-ink-fixed border-ink-fixed/20" : "bg-red-100 text-red-800 border-red-200"
         }`}>
           {toast.msg}
         </div>
@@ -354,7 +354,7 @@ export default function Services() {
           className={`px-4 py-2 rounded text-sm font-semibold transition-colors cursor-pointer ${
             editingId === "new"
               ? "bg-border text-ink-muted"
-              : "bg-ink text-white hover:bg-primary"
+              : "bg-ink-fixed text-white hover:bg-primary"
           }`}
         >
           {editingId === "new" ? "Cancelar" : <b>+ Nuevo servicio</b>}
@@ -387,7 +387,7 @@ export default function Services() {
           </p>
           <button
             onClick={openCreate}
-            className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
+            className="bg-ink-fixed text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
           >
             + Nuevo servicio
           </button>
@@ -456,7 +456,7 @@ export default function Services() {
                       onClick={() => { setDeletingId(null); openEdit(s); }}
                       title="Editar"
                       className={`p-1.5 rounded transition-colors cursor-pointer ${
-                        isEditing ? "bg-ink text-white" : "hover:bg-border/40 text-ink-muted hover:text-ink"
+                        isEditing ? "bg-ink-fixed text-white" : "hover:bg-border/40 text-ink-muted hover:text-ink"
                       }`}
                     >
                       <EditIcon />
@@ -482,7 +482,7 @@ export default function Services() {
                     <div className="flex gap-2 shrink-0">
                       <button
                         onClick={() => setDeletingId(null)}
-                        className="px-3 py-1.5 rounded border border-border bg-white text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer"
+                        className="px-3 py-1.5 rounded border border-border bg-surface text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer"
                       >
                         Cancelar
                       </button>
@@ -577,7 +577,7 @@ function ServiceForm({
   const canSave = !saving && (!needsLocation || locationConfirmed);
 
   return (
-    <div className="bg-white border border-border rounded p-5 space-y-4">
+    <div className="bg-surface border border-border rounded p-5 space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">
           {isEdit ? "Editar servicio" : "Nuevo servicio"}
@@ -715,7 +715,7 @@ function ServiceForm({
           onClick={onSave}
           disabled={!canSave}
           title={needsLocation && !locationConfirmed ? "Confirmá la ubicación en el mapa" : undefined}
-          className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          className="bg-ink-fixed text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >
           {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear servicio"}
         </button>

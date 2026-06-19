@@ -91,7 +91,7 @@ export default function Register() {
                 key={r}
                 onClick={() => setRole(r)}
                 className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${
-                  role === r ? "bg-ink text-white shadow" : "text-ink-muted hover:text-ink"
+                  role === r ? "bg-ink-fixed text-white shadow" : "text-ink-muted hover:text-ink"
                 }`}
               >
                 {r === "professional" ? "Soy profesional" : "Soy cliente"}

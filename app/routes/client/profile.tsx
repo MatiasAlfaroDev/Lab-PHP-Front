@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "~/context/AuthContext";
+import { useTheme } from "~/context/ThemeContext";
 import { api } from "~/lib/api";
 
 function getInitials(name: string) {
@@ -13,6 +14,7 @@ function getInitials(name: string) {
 
 export default function ClientProfile() {
   const { user, token, updateUser } = useAuth();
+  const { resolvedTheme, setTheme } = useTheme();
 
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -72,14 +74,37 @@ export default function ClientProfile() {
       <p className="text-ink-muted mb-8">Gestiona tu información personal</p>
 
       {/* Avatar */}
-      <div className="flex items-center gap-5 mb-10">
-        <div className="w-20 h-20 rounded-2xl bg-accent flex items-center justify-center text-ink text-2xl font-bold">
+      <div className="flex items-center gap-5 mb-6">
+        <div className="w-20 h-20 rounded-2xl bg-accent flex items-center justify-center text-ink-fixed text-2xl font-bold">
           {getInitials(name) || user?.initials || "?"}
         </div>
         <div>
           <p className="font-semibold text-ink text-lg">{name || user?.name}</p>
           <p className="text-sm text-ink-muted">Cliente</p>
         </div>
+      </div>
+
+      {/* Apariencia */}
+      <div className="mb-8">
+        <p className="text-xs font-semibold text-ink-muted uppercase tracking-widest mb-2">Apariencia</p>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={resolvedTheme === "dark"}
+          aria-label="Modo oscuro"
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          className="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-ink-fixed transition-colors cursor-pointer"
+        >
+          <span
+            className={`flex items-center justify-center h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              resolvedTheme === "dark" ? "translate-x-1" : "translate-x-6"
+            }`}
+          >
+            {resolvedTheme === "dark" && (
+              <ion-icon name="moon" style={{ fontSize: "12px", color: "#1c1c1c" }} />
+            )}
+          </span>
+        </button>
       </div>
 
       {/* Info personal */}
@@ -117,7 +142,7 @@ export default function ClientProfile() {
             <button
               type="submit"
               disabled={saving}
-              className="bg-ink text-white px-5 py-2 rounded text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="bg-ink-fixed text-white px-5 py-2 rounded text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               {saving ? "Guardando..." : "Guardar cambios"}
             </button>
@@ -170,7 +195,7 @@ export default function ClientProfile() {
             <button
               type="submit"
               disabled={savingPwd}
-              className="bg-ink text-white px-5 py-2 rounded text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="bg-ink-fixed text-white px-5 py-2 rounded text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               {savingPwd ? "Actualizando..." : "Cambiar contraseña"}
             </button>

@@ -110,7 +110,7 @@ export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose
           effectiveCollapsed ? "justify-center px-0" : ""
         } ${
           isActive
-            ? "bg-white text-ink"
+            ? "bg-white text-ink-fixed"
             : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"
         }`
       }
@@ -139,7 +139,7 @@ export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose
               <button
                 onClick={() => navigate("/client/profile")}
                 title={user?.name ?? "Usuario"}
-                className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all"
+                className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all"
               >
                 {getInitials(user?.name)}
               </button>
@@ -149,7 +149,7 @@ export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose
               <button
                 onClick={() => { navigate("/client/profile"); if (isMobileOpen) onMobileClose(); }}
                 title="Editar perfil"
-                className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all"
+                className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all"
               >
                 {getInitials(user?.name)}
               </button>

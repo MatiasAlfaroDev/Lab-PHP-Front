@@ -337,7 +337,7 @@ export default function ProfessionalDashboard() {
                       )}
                       {item.modalidad === "virtual" && puedeEntrar(item) && (
                         <Link to={`/videollamada/${item.reserva_id}`}>
-                          <button className="flex items-center gap-1 bg-ink text-white text-sm font-semibold px-2 sm:px-4 py-2 rounded hover:bg-primary transition-colors">
+                          <button className="flex items-center gap-1 bg-ink-fixed text-white text-sm font-semibold px-2 sm:px-4 py-2 rounded hover:bg-primary transition-colors">
                             <VideoIcon />
                             <span className="hidden sm:inline">Iniciar videollamada</span>
                           </button>
@@ -374,7 +374,7 @@ export default function ProfessionalDashboard() {
                   <button
                     key={i}
                     className={`text-xs py-1.5 rounded transition-colors ${
-                      isToday ? "bg-ink text-white font-bold" : "text-ink-muted"
+                      isToday ? "bg-ink-fixed text-white font-bold" : "text-ink-muted"
                     }`}
                   >
                     {day}
@@ -448,7 +448,7 @@ export default function ProfessionalDashboard() {
                       <button
                         disabled={loadingId === r.reserva_id}
                         onClick={() => cambiarEstado(r.reserva_id, "confirmada")}
-                        className="px-3 py-1 text-xs bg-ink text-white rounded hover:bg-primary disabled:opacity-50 cursor-pointer"
+                        className="px-3 py-1 text-xs bg-ink-fixed text-white rounded hover:bg-primary disabled:opacity-50 cursor-pointer"
                       >
                         {loadingId === r.reserva_id ? "..." : "Confirmar"}
                       </button>

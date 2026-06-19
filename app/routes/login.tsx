@@ -47,7 +47,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex">
       {/* Left — dark editorial panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-ink flex-col justify-between p-12 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-ink-fixed flex-col justify-between p-12 relative overflow-hidden">
         <div
           className="absolute top-12 right-12 w-48 h-48 bg-accent opacity-90 rotate-12"
           style={{ borderRadius: "2px" }}
@@ -101,7 +101,7 @@ export default function Login() {
                 onClick={() => setRole(r)}
                 className={`flex-1 py-2.5 text-sm font-semibold transition-all ${
                   role === r
-                    ? "bg-ink text-white"
+                    ? "bg-ink-fixed text-white"
                     : "text-ink-muted hover:text-ink"
                 }`}
               >
@@ -152,7 +152,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-ink hover:bg-primary text-white font-semibold py-3 rounded transition-colors disabled:opacity-60"
+              className="w-full bg-ink-fixed hover:bg-primary text-white font-semibold py-3 rounded transition-colors disabled:opacity-60"
             >
               {loading ? "Iniciando..." : "Iniciar sesión →"}
             </button>

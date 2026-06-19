@@ -13,7 +13,7 @@ export default function Session() {
   const handleEnd = () => navigate(`/session/${id}/rating`);
 
   return (
-    <div className="h-screen flex flex-col bg-ink text-white overflow-hidden">
+    <div className="h-screen flex flex-col bg-ink-fixed text-white overflow-hidden">
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-white/10">
         <div className="flex items-center gap-3">
@@ -72,7 +72,7 @@ export default function Session() {
           {/* Self view (PiP) */}
           <div className="absolute bottom-4 right-4 w-36 h-28 bg-white/10 rounded overflow-hidden border border-white/20 flex items-center justify-center">
             <div className="text-center">
-              <div className="w-10 h-10 rounded-full bg-accent mx-auto mb-1 flex items-center justify-center text-ink text-xs font-bold">LP</div>
+              <div className="w-10 h-10 rounded-full bg-accent mx-auto mb-1 flex items-center justify-center text-ink-fixed text-xs font-bold">LP</div>
               <p className="text-xs text-white font-medium">· Vos</p>
             </div>
           </div>
@@ -124,7 +124,7 @@ function ControlBtn({
       <span className="text-xl">{icon}</span>
       <span className="text-xs">{label}</span>
       {badge && (
-        <span className="absolute -top-1 left-1/2 -translate-x-1/2 translate-x-3 w-4 h-4 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold">
+        <span className="absolute -top-1 left-1/2 -translate-x-1/2 translate-x-3 w-4 h-4 rounded-full bg-accent text-ink-fixed text-xs flex items-center justify-center font-bold">
           {badge}
         </span>
       )}

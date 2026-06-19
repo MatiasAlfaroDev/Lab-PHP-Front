@@ -185,7 +185,7 @@ export default function Discover() {
                   onClick={() => setSelectedModality(m)}
                   className={`text-xs px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
                     selectedModality === m
-                      ? "bg-ink text-white border-ink"
+                      ? "bg-ink-fixed text-white border-ink-fixed"
                       : "border-border text-ink-muted hover:border-ink hover:text-ink"
                   }`}
                 >
@@ -320,7 +320,7 @@ export default function Discover() {
                       <div className={`h-28 bg-gradient-to-br ${colors.bg} relative`}>
                         <button
                           onClick={(e) => e.stopPropagation()}
-                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-ink-muted hover:text-accent transition-colors cursor-pointer"
+                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-ink-fixed/70 hover:text-accent transition-colors cursor-pointer"
                         >
                           <ion-icon name="heart-outline" style={{ fontSize: "16px" }} />
                         </button>
@@ -437,7 +437,7 @@ export default function Discover() {
                        <button
                           disabled={buyingPackageId === paquete.paquete_id}
                           className="
-                            bg-ink text-white px-4 py-2 rounded-lg
+                            bg-ink-fixed text-white px-4 py-2 rounded-lg
                             hover:bg-primary
                             transition-colors
                             disabled:opacity-70

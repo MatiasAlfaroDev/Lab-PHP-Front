@@ -167,7 +167,7 @@ const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void 
   <button
     onMouseDown={(e) => e.stopPropagation()}
     onClick={(e) => { e.stopPropagation(); onChange(); }}
-    className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${checked ? "bg-ink" : "bg-border"}`}
+    className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${checked ? "bg-ink-fixed" : "bg-border"}`}
   >
     <span
       className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
@@ -574,7 +574,7 @@ export default function Availability() {
       </div>
       {showExcepciones && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+          <div className="bg-surface rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">
                 Excepciones
@@ -643,7 +643,7 @@ export default function Availability() {
       )}
       {showNuevaExcepcion && (
   <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]">
-    <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+    <div className="bg-surface rounded-2xl p-6 w-full max-w-md">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">
           Nueva excepción
@@ -1145,7 +1145,7 @@ export default function Availability() {
             onClick={handleSave}
             disabled={saving || !selectedId}
             className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              saved ? "bg-green-500 text-white" : "bg-ink text-white hover:bg-primary disabled:opacity-50"
+              saved ? "bg-green-500 text-white" : "bg-ink-fixed text-white hover:bg-primary disabled:opacity-50"
             }`}
           >
             {saving && (

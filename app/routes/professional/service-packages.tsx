@@ -53,7 +53,7 @@ const EMPTY_FORM: FormState = {
   items: [],
 };
 
-const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
+const inputCls = "w-full border border-border rounded px-3 py-2 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 const labelCls = "block text-xs font-bold text-ink-muted uppercase tracking-widest mb-1.5";
 
 const SVC_COLORS = [
@@ -219,7 +219,7 @@ export default function ServicePackages() {
       {/* Toast */}
       {toast && (
         <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded border text-sm font-semibold shadow-lg transition-all ${
-          toast.ok ? "bg-accent text-ink border-ink/20" : "bg-red-100 text-red-800 border-red-200"
+          toast.ok ? "bg-accent text-ink-fixed border-ink-fixed/20" : "bg-red-100 text-red-800 border-red-200"
         }`}>
           {toast.msg}
         </div>
@@ -236,7 +236,7 @@ export default function ServicePackages() {
         <button
           onClick={() => creating ? closeAll() : openCreate()}
           className={`px-4 py-2 rounded text-sm font-semibold transition-colors cursor-pointer ${
-            creating ? "bg-border text-ink-muted" : "bg-ink text-white hover:bg-primary"
+            creating ? "bg-border text-ink-muted" : "bg-ink-fixed text-white hover:bg-primary"
           }`}
         >
           {creating ? "Cancelar" : <b>+ Nuevo paquete</b>}
@@ -274,7 +274,7 @@ export default function ServicePackages() {
           <p className="text-ink-muted text-sm mb-5">Creá tu primer paquete de servicios</p>
           <button
             onClick={openCreate}
-            className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
+            className="bg-ink-fixed text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors cursor-pointer"
           >
             + Nuevo paquete
           </button>
@@ -331,7 +331,7 @@ export default function ServicePackages() {
                     <button
                       onClick={() => openEdit(pkg)}
                       title="Editar"
-                      className={`p-1.5 rounded transition-colors cursor-pointer ${isEditing ? "bg-ink text-white" : "hover:bg-border/40 text-ink-muted hover:text-ink"}`}
+                      className={`p-1.5 rounded transition-colors cursor-pointer ${isEditing ? "bg-ink-fixed text-white" : "hover:bg-border/40 text-ink-muted hover:text-ink"}`}
                     >
                       <EditIcon />
                     </button>
@@ -354,7 +354,7 @@ export default function ServicePackages() {
                     <div className="flex gap-2 shrink-0">
                       <button
                         onClick={() => setDeletingId(null)}
-                        className="px-3 py-1.5 rounded border border-border bg-white text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer"
+                        className="px-3 py-1.5 rounded border border-border bg-surface text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer"
                       >
                         Cancelar
                       </button>
@@ -417,7 +417,7 @@ function PackageForm({
   const available = servicios.filter((s) => !form.items.some((i) => i.servicio_id === s.servicio_id));
 
   return (
-    <div className="bg-white border border-border rounded p-5 space-y-5">
+    <div className="bg-surface border border-border rounded p-5 space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">
           {isEdit ? "Editar paquete" : "Nuevo paquete"}
@@ -483,7 +483,7 @@ function PackageForm({
                       <input
                         type="number"
                         min={1}
-                        className="w-16 border border-border rounded px-2 py-1 text-sm bg-white text-ink text-center focus:outline-none focus:ring-2 focus:ring-ink"
+                        className="w-16 border border-border rounded px-2 py-1 text-sm bg-surface text-ink text-center focus:outline-none focus:ring-2 focus:ring-ink"
                         value={item.cantidad_sesiones}
                         onChange={(e) => updateItem(item.servicio_id, { cantidad_sesiones: Math.max(1, Number(e.target.value)) })}
                       />
@@ -529,7 +529,7 @@ function PackageForm({
                 </div>
                 <button
                   onClick={() => addItem(svc)}
-                  className="text-xs font-semibold bg-ink text-white px-3 py-1.5 rounded hover:bg-primary transition-colors cursor-pointer"
+                  className="text-xs font-semibold bg-ink-fixed text-white px-3 py-1.5 rounded hover:bg-primary transition-colors cursor-pointer"
                 >
                   + Agregar
                 </button>
@@ -567,7 +567,7 @@ function PackageForm({
           <button
             onClick={onSave}
             disabled={saving}
-            className="bg-ink text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+            className="bg-ink-fixed text-white px-4 py-2 rounded hover:bg-primary text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer"
           >
             {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear paquete"}
           </button>

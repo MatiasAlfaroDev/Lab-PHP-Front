@@ -365,7 +365,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                           <div key={str} className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[52px] ${isToday ? "bg-accent/10" : ""}`}>
                             <p className="text-xs text-ink-muted uppercase tracking-wide font-semibold">{DOW_LABELS[dow]}</p>
                             {isToday ? (
-                              <span className="inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink text-white text-xs font-bold">{d.getDate()}</span>
+                              <span className="inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink-fixed text-white text-xs font-bold">{d.getDate()}</span>
                             ) : (
                               <p className="text-sm font-bold text-ink mt-0.5">{d.getDate()}</p>
                             )}
@@ -417,7 +417,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                   <div className="flex justify-center gap-1.5 mt-3">
                     {[0, 1, 2, 3, 4].map((i) => (
                       <button key={i} onClick={() => setMobileStartDay(i)}
-                        className={`w-1.5 h-1.5 rounded-full transition-colors ${i === mobileStartDay ? "bg-ink" : "bg-border"}`}
+                        className={`w-1.5 h-1.5 rounded-full transition-colors ${i === mobileStartDay ? "bg-ink-fixed" : "bg-border"}`}
                       />
                     ))}
                   </div>
@@ -437,7 +437,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                             <div key={str} className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[56px] ${isToday ? "bg-accent/10" : isWeekend ? "bg-border/10" : ""}`}>
                               <p className="text-xs text-ink-muted uppercase tracking-wide font-semibold">{DOW_LABELS[i]}</p>
                               {isToday ? (
-                                <span className="inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink text-white text-xs font-bold">{d.getDate()}</span>
+                                <span className="inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink-fixed text-white text-xs font-bold">{d.getDate()}</span>
                               ) : (
                                 <p className="text-sm font-bold text-ink mt-0.5">{d.getDate()}</p>
                               )}
@@ -1001,7 +1001,7 @@ function ReservaCard({
   const isUpdating = updatingId === reserva.reserva_id;
 
   return (
-    <div className={`rounded border p-3 space-y-2 ${highlight ? "border-ink/30 bg-white" : "border-border bg-white"}`}>
+    <div className={`rounded border p-3 space-y-2 ${highlight ? "border-ink/30 bg-surface" : "border-border bg-surface"}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-ink">
@@ -1021,7 +1021,7 @@ function ReservaCard({
             <button
               disabled={isUpdating}
               onClick={() => onCambiarEstado(reserva.reserva_id, "confirmada")}
-              className="flex-1 py-1 text-xs font-semibold bg-ink text-white rounded hover:bg-primary transition-colors disabled:opacity-50"
+              className="flex-1 py-1 text-xs font-semibold bg-ink-fixed text-white rounded hover:bg-primary transition-colors disabled:opacity-50"
             >
               {isUpdating ? "..." : "Confirmar"}
             </button>

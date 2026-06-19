@@ -121,7 +121,7 @@ function MiniCalendar({
                 ${isSelected
                   ? "bg-primary text-white"
                   : isAvailable
-                  ? "hover:bg-primary-soft text-ink"
+                  ? "hover:bg-primary/10 text-ink"
                   : "text-ink-muted/40 cursor-default"}`}
             >
               {day}
@@ -226,7 +226,7 @@ function BookingModal({
               </button>
               <Link
                 to="/client"
-                className="flex-1 py-2.5 rounded-xl bg-ink text-white text-sm text-center font-medium hover:bg-primary transition-colors"
+                className="flex-1 py-2.5 rounded-xl bg-ink-fixed text-white text-sm text-center font-medium hover:bg-primary transition-colors"
               >
                 Mis reservas
               </Link>
@@ -276,7 +276,7 @@ function BookingModal({
                 <button
                   onClick={confirmSitio}
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-primary disabled:opacity-60 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-ink-fixed text-white text-sm font-semibold hover:bg-primary disabled:opacity-60 transition-colors"
                 >
                   {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                   {loading ? "Procesando..." : "Confirmar reserva"}

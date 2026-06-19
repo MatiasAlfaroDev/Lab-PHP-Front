@@ -350,7 +350,7 @@ const maxScale = step * 4;
 
                 <div className="h-1.5 bg-border rounded">
                   <div
-                    className="h-full bg-ink rounded"
+                    className="h-full bg-ink-fixed rounded"
                     style={{
                       width: `${(s.total / maxService) * 100}%`
                     }}
@@ -376,7 +376,7 @@ const maxScale = step * 4;
 
                 <div className="h-1.5 bg-border rounded">
                   <div
-                    className="h-full bg-ink rounded"
+                    className="h-full bg-ink-fixed rounded"
                     style={{
                       width: `${(s.total / Math.max(...topServices.map(x => x.total), 1)) * 100}%`
                     }}

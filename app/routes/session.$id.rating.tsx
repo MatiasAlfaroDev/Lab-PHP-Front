@@ -80,7 +80,7 @@ export default function Rating() {
                   onClick={() => toggleAspect(a)}
                   className={`text-sm px-4 py-2 rounded-full border font-semibold transition-colors ${
                     selected.includes(a)
-                      ? "bg-ink text-white border-ink"
+                      ? "bg-ink-fixed text-white border-ink-fixed"
                       : "border-border text-ink-muted hover:border-ink hover:text-ink"
                   }`}
                 >
@@ -120,7 +120,7 @@ export default function Rating() {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full bg-ink text-white font-semibold py-3 rounded hover:bg-primary transition-colors disabled:opacity-60"
+              className="w-full bg-ink-fixed text-white font-semibold py-3 rounded hover:bg-primary transition-colors disabled:opacity-60"
             >
               {loading ? "Enviando..." : "Enviar reseña →"}
             </button>

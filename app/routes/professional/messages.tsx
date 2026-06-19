@@ -46,7 +46,7 @@ export default function Messages() {
                 <p className="text-xs text-ink-muted truncate">{c.preview}</p>
               </div>
               {c.unread > 0 && (
-                <span className="w-5 h-5 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-accent text-ink-fixed text-xs flex items-center justify-center font-bold shrink-0">
                   {c.unread}
                 </span>
               )}
@@ -72,7 +72,7 @@ export default function Messages() {
             <div key={i} className={`flex ${m.from === "pro" ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-sm px-4 py-3 rounded text-sm ${
-                  m.from === "pro" ? "bg-ink text-white" : "bg-surface border border-border text-ink"
+                  m.from === "pro" ? "bg-ink-fixed text-white" : "bg-surface border border-border text-ink"
                 }`}
               >
                 <p>{m.text}</p>
@@ -87,7 +87,7 @@ export default function Messages() {
             className="flex-1 border border-border rounded px-4 py-2.5 text-sm bg-bg text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink"
             placeholder="Escribir mensaje..."
           />
-          <button className="bg-ink text-white px-4 py-2.5 rounded hover:bg-primary text-sm font-semibold transition-colors">
+          <button className="bg-ink-fixed text-white px-4 py-2.5 rounded hover:bg-primary text-sm font-semibold transition-colors">
             Enviar
           </button>
         </div>

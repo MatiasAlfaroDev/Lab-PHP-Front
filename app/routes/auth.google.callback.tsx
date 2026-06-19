@@ -59,7 +59,7 @@ export default function GoogleCallback() {
       {/* 🔴 MODAL */}
       {modal.open && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-[320px] text-center">
+          <div className="bg-surface rounded-lg shadow-lg p-6 w-[320px] text-center">
             <h2 className="text-lg font-bold mb-2 text-red-600">
               Acceso denegado
             </h2>
@@ -68,7 +68,7 @@ export default function GoogleCallback() {
 
             <button
               onClick={() => navigate("/login")}
-              className="bg-ink text-white px-4 py-2 rounded"
+              className="bg-ink-fixed text-white px-4 py-2 rounded"
             >
               Volver al login
             </button>

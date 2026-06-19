@@ -62,7 +62,7 @@ export default function AdminLayout() {
               to={to}
               end={end}
               onClick={() => setMobileOpen(false)}
-              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? "bg-white text-ink" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`}
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? "bg-white text-ink-fixed" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`}
             >
               <span>{icon}</span>
               <span>{label}</span>
@@ -71,7 +71,7 @@ export default function AdminLayout() {
         </nav>
         <div className="p-3 border-t border-white/10">
           <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink text-xs font-bold shrink-0">A</div>
+            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold shrink-0">A</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sidebar-text truncate">Admin</p>
               <p className="text-xs text-sidebar-muted">Administrador</p>

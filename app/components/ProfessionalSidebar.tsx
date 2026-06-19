@@ -101,7 +101,7 @@ export function ProfessionalSidebar({ collapsed, onToggle, isMobileOpen, onMobil
           effectiveCollapsed ? "justify-center px-0" : ""
         } ${
           isActive
-            ? "bg-white text-ink"
+            ? "bg-white text-ink-fixed"
             : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"
         }`
       }
@@ -130,7 +130,7 @@ export function ProfessionalSidebar({ collapsed, onToggle, isMobileOpen, onMobil
               <button
                 onClick={() => navigate("/professional/profile")}
                 title={user?.name ?? "Profesional"}
-                className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all"
+                className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink-fixed text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all"
               >
                 {user?.initials ?? "MO"}
               </button>
@@ -140,7 +140,7 @@ export function ProfessionalSidebar({ collapsed, onToggle, isMobileOpen, onMobil
               <button
                 onClick={() => { navigate("/professional/profile"); if (isMobileOpen) onMobileClose(); }}
                 title="Editar perfil"
-                className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all"
+                className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink-fixed text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all"
               >
                 {user?.initials ?? "MO"}
               </button>

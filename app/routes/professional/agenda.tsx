@@ -275,7 +275,7 @@ export default function Agenda() {
                   key={i}
                   onClick={() => setMobileStartDay(i)}
                   className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                    i === mobileStartDay ? "bg-ink" : "bg-border"
+                    i === mobileStartDay ? "bg-ink-fixed" : "bg-border"
                   }`}
                 />
               ))}

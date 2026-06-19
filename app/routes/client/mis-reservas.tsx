@@ -170,7 +170,7 @@ export default function MisReservas() {
           }}
         >
           <div
-            className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl border border-border"
+            className="bg-surface rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl border border-border"
             onClick={(e) => e.stopPropagation()}
           >
             {cancelSuccess ? (
@@ -225,7 +225,7 @@ export default function MisReservas() {
           onClick={() => setShowCalificacion(false)}
         >
           <div
-            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl border border-border"
+            className="bg-surface rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl border border-border"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-semibold mb-4">
@@ -300,7 +300,7 @@ export default function MisReservas() {
               onClick={() => setFilter(f)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors border cursor-pointer ${
                 filter === f
-                  ? "bg-ink text-white border-ink"
+                  ? "bg-ink-fixed text-white border-ink-fixed"
                   : "border-border text-ink-muted hover:border-primary/40 hover:text-ink"
               }`}
             >

@@ -33,7 +33,7 @@ export default function ClientMessages() {
                 </div>
                 <p className="text-xs text-ink-muted truncate">{c.preview}</p>
               </div>
-              {c.unread > 0 && <span className="w-5 h-5 rounded-full bg-accent text-ink text-xs flex items-center justify-center font-bold shrink-0">{c.unread}</span>}
+              {c.unread > 0 && <span className="w-5 h-5 rounded-full bg-accent text-ink-fixed text-xs flex items-center justify-center font-bold shrink-0">{c.unread}</span>}
             </button>
           ))}
         </div>
@@ -48,7 +48,7 @@ export default function ClientMessages() {
         <div className="flex-1 overflow-y-auto p-6 space-y-3">
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.from === "client" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-sm px-4 py-3 rounded text-sm ${m.from === "client" ? "bg-ink text-white" : "bg-surface border border-border text-ink"}`}>
+              <div className={`max-w-sm px-4 py-3 rounded text-sm ${m.from === "client" ? "bg-ink-fixed text-white" : "bg-surface border border-border text-ink"}`}>
                 <p>{m.text}</p>
                 <p className={`text-xs mt-1 ${m.from === "client" ? "text-white/60" : "text-ink-muted"}`}>{m.time}</p>
               </div>
@@ -58,7 +58,7 @@ export default function ClientMessages() {
 
         <div className="bg-surface border-t border-border p-4 flex items-center gap-3">
           <input className="flex-1 border border-border rounded px-4 py-2.5 text-sm bg-bg text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink" placeholder="Escribir mensaje..." />
-          <button className="bg-ink text-white px-4 py-2.5 rounded hover:bg-primary text-sm font-semibold transition-colors">Enviar</button>
+          <button className="bg-ink-fixed text-white px-4 py-2.5 rounded hover:bg-primary text-sm font-semibold transition-colors">Enviar</button>
         </div>
       </div>
     </div>

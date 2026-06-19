@@ -9,6 +9,8 @@
   --color-surface: #ffffff;
   --color-ink: #1c1c1c;
   --color-ink-muted: #6b6b6b;
+  /* Siempre oscuro, en ambos temas — para rellenos sólidos (botones, chips) que llevan texto blanco/fijo encima */
+  --color-ink-fixed: #1c1c1c;
   --color-primary: #2b2d3a;
   --color-primary-hover: #1a1c27;
   --color-primary-soft: #e0dff0;
@@ -20,6 +22,16 @@
   --color-sidebar-muted: #8a8a8a;
 }
 
+/* Modo oscuro — sobrescribe solo los tokens de superficie/texto de página.
+   Los colores de marca (primary, accent, sidebar, ink-fixed) se mantienen iguales en ambos temas. */
+:root.dark {
+  --color-bg: #15151a;
+  --color-surface: #1f1f26;
+  --color-ink: #f0ece4;
+  --color-ink-muted: #9a9a9a;
+  --color-border: #34343d;
+}
+
 html,
 body {
   background-color: var(--color-bg);
@@ -27,6 +39,14 @@ body {
   font-family: var(--font-body);
   /* Prevent horizontal overflow on mobile */
   overflow-x: hidden;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+:root.dark {
+  color-scheme: dark;
 }
 
 /* Safe area padding for iOS notch / home indicator */
