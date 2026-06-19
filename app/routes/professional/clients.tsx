@@ -856,11 +856,10 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                   />
 
                   {/* SOLO SI ESTÁ EN CURSO O FINALIZADA */}
-                  {!asistio &&
-                    (selectedReserva.estado === "en_curso" ||
-                    selectedReserva.estado === "finalizada") && (
-                    <>
-                      {/* ───── ASISTENCIA ───── */}
+                  {/* ───── ASISTENCIA ───── */}
+                  {(selectedReserva.estado === "en_curso" ||
+                    selectedReserva.estado === "finalizada") &&
+                    !asistio && (
                       <div className="flex gap-2 mt-3">
                         <button
                           className="flex-1 bg-green-600 text-white rounded py-1.5 text-xs font-semibold"
@@ -896,47 +895,48 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                           No asistió
                         </button>
                       </div>
+                  )}
 
-                      {/* ───── PAGO ───── */}
-                      {selectedReserva.pago && (
-                        <div className="flex gap-2 mt-3">
+
+                  {/* ───── PAGO ───── */}
+                  {selectedReserva.pago &&
+                    ["en_curso", "finalizada", "no_asistida"].includes(selectedReserva.estado) && (
+                      <div className="mt-3">
+                        {selectedReserva.pago.estado === "aprobado" ? (
+                          <div className="w-full bg-green-100 text-green-800 rounded py-1.5 text-xs font-semibold text-center">
+                            ✓ Pagado
+                          </div>
+                        ) : (
                           <button
-                          className={`flex-1 rounded py-1.5 text-xs font-semibold transition-colors ${
-                            selectedReserva.pago?.estado === "aprobado"
-                              ? "bg-green-600 text-white"
-                              : "bg-blue-600 text-white hover:bg-blue-700"
-                          }`}
-                          onClick={async () => {
-                            const r = selectedReserva;
+                            className="w-full bg-blue-600 text-white rounded py-1.5 text-xs font-semibold hover:bg-blue-700 transition-colors"
+                            onClick={async () => {
+                              const r = selectedReserva;
 
-                            await api.post(
-                              `/reservas/${r.reserva_id}/pago-presencial`,
-                              {},
-                              token
-                            );
+                              await api.post(
+                                `/reservas/${r.reserva_id}/pago-presencial`,
+                                {},
+                                token
+                              );
 
-                            setReservas((prev) =>
-                              prev.map((x) =>
-                                x.reserva_id === r.reserva_id
-                                  ? { ...x, pago: { ...x.pago!, estado: "aprobado" } }
-                                  : x
-                              )
-                            );
+                              setReservas((prev) =>
+                                prev.map((x) =>
+                                  x.reserva_id === r.reserva_id
+                                    ? { ...x, pago: { ...x.pago!, estado: "aprobado" } }
+                                    : x
+                                )
+                              );
 
-                            setSelectedReserva((prev) =>
-                              prev
-                                ? { ...prev, pago: { ...prev.pago!, estado: "aprobado" } }
-                                : null
-                            );
-                          }}
-                        >
-                          {selectedReserva.pago?.estado === "aprobado"
-                            ? "Pagado"
-                            : "Pago"}
-                        </button>
-                        </div>
-                      )}
-                    </>
+                              setSelectedReserva((prev) =>
+                                prev
+                                  ? { ...prev, pago: { ...prev.pago!, estado: "aprobado" } }
+                                  : null
+                              );
+                            }}
+                          >
+                            Marcar como pagado
+                          </button>
+                        )}
+                      </div>
                   )}
                 </div>
               )}

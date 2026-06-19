@@ -374,9 +374,6 @@ export default function MisReservas() {
                       <p className={`text-sm font-semibold ${isCancelled ? "text-ink-muted line-through" : "text-ink"}`}>
                         {r.servicio?.nombre}
                       </p>
-                      <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${badge.cls}`}>
-                        {badge.label}
-                      </span>
                     </div>
                     <p className="text-xs text-ink-muted mb-1">{r.servicio?.profesional_nombre}</p>
                     <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
@@ -396,7 +393,9 @@ export default function MisReservas() {
 
                   {/* Actions */}
                   <div className="shrink-0 flex flex-col gap-2">
-                    
+                    <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium text-center ${badge.cls}`}>
+                        {badge.label}
+                      </span>
                     {canReschedule && (
                       <Link
                         to={`/client/professional/${r.servicio.profesional_id}?reprogramar=${r.reserva_id}`}

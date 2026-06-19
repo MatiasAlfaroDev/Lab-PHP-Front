@@ -246,10 +246,6 @@ export default function ClientDashboard() {
                         Entrar
                       </Link>
                     )}
-
-                  <button className="text-ink-muted hover:text-ink">
-                    <DotsIcon />
-                  </button>
                 </div>
               </div>
             ))}
@@ -333,16 +329,6 @@ export default function ClientDashboard() {
           </div>
         </div>
       </div>
-  );
-}
-
-function DotsIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <circle cx="12" cy="5" r="1" />
-      <circle cx="12" cy="12" r="1" />
-      <circle cx="12" cy="19" r="1" />
-    </svg>
   );
 }
 
