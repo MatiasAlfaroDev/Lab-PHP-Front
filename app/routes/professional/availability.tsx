@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Servicio {
@@ -217,6 +219,7 @@ function AvailabilitySkeleton() {
   );
 }
 
+
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function Availability() {
   const { token } = useAuth();
@@ -246,7 +249,11 @@ export default function Availability() {
   motivo: "",
 });
   const [excepciones, setExcepciones] = useState([]);
+  const [creatingExcepcion, setCreatingExcepcion] = useState(false);
   const [errorExcepcion, setErrorExcepcion] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [excepcionAEliminar, setExcepcionAEliminar] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // ── Load services ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -295,20 +302,20 @@ export default function Availability() {
     });
   }, [selectedId, servicios]);
 
-
+  const fetchExcepciones = async () => {
+    try {
+      const res: any = await api.get("/excepciones", token);
+      if (res.success) {
+        setExcepciones(res.data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
-    if (!showExcepciones) return;
-
-    api
-      .get<{ success: boolean; data: any[] }>("/excepciones", token)
-      .then((res:any) => {
-        if (res.success) {
-          setExcepciones(res.data);
-        }
-      })
-      .catch(console.error);
-  }, [showExcepciones, token]);
+  fetchExcepciones();
+}, [token]);
 
   // ── Global drag handlers ─────────────────────────────────────────────────
   useEffect(() => {
@@ -503,39 +510,110 @@ export default function Availability() {
     !nuevaExcepcion.fecha_inicio ||
     !nuevaExcepcion.fecha_fin
   ) {
+    setErrorExcepcion("Debés completar las fechas");
     return;
   }
 
   try {
-   await api.post("/excepciones", {
-  fecha_desde: nuevaExcepcion.fecha_inicio,
-  fecha_hasta: nuevaExcepcion.fecha_fin,
-  hora_inicio: nuevaExcepcion.diaCompleto ? null : nuevaExcepcion.hora_inicio,
-  hora_fin: nuevaExcepcion.diaCompleto ? null : nuevaExcepcion.hora_fin,
-  motivo: nuevaExcepcion.motivo,
-}, token);
-      setShowNuevaExcepcion(false);
-      // Recargar excepciones
-      const res:any = await api.get<{ success: boolean; data: any[] }>("/excepciones", token);
-      if (res.success) setExcepciones(res.data);
-    }catch (e: unknown) {
-  setErrorExcepcion(
-    e instanceof Error
-      ? e.message
-      : "Error al crear excepción"
-  );
-}
-  };
+    setCreatingExcepcion(true);
+    setErrorExcepcion("");
 
-  const handleDeleteExcepcion = async (id: number) => {
-    try {
-      await api.delete(`/excepciones/${id}`, token);
+    const response: any = await api.post(
+      "/excepciones",
+      {
+        fecha_desde: nuevaExcepcion.fecha_inicio,
+        fecha_hasta: nuevaExcepcion.fecha_fin,
+        hora_inicio: nuevaExcepcion.diaCompleto
+          ? null
+          : nuevaExcepcion.hora_inicio,
+        hora_fin: nuevaExcepcion.diaCompleto
+          ? null
+          : nuevaExcepcion.hora_fin,
+        motivo: nuevaExcepcion.motivo,
+      },
+      token
+    );
 
-      setExcepciones((prev) =>
-        prev.filter((e: any) => e.excepcion_id !== id)
+    if (!response.success) {
+      setErrorExcepcion(
+        response.message || "Error al crear excepción"
       );
-    } catch (error) {
-      alert("Error al eliminar excepción");
+      return;
+    }
+
+    toast.success(
+      response.message || "Excepción creada correctamente"
+    );
+
+    setNuevaExcepcion({
+      fecha_inicio: "",
+      fecha_fin: "",
+      diaCompleto: true,
+      hora_inicio: "",
+      hora_fin: "",
+      motivo: "",
+    });
+
+    setShowNuevaExcepcion(false);
+
+    await fetchExcepciones();
+
+  } catch (e: any) {
+    const mensaje =
+      e?.response?.data?.message ||
+      e?.message ||
+      "Error al crear excepción";
+
+    setErrorExcepcion(mensaje);
+  }
+  finally {
+    setCreatingExcepcion(false);
+  }
+};
+  const puedeEliminarExcepcion = (e: any) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const desde = new Date(e.fecha_desde + "T00:00:00");
+  const hasta = e.fecha_hasta
+    ? new Date(e.fecha_hasta + "T23:59:59")
+    : desde;
+  if (desde > hoy) return true;
+  if (desde <= hoy && hasta >= hoy) {
+    if (!e.hora_inicio) return false;
+    const [h, m] = e.hora_inicio.split(":").map(Number);
+    const ahora = new Date();
+    const inicio = new Date();
+    inicio.setHours(h, m, 0, 0);
+    return inicio > ahora;
+  }
+  return false;
+};
+  const handleDeleteExcepcion = async () => {
+    if (!excepcionAEliminar) return;
+
+    setDeletingId(excepcionAEliminar);
+
+    try {
+      const res: any = await api.delete(`/excepciones/${excepcionAEliminar}`, token);
+      
+      if (!res.success) {
+        toast.error(res.message || "No se pudo eliminar");
+        return;
+      }
+
+      setExcepciones((prev: any) =>
+        prev.filter((e: any) => e.excepcion_id !== excepcionAEliminar)
+      );
+
+      setShowDeleteModal(false);
+      setExcepcionAEliminar(null);
+
+      toast.success("Excepción eliminada");
+
+    } catch {
+      toast.error("Error al eliminar excepción");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -550,6 +628,7 @@ export default function Availability() {
       style={{ cursor: isDragging ? (drag.mode === "move" ? "grabbing" : "ns-resize") : undefined }}
     >
       {/* Header */}
+      <ToastContainer position="top-right" autoClose={3500} hideProgressBar={false} closeOnClick pauseOnHover />
       <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Configuración</nav>
       <div className="mb-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
@@ -596,48 +675,6 @@ export default function Availability() {
                 + Nueva excepción
               </button>
             </div>
-
-            {excepciones.length === 0 ? (
-              <p className="text-ink-muted">
-                No hay excepciones configuradas.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {excepciones.map((e: any) => (
-                  <div
-                    key={e.excepcion_id}
-                    className="border rounded-xl p-4"
-                  >
-                    <div className="font-medium">
-                    {e.fecha_desde}
-                    {e.fecha_desde !== e.fecha_hasta &&
-                      ` al ${e.fecha_hasta}`}
-                  </div>
-
-                    <div className="text-sm text-ink-muted">
-                      {e.hora_inicio && e.hora_fin
-                        ? `${e.hora_inicio.slice(0, 5)} - ${e.hora_fin.slice(0, 5)}`
-                        : "Día completo"}
-                    </div>
-
-                    {e.motivo && (
-                      <div className="text-sm mt-1">
-                        {e.motivo}
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        onClick={() => handleDeleteExcepcion(e.excepcion_id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -785,9 +822,14 @@ export default function Availability() {
 
           <button
             onClick={handleCrearExcepcion}
-            className="px-4 py-2 bg-primary text-white rounded-lg"
+            disabled={creatingExcepcion}
+            className="px-4 py-2 bg-primary text-white rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            Guardar
+            {creatingExcepcion && (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            )}
+
+            {creatingExcepcion ? "Guardando..." : "Guardar"}
           </button>
         </div>
 
@@ -1128,6 +1170,7 @@ export default function Availability() {
                   onChange={(e) => setRules((r) => ({ ...r, cancelacion: e.target.value }))}
                   className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0"
                 >
+                  <option value="12">0 horas</option>
                   <option value="12">12 horas</option>
                   <option value="24">24 horas</option>
                   <option value="48">48 horas</option>
@@ -1153,8 +1196,106 @@ export default function Availability() {
             )}
             {saved ? "✓ Guardado" : saving ? "Guardando..." : "Guardar cambios"}
           </button>
+          
         </div>
       </div>
+      {/* ── Historial de excepciones (solo lectura) ───────────────────── */}
+      <div className="mt-10 bg-surface border border-border rounded-2xl p-5">
+        <h3 className="text-sm font-bold text-ink mb-4">
+          Mis Excepciones
+        </h3>
+
+        {excepciones.length === 0 ? (
+          <p className="text-sm text-ink-muted">
+            No hay excepciones registradas.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-ink-muted border-b border-border">
+                <tr>
+                  <th className="py-2">Desde</th>
+                  <th>Hasta</th>
+                  <th>Horario</th>
+                  <th>Motivo</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {excepciones.map((e: any) => (
+                  <tr key={e.excepcion_id} className="border-b border-border/40">
+                    <td className="py-2">{e.fecha_desde}</td>
+                    <td>{e.fecha_hasta}</td>
+                    <td>
+                      {e.hora_inicio && e.hora_fin
+                        ? `${e.hora_inicio.slice(0, 5)} - ${e.hora_fin.slice(0, 5)}`
+                        : "Día completo"}
+                    </td>
+                    <td className="text-ink-muted">
+                      {e.motivo || "-"}
+                    </td>
+                    <td className="text-right">
+                        {puedeEliminarExcepcion(e) && (
+                          <button
+                            onClick={() => {
+                              setExcepcionAEliminar(e.excepcion_id);
+                              setShowDeleteModal(true);
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-red-500"
+                            title="Eliminar"
+                          >
+                            <ion-icon name="trash-outline" />
+                          </button>
+                        )}
+                      </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70]">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            
+            <h2 className="text-lg font-semibold mb-2">
+              ¿Eliminar excepción?
+            </h2>
+
+            <p className="text-sm text-gray-600 mb-5">
+              Esta acción no se puede deshacer.
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setExcepcionAEliminar(null);
+                }}
+                className="px-4 py-2 border rounded-lg"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={handleDeleteExcepcion}
+                disabled={deletingId !== null}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {deletingId ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  "Eliminar"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
