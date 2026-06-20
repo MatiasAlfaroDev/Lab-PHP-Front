@@ -201,6 +201,9 @@ export default function Services() {
   const [form,       setForm]       = useState<FormState>({ ...EMPTY_FORM });
   const [toast,      setToast]      = useState<{ msg: string; ok: boolean } | null>(null);
   const [search,     setSearch]     = useState("");
+  const [armedId,    setArmedId]    = useState<number | null>(null);
+  const [dragId,     setDragId]     = useState<number | null>(null);
+  const [overId,     setOverId]     = useState<number | null>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -332,6 +335,22 @@ export default function Services() {
     s.nombre.toLowerCase().includes(search.trim().toLowerCase())
   );
 
+  // ── Reorder (visual/local only — no backend persistence) ──────────────────
+  const handleDrop = (targetId: number) => {
+    if (dragId === null || dragId === targetId) { setDragId(null); setOverId(null); return; }
+    setServices((prev) => {
+      const from = prev.findIndex((s) => s.servicio_id === dragId);
+      const to   = prev.findIndex((s) => s.servicio_id === targetId);
+      if (from === -1 || to === -1) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+    setDragId(null);
+    setOverId(null);
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -383,8 +402,35 @@ export default function Services() {
 
       {/* Loading */}
       {loading && (
-        <div className="m-4 bg-surface border border-border rounded p-12 text-center text-ink-muted text-sm">
-          Cargando servicios...
+        <div className="bg-surface border-t border-border w-full overflow-x-auto">
+          <div
+            className="grid px-5 py-2 border-b border-border bg-surface"
+            style={{ gridTemplateColumns: "2fr 90px 110px 120px 110px 72px" }}
+          >
+            {["Nombre", "Precio", "Duración", "Modalidad", "Reservas", ""].map((h) => (
+              <div key={h} className="text-sm text-ink-muted">{h}</div>
+            ))}
+          </div>
+          <div className="px-5 py-2 border-b border-border bg-sidebar">
+            <div className="h-3.5 w-20 rounded bg-border animate-pulse" />
+          </div>
+          {[0, 1, 2, 3].map((row) => (
+            <div
+              key={row}
+              className={`grid px-5 py-4 items-center ${row > 0 ? "border-t border-border" : ""}`}
+              style={{ gridTemplateColumns: "2fr 90px 110px 120px 110px 72px" }}
+            >
+              <div className="h-3.5 w-40 rounded bg-border animate-pulse" />
+              <div className="h-3.5 w-12 rounded bg-border animate-pulse" />
+              <div className="h-3.5 w-16 rounded bg-border animate-pulse" />
+              <div className="h-5 w-16 rounded bg-border animate-pulse" />
+              <div className="h-3.5 w-14 rounded bg-border animate-pulse" />
+              <div className="flex justify-end gap-3">
+                <div className="h-3.5 w-3.5 rounded bg-border animate-pulse" />
+                <div className="h-3.5 w-3.5 rounded bg-border animate-pulse" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -436,7 +482,16 @@ export default function Services() {
             const modalidad  = s.modalidad?.toLowerCase();
 
             return (
-              <div key={s.servicio_id} className={idx > 0 ? "border-t border-border" : ""}>
+              <div
+                key={s.servicio_id}
+                draggable={armedId === s.servicio_id}
+                onDragStart={() => setDragId(s.servicio_id)}
+                onDragEnter={() => dragId !== null && setOverId(s.servicio_id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDrop(s.servicio_id)}
+                onDragEnd={() => { setDragId(null); setOverId(null); setArmedId(null); }}
+                className={`${idx > 0 ? "border-t border-border" : ""} ${dragId === s.servicio_id ? "opacity-40" : ""} ${overId === s.servicio_id && dragId !== s.servicio_id ? "border-t-2 border-accent" : ""}`}
+              >
                 {/* Fila */}
                 <div
                   className={`grid px-5 py-4 items-center ${
@@ -445,7 +500,11 @@ export default function Services() {
                   style={{ gridTemplateColumns: "2fr 90px 110px 120px 110px 72px" }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-ink-muted/50 shrink-0">
+                    <span
+                      className="text-ink-muted/50 shrink-0 cursor-grab active:cursor-grabbing"
+                      onMouseDown={() => setArmedId(s.servicio_id)}
+                      onMouseUp={() => setArmedId(null)}
+                    >
                       <GripIcon />
                     </span>
                     <div className="min-w-0">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
 
@@ -43,6 +43,13 @@ interface Rules {
   aviso:       string;
   reservas:    string;
   cancelacion: string;
+  buffer:      string;
+}
+
+interface OtherBlock {
+  start:  number;
+  end:    number;
+  nombre: string;
 }
 
 
@@ -167,7 +174,7 @@ const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void 
   <button
     onMouseDown={(e) => e.stopPropagation()}
     onClick={(e) => { e.stopPropagation(); onChange(); }}
-    className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${checked ? "bg-ink-fixed" : "bg-border"}`}
+    className={`relative w-10 h-5 rounded-full transition-colors shrink-0 cursor-pointer ${checked ? "bg-ink-fixed" : "bg-border"}`}
   >
     <span
       className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
@@ -180,7 +187,7 @@ const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void 
 // ── Skeleton ───────────────────────────────────────────────────────────────
 function AvailabilitySkeleton() {
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto animate-pulse">
+    <div className="p-4 md:p-8 w-full animate-pulse">
       <div className="h-3 w-24 bg-border/50 rounded mb-4" />
       <div className="flex items-start justify-between mb-4 gap-3">
         <div className="space-y-2">
@@ -232,10 +239,11 @@ export default function Availability() {
   const [selectedBlock,    setSelectedBlock]    = useState<{ day: string; bi: number } | null>(null);
   const dragMoved = useRef(false);
   const [rules,            setRules]            = useState<Rules>({
-    aviso: "24", reservas: "60", cancelacion: "24",
+    aviso: "24", reservas: "60", cancelacion: "24", buffer: "10",
   });
- 
-  const [showExcepciones, setShowExcepciones] = useState(false);
+  const [allDisp,          setAllDisp]          = useState<Record<number, { dia_semana: string; hora_inicio: string; hora_fin: string }[]>>({});
+  const [toast,            setToast]            = useState<{ msg: string; ok: boolean } | null>(null);
+
   const [showNuevaExcepcion, setShowNuevaExcepcion] = useState(false);
   const [nuevaExcepcion, setNuevaExcepcion] = useState({
   fecha_inicio: "",
@@ -247,6 +255,11 @@ export default function Availability() {
 });
   const [excepciones, setExcepciones] = useState([]);
   const [errorExcepcion, setErrorExcepcion] = useState("");
+
+  const showToast = (msg: string, ok = true) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   // ── Load services ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -280,7 +293,7 @@ export default function Availability() {
       .finally(() => setLoadingDisp(false));
   }, [selectedId, servicios]);
 
-    
+
   useEffect(() => {
     const servicio = servicios.find(
       (s) => s.servicio_id === selectedId
@@ -292,14 +305,12 @@ export default function Availability() {
       aviso: String(servicio.min_aviso ?? 24),
       reservas: String(servicio.max_anticipacion_dias ?? 60),
       cancelacion: String(servicio.min_cancelacion ?? 24),
+      buffer: String(servicio.pausa ?? 10),
     });
   }, [selectedId, servicios]);
 
-
-
+  // ── Load exceptions (always, for the inline list below the calendar) ──────
   useEffect(() => {
-    if (!showExcepciones) return;
-
     api
       .get<{ success: boolean; data: any[] }>("/excepciones", token)
       .then((res:any) => {
@@ -308,7 +319,42 @@ export default function Availability() {
         }
       })
       .catch(console.error);
-  }, [showExcepciones, token]);
+  }, [token]);
+
+  // ── Load every service's disponibilidad, to mark other services' busy slots ──
+  const loadAllDisp = async (list: Servicio[]) => {
+    const entries = await Promise.all(
+      list.map(async (s) => {
+        try {
+          const res = await api.get<{ success: boolean; data: any[] }>(`/servicios/${s.servicio_id}/disponibilidad`);
+          return [s.servicio_id, res.success ? res.data : []] as const;
+        } catch {
+          return [s.servicio_id, []] as const;
+        }
+      })
+    );
+    setAllDisp(Object.fromEntries(entries));
+  };
+
+  useEffect(() => {
+    if (servicios.length > 0) loadAllDisp(servicios);
+  }, [servicios]);
+
+  // ── Other services' occupied blocks, grouped by day ────────────────────────
+  const otherBlocksByDay = useMemo(() => {
+    const map: Record<string, OtherBlock[]> = Object.fromEntries(DAYS.map((d) => [d, []]));
+    for (const [sidStr, disps] of Object.entries(allDisp)) {
+      const sid = Number(sidStr);
+      if (sid === selectedId) continue;
+      const nombre = servicios.find((s) => s.servicio_id === sid)?.nombre ?? "Otro servicio";
+      for (const d of disps) {
+        const key = DIA_TO_KEY[d.dia_semana];
+        if (!key) continue;
+        map[key].push({ start: timeToHour(d.hora_inicio), end: timeToHour(d.hora_fin), nombre });
+      }
+    }
+    return map;
+  }, [allDisp, selectedId, servicios]);
 
   // ── Global drag handlers ─────────────────────────────────────────────────
   useEffect(() => {
@@ -362,6 +408,7 @@ export default function Availability() {
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const selectedServicio = servicios.find((s) => s.servicio_id === selectedId);
+  const bufferMin = Number(rules.buffer) || 0;
 
   const toggleDay = (day: string) => {
     setSlots((prev) => ({
@@ -376,7 +423,7 @@ export default function Availability() {
     const daySlot  = slots[day];
     const last     = daySlot.blocks[daySlot.blocks.length - 1];
     const newStart = last ? Math.min(last.end + 1, GRID_END - 2) : 9;
-    const interval = selectedServicio ? (selectedServicio.duracion + selectedServicio.pausa) / 60 : 1;
+    const interval = selectedServicio ? (selectedServicio.duracion + bufferMin) / 60 : 1;
     const newEnd   = Math.min(newStart + Math.max(interval * 2, 1), GRID_END);
     if (newEnd > GRID_END || newStart >= GRID_END - 0.5) return;
     const newBi = daySlot.blocks.length;
@@ -402,7 +449,7 @@ export default function Availability() {
   const updateBlockTime = (day: string, blockIdx: number, field: "start" | "end", timeStr: string) => {
     const h = timeToHour(timeStr);
     if (isNaN(h)) return;
-    const interval = selectedServicio ? (selectedServicio.duracion + selectedServicio.pausa) / 60 : SNAP;
+    const interval = selectedServicio ? (selectedServicio.duracion + bufferMin) / 60 : SNAP;
     setSlots((prev) => {
       const blocks = prev[day].blocks.map((b, i) => {
         if (i !== blockIdx) return b;
@@ -420,7 +467,7 @@ export default function Availability() {
 
   const addTurn = (day: string, blockIdx: number) => {
     if (!selectedServicio) return;
-    const interval = (selectedServicio.duracion + selectedServicio.pausa) / 60;
+    const interval = (selectedServicio.duracion + bufferMin) / 60;
     setSlots((prev) => {
       const daySlot = prev[day];
       const blocks  = daySlot.blocks.map((b, i) => {
@@ -437,12 +484,12 @@ export default function Availability() {
 
   const removeTurn = (day: string, blockIdx: number) => {
     if (!selectedServicio) return;
-    const interval = (selectedServicio.duracion + selectedServicio.pausa) / 60;
+    const interval = (selectedServicio.duracion + bufferMin) / 60;
     setSlots((prev) => {
       const daySlot = prev[day];
       const blocks  = daySlot.blocks.map((b, i) => {
         if (i !== blockIdx) return b;
-        const current = calcTurnos(b, selectedServicio.duracion, selectedServicio.pausa);
+        const current = calcTurnos(b, selectedServicio.duracion, bufferMin);
         if (current <= 1) return b;
         return { ...b, end: b.start + (current - 1) * interval };
       });
@@ -461,7 +508,7 @@ export default function Availability() {
     dragMoved.current = false;
     const block       = slots[day].blocks[blockIdx];
     const minDuration = selectedServicio
-      ? (selectedServicio.duracion + selectedServicio.pausa) / 60
+      ? (selectedServicio.duracion + bufferMin) / 60
       : SNAP;
     setDrag({
       day, blockIdx, mode,
@@ -484,11 +531,18 @@ export default function Availability() {
           min_aviso: Number(rules.aviso),
           min_cancelacion: Number(rules.cancelacion),
           max_anticipacion_dias: Number(rules.reservas),
+          pausa: bufferMin,
          },
         token
       );
-      if (res.success) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
-      else setError(res.message ?? "Error al guardar");
+      if (res.success) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+        setServicios((prev) => prev.map((s) => s.servicio_id === selectedId ? { ...s, pausa: bufferMin } : s));
+        loadAllDisp(servicios);
+      } else {
+        setError(res.message ?? "Error al guardar");
+      }
     } catch (e: any) {
       setError(e.message ?? "Error al guardar");
     } finally {
@@ -518,6 +572,7 @@ export default function Availability() {
       // Recargar excepciones
       const res:any = await api.get<{ success: boolean; data: any[] }>("/excepciones", token);
       if (res.success) setExcepciones(res.data);
+      showToast("Excepción agregada correctamente");
     }catch (e: unknown) {
   setErrorExcepcion(
     e instanceof Error
@@ -534,8 +589,9 @@ export default function Availability() {
       setExcepciones((prev) =>
         prev.filter((e: any) => e.excepcion_id !== id)
       );
+      showToast("Excepción eliminada");
     } catch (error) {
-      alert("Error al eliminar excepción");
+      showToast("Error al eliminar excepción", false);
     }
   };
 
@@ -546,11 +602,19 @@ export default function Availability() {
 
   return (
     <div
-      className={`p-4 md:p-8 max-w-6xl mx-auto ${isDragging ? "select-none" : ""}`}
+      className={`p-4 md:p-8 w-full ${isDragging ? "select-none" : ""}`}
       style={{ cursor: isDragging ? (drag.mode === "move" ? "grabbing" : "ns-resize") : undefined }}
     >
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded border text-sm font-semibold shadow-lg ${
+          toast.ok ? "bg-accent text-ink-fixed border-ink-fixed/20" : "bg-red-100 text-red-800 border-red-200"
+        }`}>
+          {toast.msg}
+        </div>
+      )}
+
       {/* Header */}
-      <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Configuración</nav>
       <div className="mb-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <h1 className="font-display text-3xl text-ink">
@@ -562,9 +626,9 @@ export default function Availability() {
                 setErrorExcepcion("");
                 setShowNuevaExcepcion(true);
               }}
-            className="self-start sm:self-auto px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+            className="self-start sm:self-auto flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer"
           >
-            Excepciones
+            + Nueva excepción
           </button>
         </div>
 
@@ -572,75 +636,6 @@ export default function Availability() {
           Definí cuándo aceptás reservas y tus reglas de agenda.
         </p>
       </div>
-      {showExcepciones && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-surface rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">
-                Excepciones
-              </h2>
-
-              <button
-                onClick={() => setShowExcepciones(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={() => setShowNuevaExcepcion(true)}
-                className="px-4 py-2 bg-primary text-white rounded-lg"
-              >
-                + Nueva excepción
-              </button>
-            </div>
-
-            {excepciones.length === 0 ? (
-              <p className="text-ink-muted">
-                No hay excepciones configuradas.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {excepciones.map((e: any) => (
-                  <div
-                    key={e.excepcion_id}
-                    className="border rounded-xl p-4"
-                  >
-                    <div className="font-medium">
-                    {e.fecha_desde}
-                    {e.fecha_desde !== e.fecha_hasta &&
-                      ` al ${e.fecha_hasta}`}
-                  </div>
-
-                    <div className="text-sm text-ink-muted">
-                      {e.hora_inicio && e.hora_fin
-                        ? `${e.hora_inicio.slice(0, 5)} - ${e.hora_fin.slice(0, 5)}`
-                        : "Día completo"}
-                    </div>
-
-                    {e.motivo && (
-                      <div className="text-sm mt-1">
-                        {e.motivo}
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        onClick={() => handleDeleteExcepcion(e.excepcion_id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
       {showNuevaExcepcion && (
   <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]">
     <div className="bg-surface rounded-2xl p-6 w-full max-w-md">
@@ -651,6 +646,7 @@ export default function Availability() {
 
         <button
           onClick={() => setShowNuevaExcepcion(false)}
+          className="text-ink-muted hover:text-ink transition-colors cursor-pointer"
         >
           ✕
         </button>
@@ -778,14 +774,14 @@ export default function Availability() {
         <div className="flex justify-end gap-2 pt-2">
           <button
             onClick={() => setShowNuevaExcepcion(false)}
-            className="px-4 py-2 border rounded-lg"
+            className="px-4 py-2 border border-border rounded-lg text-ink hover:bg-bg transition-colors cursor-pointer"
           >
             Cancelar
           </button>
 
           <button
             onClick={handleCrearExcepcion}
-            className="px-4 py-2 bg-primary text-white rounded-lg"
+            className="px-4 py-2 bg-accent text-ink-fixed rounded-lg hover:bg-accent-hover transition-colors cursor-pointer font-semibold"
           >
             Guardar
           </button>
@@ -822,7 +818,7 @@ export default function Availability() {
                 {selectedServicio.duracion} min
               </span>
               <span className="text-border">·</span>
-              <span className="text-ink-muted">Pausa <strong className="text-ink ml-1">{selectedServicio.pausa} min</strong></span>
+              <span className="text-ink-muted">Buffer <strong className="text-ink ml-1">{bufferMin} min</strong></span>
             </>
           )}
         </div>
@@ -876,6 +872,20 @@ export default function Availability() {
                       </div>
                     ))}
 
+                    {/* Other services' occupied windows — visual only, non-interactive */}
+                    {otherBlocksByDay[day].map((ob, obi) => (
+                      <div
+                        key={`other-${obi}`}
+                        title={`Ocupado por ${ob.nombre}`}
+                        className="absolute left-1 right-1 rounded-xl bg-gray-300/60 border border-border pointer-events-none"
+                        style={{
+                          top:    (ob.start - GRID_START) * HOUR_PX,
+                          height: (ob.end - ob.start) * HOUR_PX,
+                          zIndex: 0,
+                        }}
+                      />
+                    ))}
+
                     {/* Window blocks */}
                     {slots[day].active &&
                       slots[day].blocks.map((block, bi) => {
@@ -884,7 +894,7 @@ export default function Availability() {
                         const isThis   = isDragging && drag?.day === day && drag?.blockIdx === bi;
                         const isSel    = selectedBlock?.day === day && selectedBlock?.bi === bi;
                         const turnos   = selectedServicio
-                          ? calcTurnos(block, selectedServicio.duracion, selectedServicio.pausa)
+                          ? calcTurnos(block, selectedServicio.duracion, bufferMin)
                           : null;
 
                         return (
@@ -954,7 +964,7 @@ export default function Availability() {
                     <button
                       key={d}
                       onClick={() => addBlock(d)}
-                      className="text-xs py-2 rounded-lg border border-border hover:bg-accent/10 hover:border-accent/50 text-ink font-semibold transition-colors"
+                      className="text-xs py-2 rounded-lg border border-border hover:bg-accent/10 hover:border-accent/50 text-ink font-semibold transition-colors cursor-pointer"
                     >
                       {d}
                     </button>
@@ -967,8 +977,8 @@ export default function Availability() {
             const block = slots[day]?.blocks[bi];
             const esHibrido = selectedServicio?.modalidad === "hibrido";
             if (!block) return null;
-            const turnos   = selectedServicio ? calcTurnos(block, selectedServicio.duracion, selectedServicio.pausa) : null;
-            const interval = selectedServicio ? (selectedServicio.duracion + selectedServicio.pausa) / 60 : SNAP;
+            const turnos   = selectedServicio ? calcTurnos(block, selectedServicio.duracion, bufferMin) : null;
+            const interval = selectedServicio ? (selectedServicio.duracion + bufferMin) / 60 : SNAP;
             const canAdd   = block.end + interval <= GRID_END;
             const canRemove = turnos !== null && turnos > 1;
             return (
@@ -984,7 +994,7 @@ export default function Availability() {
                   </div>
                   <button
                     onClick={() => setSelectedBlock(null)}
-                    className="w-6 h-6 rounded-full bg-bg hover:bg-border/50 flex items-center justify-center text-ink-muted transition-colors"
+                    className="w-6 h-6 rounded-full bg-surface hover:bg-border/50 flex items-center justify-center text-ink-muted transition-colors cursor-pointer"
                   >
                     <ion-icon name="close-outline" style={{ fontSize: "13px" }} />
                   </button>
@@ -996,14 +1006,14 @@ export default function Availability() {
                     type="time"
                     value={hourToTime(block.start)}
                     onChange={(e) => updateBlockTime(day, bi, "start", e.target.value)}
-                    className="flex-1 text-sm border border-border rounded-lg px-2 py-1.5 bg-bg text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+                    className="flex-1 text-sm border border-border rounded-lg px-2 py-1.5 bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
                   />
                   <span className="text-ink-muted text-sm shrink-0">—</span>
                   <input
                     type="time"
                     value={hourToTime(block.end)}
                     onChange={(e) => updateBlockTime(day, bi, "end", e.target.value)}
-                    className="flex-1 text-sm border border-border rounded-lg px-2 py-1.5 bg-bg text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
+                    className="flex-1 text-sm border border-border rounded-lg px-2 py-1.5 bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-accent/50"
                   />
                 </div>
 
@@ -1028,7 +1038,7 @@ export default function Availability() {
                           },
                         }));
                       }}
-                      className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-bg text-ink"
+                      className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-surface text-ink"
                     >
                       <option value="presencial">Presencial</option>
                       <option value="virtual">Virtual</option>
@@ -1044,7 +1054,7 @@ export default function Availability() {
                       <button
                         onClick={() => removeTurn(day, bi)}
                         disabled={!canRemove}
-                        className="w-8 h-8 rounded-lg bg-bg border border-border hover:bg-border/40 disabled:opacity-30 flex items-center justify-center text-ink text-lg font-bold transition-colors"
+                        className="w-8 h-8 rounded-lg bg-surface border border-border hover:bg-border/40 disabled:opacity-30 flex items-center justify-center text-ink text-lg font-bold transition-colors cursor-pointer disabled:cursor-not-allowed"
                       >
                         −
                       </button>
@@ -1054,7 +1064,7 @@ export default function Availability() {
                       <button
                         onClick={() => addTurn(day, bi)}
                         disabled={!canAdd}
-                        className="w-8 h-8 rounded-lg bg-bg border border-border hover:bg-border/40 disabled:opacity-30 flex items-center justify-center text-ink text-lg font-bold transition-colors"
+                        className="w-8 h-8 rounded-lg bg-surface border border-border hover:bg-border/40 disabled:opacity-30 flex items-center justify-center text-ink text-lg font-bold transition-colors cursor-pointer disabled:cursor-not-allowed"
                       >
                         +
                       </button>
@@ -1065,7 +1075,7 @@ export default function Availability() {
                 {/* Delete */}
                 <button
                   onClick={() => removeBlock(day, bi)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 text-sm font-medium transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 text-sm font-medium transition-colors cursor-pointer"
                 >
                   <ion-icon name="trash-outline" style={{ fontSize: "14px" }} />
                   Eliminar bloque
@@ -1087,13 +1097,35 @@ export default function Availability() {
                 <select
                   value={rules.aviso}
                   onChange={(e) => setRules((r) => ({ ...r, aviso: e.target.value }))}
-                  className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0"
+                  className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-surface text-ink font-semibold focus:outline-none shrink-0 cursor-pointer"
                 >
                   <option value="1">1 hora</option>
                   <option value="2">2 horas</option>
                   <option value="12">12 horas</option>
                   <option value="24">24 horas</option>
                   <option value="48">48 horas</option>
+                </select>
+              </div>
+
+              <div className="border-t border-border/30" />
+
+              {/* Buffer entre turnos */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-ink">Buffer entre turnos</p>
+                  <p className="text-xs text-ink-muted mt-0.5">Pausa entre una reserva y la siguiente</p>
+                </div>
+                <select
+                  value={rules.buffer}
+                  onChange={(e) => setRules((r) => ({ ...r, buffer: e.target.value }))}
+                  className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-surface text-ink font-semibold focus:outline-none shrink-0 cursor-pointer"
+                >
+                  <option value="0">Sin buffer</option>
+                  <option value="5">5 min</option>
+                  <option value="10">10 min</option>
+                  <option value="15">15 min</option>
+                  <option value="20">20 min</option>
+                  <option value="30">30 min</option>
                 </select>
               </div>
 
@@ -1106,7 +1138,7 @@ export default function Availability() {
                 <select
                   value={rules.reservas}
                   onChange={(e) => setRules((r) => ({ ...r, reservas: e.target.value }))}
-                  className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0"
+                  className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-surface text-ink font-semibold focus:outline-none shrink-0 cursor-pointer"
                 >
                   <option value="7">7 días</option>
                   <option value="14">14 días</option>
@@ -1126,7 +1158,7 @@ export default function Availability() {
                 <select
                   value={rules.cancelacion}
                   onChange={(e) => setRules((r) => ({ ...r, cancelacion: e.target.value }))}
-                  className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-ink font-semibold focus:outline-none shrink-0"
+                  className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-surface text-ink font-semibold focus:outline-none shrink-0 cursor-pointer"
                 >
                   <option value="12">12 horas</option>
                   <option value="24">24 horas</option>
@@ -1144,7 +1176,7 @@ export default function Availability() {
           <button
             onClick={handleSave}
             disabled={saving || !selectedId}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer disabled:cursor-not-allowed ${
               saved ? "bg-green-500 text-white" : "bg-ink-fixed text-white hover:bg-primary disabled:opacity-50"
             }`}
           >
@@ -1154,6 +1186,63 @@ export default function Availability() {
             {saved ? "✓ Guardado" : saving ? "Guardando..." : "Guardar cambios"}
           </button>
         </div>
+      </div>
+
+      {/* ── Excepciones — debajo del calendario, estilo tabla de /services ── */}
+      <div className="mt-6 bg-surface border border-border rounded-2xl overflow-hidden">
+        {/* Cabecera */}
+        <div
+          className="grid px-5 py-2 border-b border-border"
+          style={{ gridTemplateColumns: "1fr 1fr 2fr 56px" }}
+        >
+          {["Fechas", "Horario", "Motivo", ""].map((h) => (
+            <div key={h} className="text-sm text-ink-muted">{h}</div>
+          ))}
+        </div>
+
+        {/* Sección */}
+        <div className="px-5 py-2 border-b border-border bg-sidebar">
+          <span className="text-sm font-bold text-ink">Excepciones</span>
+        </div>
+
+        {excepciones.length === 0 ? (
+          <div className="px-5 py-8 text-center text-ink-muted text-sm">
+            No hay excepciones configuradas.
+          </div>
+        ) : (
+          excepciones.map((e: any, idx: number) => (
+            <div
+              key={e.excepcion_id}
+              className={`grid px-5 py-4 items-center ${idx > 0 ? "border-t border-border" : ""}`}
+              style={{ gridTemplateColumns: "1fr 1fr 2fr 56px" }}
+            >
+              <div className="text-sm text-ink font-medium">
+                {e.fecha_desde}
+                {e.fecha_desde !== e.fecha_hasta && ` al ${e.fecha_hasta}`}
+              </div>
+
+              <div className="text-sm text-ink-muted">
+                {e.hora_inicio && e.hora_fin
+                  ? `${e.hora_inicio.slice(0, 5)} - ${e.hora_fin.slice(0, 5)}`
+                  : "Día completo"}
+              </div>
+
+              <div className="text-sm text-ink-muted truncate">
+                {e.motivo || "—"}
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => handleDeleteExcepcion(e.excepcion_id)}
+                  title="Eliminar"
+                  className="text-red-500 hover:text-red-700 transition-colors cursor-pointer"
+                >
+                  <ion-icon name="trash-outline" style={{ fontSize: "15px" }} />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
