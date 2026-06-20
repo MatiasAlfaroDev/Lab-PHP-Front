@@ -22,6 +22,13 @@ interface Resumen {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+function getSaludo() {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 12) return "Buenos días";
+  if (h >= 12 && h < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -64,16 +71,12 @@ function DashboardSkeleton() {
   return (
     <div className="p-4 md:p-8 w-full">
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div className="space-y-2">
           <Skeleton className="h-8 w-56" />
           <Skeleton className="h-4 w-40" />
         </div>
-        <div className="flex gap-3">
-          <Skeleton className="h-9 w-9 rounded" />
-          <Skeleton className="h-9 w-36 rounded-full" />
-          <Skeleton className="h-9 w-36 rounded-full" />
-        </div>
+        <Skeleton className="h-9 w-36 rounded-full" />
       </div>
 
       {/* KPIs */}
@@ -102,39 +105,83 @@ function DashboardSkeleton() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Agenda skeleton */}
-        <div className="col-span-2">
-          <Skeleton className="h-6 w-64 mb-4" />
+        <div className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <Skeleton className="h-6 w-24" />
+            <div className="flex items-center gap-1">
+              <Skeleton className="h-8 w-8 rounded" />
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-8 w-8 rounded" />
+            </div>
+          </div>
+
           <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-b-0">
-                <div className="w-16 space-y-1">
-                  <Skeleton className="h-4 w-10" />
+            <div className="grid border-b border-border grid-cols-[48px_1fr] sm:grid-cols-[48px_1fr_1fr_1fr]">
+              <div className="border-r border-border" />
+              {[0, 1, 2].map((i) => (
+                <div key={i} className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center gap-1 py-2 min-h-[52px] ${i > 0 ? "hidden sm:flex" : ""}`}>
                   <Skeleton className="h-3 w-8" />
+                  <Skeleton className="h-5 w-5 rounded-full" />
                 </div>
-                <Skeleton className="w-8 h-8 rounded shrink-0" />
-                <div className="flex-1 space-y-1">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-                <Skeleton className="h-5 w-20 rounded-full" />
+              ))}
+            </div>
+            <div className="grid grid-cols-[48px_1fr] sm:grid-cols-[48px_1fr_1fr_1fr]">
+              <div className="border-r border-border">
+                {Array.from({ length: 6 }).map((_, h) => (
+                  <div key={h} className="border-b border-border/30 flex items-center justify-center" style={{ height: 44 }}>
+                    <Skeleton className="h-3 w-8" />
+                  </div>
+                ))}
               </div>
-            ))}
+              {[0, 1, 2].map((i) => (
+                <div key={i} className={`border-r border-border last:border-r-0 ${i > 0 ? "hidden sm:block" : ""}`}>
+                  {Array.from({ length: 6 }).map((_, h) => (
+                    <div key={h} className="border-b border-border/20" style={{ height: 44 }} />
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Right column skeleton */}
         <div className="space-y-5">
-          <div className="bg-surface border border-border rounded-2xl p-4">
-            <Skeleton className="h-4 w-24 mb-3" />
-            <div className="grid grid-cols-7 gap-0.5">
-              {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-6" />)}
-              {Array.from({ length: 35 }).map((_, i) => <Skeleton key={i} className="h-7" />)}
+          {/* Por revisar */}
+          <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+            <div className="px-4 pt-4 pb-3">
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3 border-t border-border">
+              <Skeleton className="h-5 w-5 rounded shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-36" />
+                <Skeleton className="h-3 w-28" />
+              </div>
             </div>
           </div>
-          <div className="bg-surface border border-border rounded-2xl p-4 space-y-2">
-            <Skeleton className="h-4 w-20 mb-3" />
-            <Skeleton className="h-14 rounded" />
-            <Skeleton className="h-14 rounded" />
+
+          {/* Reseñas */}
+          <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-3">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <div className="flex items-center gap-3 px-4 pb-4 border-b border-border">
+              <Skeleton className="h-9 w-6" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className={`px-4 py-3 space-y-1.5 ${i > 0 ? "border-t border-border" : ""}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+                <Skeleton className="h-3 w-full" />
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -270,9 +317,9 @@ export default function ProfessionalDashboard() {
   return (
     <div className="p-4 md:p-8 w-full">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="font-display text-3xl text-ink">Buenos días, {firstName}</h1>
+          <h1 className="font-display text-3xl text-ink">{getSaludo()}, {firstName}</h1>
           <p className="text-ink-muted mt-1">
             {sesionesHoy > 0
               ? `Tenés ${sesionesHoy} sesión${sesionesHoy !== 1 ? "es" : ""} hoy`
@@ -330,7 +377,10 @@ export default function ProfessionalDashboard() {
               >
                 <ChevronLeftIcon />
               </button>
-              <span className="text-sm font-medium text-ink px-1 whitespace-nowrap">
+              <span className="text-sm font-medium text-ink px-1 whitespace-nowrap sm:hidden">
+                {DOW_LABELS[agendaDays[0].getDay() === 0 ? 6 : agendaDays[0].getDay() - 1]} {agendaDays[0].getDate()}
+              </span>
+              <span className="text-sm font-medium text-ink px-1 whitespace-nowrap hidden sm:inline">
                 {DOW_LABELS[agendaDays[0].getDay() === 0 ? 6 : agendaDays[0].getDay() - 1]} {agendaDays[0].getDate()}
                 {" – "}
                 {DOW_LABELS[agendaDays[2].getDay() === 0 ? 6 : agendaDays[2].getDay() - 1]} {agendaDays[2].getDate()}
@@ -345,14 +395,14 @@ export default function ProfessionalDashboard() {
           </div>
 
           <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-            <div className="grid border-b border-border" style={{ gridTemplateColumns: "48px repeat(3, 1fr)" }}>
+            <div className="grid border-b border-border grid-cols-[48px_1fr] sm:grid-cols-[48px_1fr_1fr_1fr]">
               <div className="border-r border-border" />
-              {agendaDays.map((d) => {
+              {agendaDays.map((d, i) => {
                 const str = toDateStr(d);
                 const isToday = str === hoy;
                 const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
                 return (
-                  <div key={str} className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[52px] ${isToday ? "bg-accent/10" : ""}`}>
+                  <div key={str} className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[52px] ${isToday ? "bg-accent/10" : ""} ${i > 0 ? "hidden sm:flex" : ""}`}>
                     <p className="text-xs text-ink-muted uppercase tracking-wide font-semibold">{DOW_LABELS[dow]}</p>
                     {isToday ? (
                       <span className="inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink-fixed text-white text-xs font-bold">{d.getDate()}</span>
@@ -367,7 +417,7 @@ export default function ProfessionalDashboard() {
               })}
             </div>
 
-            <div className="relative grid" style={{ gridTemplateColumns: "48px repeat(3, 1fr)" }}>
+            <div className="relative grid grid-cols-[48px_1fr] sm:grid-cols-[48px_1fr_1fr_1fr]">
               <div className="border-r border-border">
                 {HOURS.map((h) => (
                   <div key={h} className="border-b border-border/30 flex items-center justify-center px-1" style={{ height: CELL }}>
@@ -375,12 +425,12 @@ export default function ProfessionalDashboard() {
                   </div>
                 ))}
               </div>
-              {agendaDays.map((d) => {
+              {agendaDays.map((d, i) => {
                 const str = toDateStr(d);
                 const isToday = str === hoy;
                 const dayRes = reservasByDay[str] ?? [];
                 return (
-                  <div key={str} className={`relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : ""}`}>
+                  <div key={str} className={`relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : ""} ${i > 0 ? "hidden sm:block" : ""}`}>
                     {HOURS.map((_, hi) => <div key={hi} className="border-b border-border/20" style={{ height: CELL }} />)}
                     {dayRes.map((r) => {
                       const [hh, mm] = r.hora.split(":").map(Number);
