@@ -400,7 +400,7 @@ export default function ServicePackages() {
                       onClick={() => openEdit(pkg)}
                       title="Editar"
                       className={`transition-colors cursor-pointer ${
-                        isEditing ? "text-ink" : "text-accent-hover hover:text-ink"
+                        isEditing ? "text-ink" : "text-ink-muted hover:text-ink"
                       }`}
                     >
                       <EditIcon />

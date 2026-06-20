@@ -511,9 +511,9 @@ export default function Services() {
                       <p className={`text-sm truncate ${activo ? "text-ink" : "text-ink-muted"}`}>
                         {s.nombre}
                       </p>
-                      {s.ubicacion && (
-                        <p className="text-xs text-ink-muted truncate flex items-center gap-1 mt-0.5">
-                          <PinIcon /> {s.ubicacion}
+                      {s.descripcion && (
+                        <p className="text-xs text-ink-muted truncate mt-0.5">
+                          {s.descripcion}
                         </p>
                       )}
                     </div>
@@ -538,7 +538,7 @@ export default function Services() {
                       onClick={() => { setDeletingId(null); openEdit(s); }}
                       title="Editar"
                       className={`transition-colors cursor-pointer ${
-                        isEditing ? "text-ink" : "text-accent-hover hover:text-ink"
+                        isEditing ? "text-ink" : "text-ink-muted hover:text-ink"
                       }`}
                     >
                       <EditIcon />
@@ -900,15 +900,6 @@ function CloseIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-
-function PinIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-      <circle cx="12" cy="10" r="3" />
     </svg>
   );
 }

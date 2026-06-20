@@ -2,11 +2,11 @@ import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "~/context/AuthContext";
 
 const navItems = [
-  { to: "/professional/dashboard", label: "Resumen", icon: HomeIcon },
-  { to: "/professional", label: "Clientes", icon: CalendarIcon, end: true },
+  { to: "/professional/dashboard", label: "Inicio", icon: HomeIcon },
+  { to: "/professional", label: "Clientes", icon: UsersIconFilled, end: true },
+  { to: "/professional/availability", label: "Horarios", icon: ClockIcon },
   { to: "/professional/services", label: "Servicios", icon: BriefcaseIcon },
   { to: "/professional/service-packages", label: "Paquetes", icon: BoxesIcon },
-  { to: "/professional/availability", label: "Disponibilidad", icon: ClockIcon },
   { to: "/professional/payments", label: "Cobros", icon: CardIcon },
 ];
 
@@ -134,6 +134,9 @@ function HomeIcon({ className }: { className?: string }) {
 }
 function CalendarIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+}
+function UsersIconFilled({ className }: { className?: string }) {
+  return <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M4.5 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM14.25 8.625a3.375 3.375 0 1 1 6.75 0 3.375 3.375 0 0 1-6.75 0ZM1.5 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM17.25 19.128l-.001.144a2.25 2.25 0 0 1-.233.96 10.088 10.088 0 0 0 5.06-1.01.75.75 0 0 0 .42-.643 4.875 4.875 0 0 0-6.957-4.611 8.586 8.586 0 0 1 1.71 5.157v.003Z"/></svg>;
 }
 function BriefcaseIcon({ className }: { className?: string }) {
   return <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M5.566 4.657A4.505 4.505 0 016.75 4.5h10.5c.41 0 .806.055 1.183.157A3 3 0 0015.75 3h-7.5a3 3 0 00-2.684 1.657zM2.25 12a3 3 0 013-3h13.5a3 3 0 013 3v6a3 3 0 01-3 3H5.25a3 3 0 01-3-3v-6zM5.25 7.5c-.41 0-.806.055-1.184.157A3 3 0 016.75 6h10.5a3 3 0 012.683 1.657A4.505 4.505 0 0018.75 7.5H5.25z"/></svg>;

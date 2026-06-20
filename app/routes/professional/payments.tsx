@@ -10,153 +10,139 @@ interface Transaction {
   estado: string;
 }
 
-interface Resumen {
-  total_mes: number;
-  pagado: number;
-  pendiente: number;
-}
-
 const badgeCls: Record<string, string> = {
   aprobado: "badge badge-confirmada",
   pendiente: "badge badge-pendiente",
 };
 
+const COLS = "110px 2fr 2fr 110px 110px";
+
 export default function Payments() {
   const { token, user } = useAuth();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [resumen, setResumen] = useState<Resumen>({
-    total_mes: 0,
-    pagado: 0,
-    pendiente: 0,
-  });
-
   const [loading, setLoading] = useState(true);
+  const [search,  setSearch]  = useState("");
 
   useEffect(() => {
     if (!token || !user) return;
 
-    Promise.all([
-      api.get("/profesional/pagos", token),
-      api.get("/profesional/pagos/resumen", token),
-    ])
-      .then(([pagosRes, resumenRes]: any) => {
-        setTransactions(pagosRes.data ?? []);
-        setResumen(resumenRes.data ?? {});
-      })
+    api
+      .get("/profesional/pagos", token)
+      .then((res: any) => setTransactions(res.data ?? []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [token, user]);
 
-  return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+  const filteredTransactions = transactions.filter((t) =>
+    `${t.cliente} ${t.servicio}`.toLowerCase().includes(search.trim().toLowerCase())
+  );
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-3xl text-ink">Cobros</h1>
-          <p className="text-ink-muted mt-1">
-            Historial de pagos y liquidaciones
-          </p>
+  return (
+    <div className="w-full">
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
+        <div className="relative flex-1 max-w-xs">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted">
+            <SearchIcon />
+          </span>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por cliente o servicio"
+            className="w-full pl-8 pr-3 py-1.5 text-sm text-ink placeholder-ink-muted bg-transparent focus:outline-none"
+          />
         </div>
       </div>
 
-      {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        {[
-          {
-            label: "INGRESOS DEL MES",
-            value: `$${resumen.total_mes}`,
-            sub: "Total generado",
-          },
-          {
-            label: "PAGADO",
-            value: `$${resumen.pagado}`,
-            sub: "Ya acreditado",
-          },
-          {
-            label: "PENDIENTE",
-            value: `$${resumen.pendiente}`,
-            sub: "Por liquidar",
-          },
-        ].map((c) => (
-          <div
-            key={c.label}
-            className="bg-surface border border-border rounded p-5"
-          >
-            <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-2">
-              {c.label}
-            </p>
-            <p className="font-display text-3xl text-ink font-bold">
-              {c.value}
-            </p>
-            <p className="text-xs text-ink-muted mt-1">{c.sub}</p>
+      {/* Loading */}
+      {loading && (
+        <div className="bg-surface border-t border-border w-full overflow-x-auto">
+          <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: COLS }}>
+            {["Fecha", "Cliente", "Servicio", "Monto", "Estado"].map((h) => (
+              <div key={h} className="text-sm text-ink-muted">{h}</div>
+            ))}
           </div>
-        ))}
-      </div>
-
-      {/* TABLE */}
-      <div className="border border-border rounded overflow-x-auto bg-surface">
-        <div className="min-w-[520px] w-full">
-          {/* HEADER */}
-          <div className="bg-bg border-b border-border w-full">
-            <div className="grid grid-cols-12 px-5 py-3 w-full">
-            {["FECHA", "CLIENTE", "SERVICIO", "MONTO", "ESTADO"].map(
-              (h, i) => (
-                <div
-                  key={i}
-                  className={`text-xs font-bold text-ink-muted uppercase tracking-widest ${
-                    i === 0 ? "col-span-2"
-                    : i === 1 ? "col-span-3"
-                    : i === 2 ? "col-span-4"
-                    : i === 3 ? "col-span-2"
-                    : "col-span-1 text-center"
-                  }`}
-                >
-                  {h}
-                </div>
-              )
-            )}
+          <div className="px-5 py-2 border-b border-border bg-sidebar">
+            <div className="h-3.5 w-24 rounded bg-border animate-pulse" />
           </div>
-
-          {/* ROWS */}
-          {transactions.map((t, i) => (
+          {[0, 1, 2, 3].map((row) => (
             <div
-              key={i}
-              className="grid grid-cols-12 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface"
+              key={row}
+              className={`grid px-5 py-4 items-center ${row > 0 ? "border-t border-border" : ""}`}
+              style={{ gridTemplateColumns: COLS }}
             >
-              <div className="col-span-2">
-                <span className="text-sm text-ink-muted whitespace-nowrap">{t.fecha}</span>
-              </div>
-
-              <div className="col-span-3">
-                <span className="text-sm font-semibold text-ink text-center">
-                  {t.cliente}
-                </span>
-              </div>
-
-              <div className="col-span-4">
-                <span className="text-sm text-ink-muted">
-                  {t.servicio}
-                </span>
-              </div>
-
-              <div className="col-span-2">
-                <span className="font-display text-lg font-bold text-ink">
-                  ${t.monto}
-                </span>
-              </div>
-
-              <div className="col-span-1 text-center">
-                <span className={badgeCls[t.estado] ?? "badge"}>
-                  {t.estado.toUpperCase()}
-                </span>
-              </div>
+              <div className="h-3.5 w-16 rounded bg-border animate-pulse" />
+              <div className="h-3.5 w-32 rounded bg-border animate-pulse" />
+              <div className="h-3.5 w-28 rounded bg-border animate-pulse" />
+              <div className="h-3.5 w-12 rounded bg-border animate-pulse" />
+              <div className="h-5 w-16 rounded bg-border animate-pulse" />
             </div>
           ))}
         </div>
-      </div>
-      </div>
+      )}
+
+      {/* Empty */}
+      {!loading && transactions.length === 0 && (
+        <div className="m-4 bg-surface border border-border rounded p-12 text-center">
+          <p className="font-display text-xl text-ink mb-1">Sin transacciones aún</p>
+          <p className="text-ink-muted text-sm">
+            Los pagos de tus reservas van a aparecer acá
+          </p>
+        </div>
+      )}
+
+      {/* Sin resultados de búsqueda */}
+      {!loading && transactions.length > 0 && filteredTransactions.length === 0 && (
+        <div className="m-4 bg-surface border border-border rounded p-12 text-center text-ink-muted text-sm">
+          No se encontraron pagos para "{search}"
+        </div>
+      )}
+
+      {/* Tabla */}
+      {!loading && filteredTransactions.length > 0 && (
+        <div className="bg-surface border-t border-border w-full overflow-x-auto">
+          {/* Cabecera */}
+          <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: COLS }}>
+            {["Fecha", "Cliente", "Servicio", "Monto", "Estado"].map((h) => (
+              <div key={h} className="text-sm text-ink-muted">{h}</div>
+            ))}
+          </div>
+
+          {/* Sección */}
+          <div className="px-5 py-2 border-b border-border bg-sidebar">
+            <span className="text-sm font-bold text-ink">Pagos</span>
+          </div>
+
+          {filteredTransactions.map((t, idx) => (
+            <div
+              key={idx}
+              className={`grid px-5 py-4 items-center hover:bg-bg transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
+              style={{ gridTemplateColumns: COLS }}
+            >
+              <span className="text-sm text-ink-muted whitespace-nowrap">{t.fecha}</span>
+              <span className="text-sm text-ink truncate">{t.cliente}</span>
+              <span className="text-sm text-ink-muted truncate">{t.servicio}</span>
+              <span className="text-sm text-ink">${t.monto}</span>
+              <span>
+                <span className={badgeCls[t.estado] ?? "badge"}>{t.estado.toUpperCase()}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+
+function SearchIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
   );
 }

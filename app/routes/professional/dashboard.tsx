@@ -15,15 +15,13 @@ interface Reserva {
   modalidad?: string;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-const COLORS = [
-  "bg-violet-500", "bg-purple-400", "bg-teal-500",
-  "bg-amber-500", "bg-orange-400", "bg-blue-500", "bg-rose-500",
-];
-const getInitials = (name: string) =>
-  name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-const getColor = (id: number) => COLORS[id % COLORS.length];
+interface Resumen {
+  total_mes: number;
+  pagado: number;
+  pendiente: number;
+}
 
+// ── Helpers ────────────────────────────────────────────────────────────────
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -35,37 +33,27 @@ function startOfWeekStr() {
   mon.setDate(now.getDate() + diff);
   return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
 }
-
-function puedeEntrar(reserva: Reserva) {
-  if (!reserva.servicio?.duracion) return false;
-
-  const ahora = new Date();
-
-  const inicio = new Date(`${reserva.fecha}T${reserva.hora}`);
-  const fin = new Date(inicio);
-  fin.setMinutes(fin.getMinutes() + reserva.servicio.duracion);
-
-  const desde = new Date(inicio);
-  desde.setMinutes(desde.getMinutes() - 10);
-
-  return ahora >= desde && ahora <= fin;
+function toDateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function addDays(d: Date, n: number) {
+  const next = new Date(d);
+  next.setDate(next.getDate() + n);
+  return next;
 }
 
-const statusMap: Record<string, { label: string; cls: string }> = {
-  finalizada: { label: "FINALIZADA", cls: "text-xs text-ink-muted font-bold uppercase" },
-  en_curso:   { label: "EN VIVO",    cls: "badge badge-en-vivo" },
-  confirmada: { label: "CONFIRMADA", cls: "badge badge-confirmada" },
-  pagada:     { label: "PAGADA",     cls: "badge badge-pagada" },
-  pendiente:  { label: "PENDIENTE",  cls: "badge badge-pendiente" },
-};
+const HOURS      = Array.from({ length: 14 }, (_, i) => `${String(i + 8).padStart(2, "0")}:00`);
+const CELL       = 44;
+const GRID_START = 8;
+const DOW_LABELS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 
-const calendar = [
-  [24, 25, 26, 27, 1, 2, 3],
-  [4, 5, 6, 7, 8, 9, 10],
-  [11, 12, 13, 14, 15, 16, 17],
-  [18, 19, 20, 21, 22, 23, 24],
-  [25, 26, 27, 28, 29, 30, 31],
-];
+const ESTADO_COLOR: Record<string, string> = {
+  pendiente:  "bg-amber-100  border-l-4 border-amber-400",
+  confirmada: "bg-blue-100   border-l-4 border-blue-400",
+  pagada:     "bg-green-100  border-l-4 border-green-500",
+  en_curso:   "bg-violet-100 border-l-4 border-violet-500",
+  finalizada: "bg-gray-50    border-l-4 border-gray-300",
+};
 
 // ── Skeleton ───────────────────────────────────────────────────────────────
 function Skeleton({ className = "" }: { className?: string }) {
@@ -74,7 +62,7 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 function DashboardSkeleton() {
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 w-full">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div className="space-y-2">
@@ -83,15 +71,15 @@ function DashboardSkeleton() {
         </div>
         <div className="flex gap-3">
           <Skeleton className="h-9 w-9 rounded" />
-          <Skeleton className="h-9 w-36 rounded" />
-          <Skeleton className="h-9 w-36 rounded" />
+          <Skeleton className="h-9 w-36 rounded-full" />
+          <Skeleton className="h-9 w-36 rounded-full" />
         </div>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-surface border border-border rounded p-5 space-y-2">
+          <div key={i} className="bg-surface border border-border rounded-2xl p-5 space-y-2">
             <Skeleton className="h-3 w-28" />
             <Skeleton className="h-9 w-16" />
             <Skeleton className="h-3 w-24" />
@@ -99,11 +87,24 @@ function DashboardSkeleton() {
         ))}
       </div>
 
+      {/* Ganancias skeleton */}
+      <div className="bg-surface border border-border rounded-2xl overflow-hidden mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="p-5 space-y-2">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-9 w-16" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Agenda skeleton */}
         <div className="col-span-2">
           <Skeleton className="h-6 w-64 mb-4" />
-          <div className="bg-surface border border-border rounded overflow-hidden">
+          <div className="bg-surface border border-border rounded-2xl overflow-hidden">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-b-0">
                 <div className="w-16 space-y-1">
@@ -123,14 +124,14 @@ function DashboardSkeleton() {
 
         {/* Right column skeleton */}
         <div className="space-y-5">
-          <div className="bg-surface border border-border rounded p-4">
+          <div className="bg-surface border border-border rounded-2xl p-4">
             <Skeleton className="h-4 w-24 mb-3" />
             <div className="grid grid-cols-7 gap-0.5">
               {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-6" />)}
               {Array.from({ length: 35 }).map((_, i) => <Skeleton key={i} className="h-7" />)}
             </div>
           </div>
-          <div className="bg-surface border border-border rounded p-4 space-y-2">
+          <div className="bg-surface border border-border rounded-2xl p-4 space-y-2">
             <Skeleton className="h-4 w-20 mb-3" />
             <Skeleton className="h-14 rounded" />
             <Skeleton className="h-14 rounded" />
@@ -155,21 +156,25 @@ export default function ProfessionalDashboard() {
   const [promedio, setPromedio] = useState(0);
   const [openCalificaciones, setOpenCalificaciones] = useState(false);
   const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
+  const [resumen, setResumen] = useState<Resumen>({ total_mes: 0, pagado: 0, pendiente: 0 });
+  const [agendaStart, setAgendaStart] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
 
   const loadDashboard = async () => {
     if (!token || !user?.id) return;
 
     try {
-      const [agendaRes, pendientesRes, calificacionesRes] =
+      const [agendaRes, pendientesRes, calificacionesRes, resumenRes] =
         await Promise.all([
           api.get("/mi-agenda", token),
           api.get("/reservas/pendientes", token),
           api.get(`/profesionales/${user.id}/calificaciones`, token),
+          api.get("/profesional/pagos/resumen", token),
         ]);
 
       const agenda: any = agendaRes;
       const pendientesData: any = pendientesRes;
       const calificacionesData: any = calificacionesRes;
+      const resumenData: any = resumenRes;
 
       setAllReservas(agenda.data ?? []);
       setPendientes(pendientesData.data ?? []);
@@ -177,6 +182,8 @@ export default function ProfessionalDashboard() {
       setCalificaciones(calificacionesData.data ?? []);
       setPromedio(calificacionesData.promedio ?? 0);
       setCantidadCalificaciones(calificacionesData.cantidad ?? 0);
+
+      setResumen(resumenData.data ?? {});
     } finally {
       setLoading(false);
     }
@@ -228,6 +235,18 @@ export default function ProfessionalDashboard() {
     [allReservas, semanaDesde]
   );
 
+  const agendaDays = [0, 1, 2].map((i) => addDays(agendaStart, i));
+  const reservasByDay = useMemo(() => {
+    const map: Record<string, Reserva[]> = {};
+    for (const r of allReservas) {
+      if (!map[r.fecha]) map[r.fecha] = [];
+      map[r.fecha].push(r);
+    }
+    return map;
+  }, [allReservas]);
+  const prevAgendaDays = () => setAgendaStart((d) => addDays(d, -1));
+  const nextAgendaDays = () => setAgendaStart((d) => addDays(d, 1));
+
   const kpis = [
     { label: "SESIONES HOY",         value: String(sesionesHoy),        sub: "reservas para hoy" },
     { label: "SESIONES ESTA SEMANA", value: String(sesionesEstaSemana), sub: "semana en curso" },
@@ -249,7 +268,7 @@ export default function ProfessionalDashboard() {
 
   if (loading) return <DashboardSkeleton />;
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 w-full">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
         <div>
@@ -263,7 +282,7 @@ export default function ProfessionalDashboard() {
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Link
             to="/professional/services"
-            className="flex items-center gap-2 border border-border px-4 py-2 rounded bg-surface hover:bg-bg text-sm font-semibold text-ink"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer"
           >
             <PlusIcon />
             Nuevo servicio
@@ -272,155 +291,190 @@ export default function ProfessionalDashboard() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {kpis.map((k) => (
-          <div key={k.label} className="bg-surface border border-border rounded p-5">
-            <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-2">{k.label}</p>
+          <div key={k.label} className="bg-surface border border-border rounded-2xl p-5">
+            <p className="text-sm text-ink-muted mb-2">{k.label}</p>
             <span className="font-display text-3xl text-ink">{k.value}</span>
             <p className="text-xs text-ink-muted mt-1">{k.sub}</p>
           </div>
         ))}
       </div>
 
+      {/* Ganancias */}
+      <div className="bg-surface border border-border rounded-2xl overflow-hidden mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+          {[
+            { label: "Ingresos del mes", value: `$${resumen.total_mes}`, sub: "Total generado" },
+            { label: "Pagado",           value: `$${resumen.pagado}`,    sub: "Ya acreditado" },
+            { label: "Pendiente",        value: `$${resumen.pendiente}`, sub: "Por liquidar" },
+          ].map((c) => (
+            <div key={c.label} className="p-5">
+              <p className="text-sm text-ink-muted mb-2">{c.label}</p>
+              <p className="font-display text-3xl text-ink font-bold">{c.value}</p>
+              <p className="text-xs text-ink-muted mt-1">{c.sub}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Agenda de hoy */}
+        {/* Agenda */}
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl text-ink">
-              Agenda de hoy ·{" "}
-              {new Date().toLocaleDateString("es-UY", {
-                weekday: "long", day: "numeric", month: "short",
-              })}
-            </h2>
+            <h2 className="font-display text-xl text-ink">Agenda</h2>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={prevAgendaDays}
+                className="w-8 h-8 rounded border border-border flex items-center justify-center text-ink-muted hover:bg-bg transition-colors cursor-pointer"
+              >
+                <ChevronLeftIcon />
+              </button>
+              <span className="text-sm font-medium text-ink px-1 whitespace-nowrap">
+                {DOW_LABELS[agendaDays[0].getDay() === 0 ? 6 : agendaDays[0].getDay() - 1]} {agendaDays[0].getDate()}
+                {" – "}
+                {DOW_LABELS[agendaDays[2].getDay() === 0 ? 6 : agendaDays[2].getDay() - 1]} {agendaDays[2].getDate()}
+              </span>
+              <button
+                onClick={nextAgendaDays}
+                className="w-8 h-8 rounded border border-border flex items-center justify-center text-ink-muted hover:bg-bg transition-colors cursor-pointer"
+              >
+                <ChevronRightIcon />
+              </button>
+            </div>
           </div>
 
-          <div className="bg-surface border border-border rounded overflow-hidden">
-            {agendaHoy.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-ink-muted">No hay sesiones registradas para hoy.</p>
-            ) : (
-              agendaHoy.map((item) => {
-                const hora     = item.hora.slice(0, 5);
-                const initials = getInitials(item.cliente_nombre ?? "?");
-                const color    = getColor(item.cliente_id);
-                const estado   = item.estado;
-                const duracion = item.servicio?.duracion ? `${item.servicio.duracion}min` : "";
-
+          <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+            <div className="grid border-b border-border" style={{ gridTemplateColumns: "48px repeat(3, 1fr)" }}>
+              <div className="border-r border-border" />
+              {agendaDays.map((d) => {
+                const str = toDateStr(d);
+                const isToday = str === hoy;
+                const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
                 return (
-                  <div
-                    key={item.reserva_id}
-                    className={`flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-4 border-b border-border last:border-b-0 ${
-                      estado === "en_curso" ? "bg-accent/10" : ""
-                    }`}
-                  >
-                    <div className="w-12 sm:w-16 shrink-0">
-                      <p className="text-sm font-semibold text-ink">{hora}</p>
-                      <p className="text-xs text-ink-muted">{duracion}</p>
-                    </div>
-
-                    <div className={`w-8 h-8 rounded shrink-0 flex items-center justify-center text-white text-xs font-bold ${color}`}>
-                      {initials}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-ink">{item.cliente_nombre}</p>
-                      {item.servicio?.nombre && (
-                        <p className="text-xs text-ink-muted">
-                          {item.servicio.nombre}
-                          {item.servicio.modalidad ? ` · ${item.servicio.modalidad}` : ""}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {statusMap[estado] && (
-                        <span className={statusMap[estado].cls}>{statusMap[estado].label}</span>
-                      )}
-                      {item.modalidad === "virtual" && puedeEntrar(item) && (
-                        <Link to={`/videollamada/${item.reserva_id}`}>
-                          <button className="flex items-center gap-1 bg-ink-fixed text-white text-sm font-semibold px-2 sm:px-4 py-2 rounded hover:bg-primary transition-colors">
-                            <VideoIcon />
-                            <span className="hidden sm:inline">Iniciar videollamada</span>
-                          </button>
-                        </Link>
-                      )}
-                    </div>
+                  <div key={str} className={`border-r border-border last:border-r-0 flex flex-col items-center justify-center py-2 min-h-[52px] ${isToday ? "bg-accent/10" : ""}`}>
+                    <p className="text-xs text-ink-muted uppercase tracking-wide font-semibold">{DOW_LABELS[dow]}</p>
+                    {isToday ? (
+                      <span className="inline-flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-ink-fixed text-white text-xs font-bold">{d.getDate()}</span>
+                    ) : (
+                      <p className="text-sm font-bold text-ink mt-0.5">{d.getDate()}</p>
+                    )}
+                    {reservasByDay[str]?.length > 0 && (
+                      <p className="text-xs text-ink-muted mt-0.5">{reservasByDay[str].length} turno{reservasByDay[str].length !== 1 ? "s" : ""}</p>
+                    )}
                   </div>
                 );
-              })
-            )}
+              })}
+            </div>
+
+            <div className="relative grid" style={{ gridTemplateColumns: "48px repeat(3, 1fr)" }}>
+              <div className="border-r border-border">
+                {HOURS.map((h) => (
+                  <div key={h} className="border-b border-border/30 flex items-center justify-center px-1" style={{ height: CELL }}>
+                    <span className="text-xs text-ink-muted">{h}</span>
+                  </div>
+                ))}
+              </div>
+              {agendaDays.map((d) => {
+                const str = toDateStr(d);
+                const isToday = str === hoy;
+                const dayRes = reservasByDay[str] ?? [];
+                return (
+                  <div key={str} className={`relative border-r border-border last:border-r-0 ${isToday ? "bg-accent/5" : ""}`}>
+                    {HOURS.map((_, hi) => <div key={hi} className="border-b border-border/20" style={{ height: CELL }} />)}
+                    {dayRes.map((r) => {
+                      const [hh, mm] = r.hora.split(":").map(Number);
+                      const topH = hh + mm / 60 - GRID_START;
+                      const durH = (r.servicio?.duracion ?? 60) / 60;
+                      const color = ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border";
+                      return (
+                        <div
+                          key={r.reserva_id}
+                          title={`${r.cliente_nombre} · ${r.servicio?.nombre ?? ""}`}
+                          className={`absolute left-0.5 right-0.5 ${color} rounded-r px-1.5 py-1 overflow-hidden transition-all hover:brightness-95`}
+                          style={{ top: topH * CELL, height: Math.max(durH * CELL - 2, 22) }}
+                        >
+                          <p className="text-xs font-bold text-ink truncate leading-tight">{r.cliente_nombre}</p>
+                          {durH * CELL > 36 && <p className="text-xs text-ink-muted truncate">{r.servicio?.nombre}</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         {/* Columna derecha */}
         <div className="space-y-5">
-          {/* Mini calendario */}
-          <div className="bg-surface border border-border rounded p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-ink">
-                {new Date().toLocaleDateString("es-UY", { month: "long", year: "numeric" })}
-              </span>
-              <div className="flex gap-1">
-                <button className="w-6 h-6 border border-border rounded text-ink-muted hover:bg-bg text-xs">‹</button>
-                <button className="w-6 h-6 border border-border rounded text-ink-muted hover:bg-bg text-xs">›</button>
+          {/* Por revisar */}
+          <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+            <h3 className="text-sm font-semibold text-ink px-4 pt-4 pb-3">Por revisar</h3>
+            <div
+              className="flex items-center gap-3 px-4 py-3 border-t border-border hover:bg-bg cursor-pointer transition-colors"
+              onClick={() => setOpenSolicitudes((v) => !v)}
+            >
+              <span className="shrink-0 text-ink-muted"><ClipboardIcon /></span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-ink">
+                  {pendientes.length} solicitudes de reserva
+                </p>
+                <p className="text-xs text-ink-muted">Esperan tu confirmación</p>
               </div>
-            </div>
-            <div className="grid grid-cols-7 gap-0.5">
-              {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
-                <div key={d} className="text-center text-xs text-ink-muted py-1 font-semibold">{d}</div>
-              ))}
-              {calendar.flat().map((day, i) => {
-                const isToday = day === new Date().getDate();
-                return (
-                  <button
-                    key={i}
-                    className={`text-xs py-1.5 rounded transition-colors ${
-                      isToday ? "bg-ink-fixed text-white font-bold" : "text-ink-muted"
-                    }`}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
+              <span className="text-ink-muted"><ChevronIcon open={openSolicitudes} /></span>
             </div>
           </div>
 
-          {/* Por revisar */}
-          <div className="bg-surface border border-border rounded p-4">
-            <h3 className="text-sm font-semibold text-ink mb-3">Por revisar</h3>
-            <div className="space-y-2">
-              {/* Solicitudes — datos reales */}
-              <div
-                className="flex items-center gap-3 p-3 bg-bg rounded border border-border hover:bg-border/50 cursor-pointer transition-colors"
-                onClick={() => setOpenSolicitudes((v) => !v)}
-              >
-                <span className="shrink-0 text-ink-muted"><ClipboardIcon /></span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-ink">
-                    {pendientes.length} solicitudes de reserva
-                  </p>
-                  <p className="text-xs text-ink-muted">Esperan tu confirmación</p>
-                </div>
-                <ChevronIcon open={openSolicitudes} />
-              </div>
+          {/* Reseñas */}
+          <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-3">
+              <h3 className="text-sm font-semibold text-ink">Reseñas</h3>
+              {calificaciones.length > 0 && (
+                <button
+                  onClick={() => setOpenCalificaciones(true)}
+                  className="text-xs font-semibold text-ink-muted hover:text-ink transition-colors cursor-pointer"
+                >
+                  Ver todas
+                </button>
+              )}
+            </div>
 
-              <div
-                className="flex items-center gap-3 p-3 bg-bg rounded border border-border hover:bg-border/50 cursor-pointer transition-colors"
-                onClick={() => setOpenCalificaciones(true)}
-              >
-                <span className="shrink-0 text-ink-muted">
-                  <StarIcon />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-ink">
-                    Reseñas ({cantidadCalificaciones})
-                  </p>
-                  <p className="text-xs text-ink-muted">
-                    Promedio: {promedio}/5
-                  </p>
+            <div className="flex items-center gap-3 px-4 pb-4 border-b border-border">
+              <span className="font-display text-3xl text-ink font-bold">
+                {promedio > 0 ? promedio : "—"}
+              </span>
+              <div>
+                <div className="flex items-center gap-0.5 text-accent">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <StarIcon key={i} filled={i < Math.round(promedio)} />
+                  ))}
                 </div>
-                <ChevronIcon open={openCalificaciones} />
+                <p className="text-xs text-ink-muted mt-0.5">
+                  {cantidadCalificaciones} reseña{cantidadCalificaciones !== 1 ? "s" : ""}
+                </p>
               </div>
             </div>
+
+            {calificaciones.length === 0 ? (
+              <p className="text-xs text-ink-muted px-4 py-4">Aún no tenés reseñas.</p>
+            ) : (
+              calificaciones.slice(0, 3).map((c, idx) => (
+                <div key={c.calificacion_id} className={`px-4 py-3 ${idx > 0 ? "border-t border-border" : ""}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-0.5 text-accent shrink-0">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <StarIcon key={i} filled={i < c.puntuacion} size={12} />
+                      ))}
+                    </span>
+                    <span className="text-xs text-ink-muted truncate">{c.reserva?.servicio?.nombre}</span>
+                  </div>
+                  {c.comentario && (
+                    <p className="text-xs text-ink-muted mt-1.5 line-clamp-2">{c.comentario}</p>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -428,7 +482,7 @@ export default function ProfessionalDashboard() {
       {/* Modal solicitudes */}
       {openSolicitudes && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-surface w-full max-w-lg rounded border border-border p-4">
+          <div className="bg-surface w-full max-w-lg rounded-2xl border border-border p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-semibold text-ink">Solicitudes de reserva</h3>
               <button onClick={() => setOpenSolicitudes(false)} className="text-ink-muted hover:text-ink">
@@ -468,22 +522,24 @@ export default function ProfessionalDashboard() {
         </div>
       )}
       {openCalificaciones && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-surface w-full max-w-lg rounded border border-border p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-semibold text-ink">
+        <div className="fixed inset-0 z-50 flex justify-end p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setOpenCalificaciones(false)} />
+
+          <div className="relative w-full max-w-md bg-surface shadow-xl rounded-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
+              <h2 className="font-display text-2xl text-ink">
                 Reseñas recibidas
-              </h3>
+              </h2>
 
               <button
                 onClick={() => setOpenCalificaciones(false)}
-                className="text-ink-muted hover:text-ink"
+                className="text-ink-muted hover:text-ink transition-colors cursor-pointer"
               >
                 <XIcon />
               </button>
             </div>
 
-            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
               {calificaciones.length === 0 ? (
                 <p className="text-sm text-ink-muted">
                   Aún no tenés reseñas.
@@ -492,13 +548,13 @@ export default function ProfessionalDashboard() {
                 calificaciones.map((c) => (
                   <div
                     key={c.calificacion_id}
-                    className="p-3 border rounded bg-bg"
+                    className="p-3 border border-border rounded-lg"
                   >
-                    <div className="flex justify-between items-center">
-                      <span className="text-amber-500 font-bold">
-                        ⭐ {c.puntuacion}/5
-                      </span>
-                    </div>
+                    <span className="flex items-center gap-0.5 text-accent">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <StarIcon key={i} filled={i < c.puntuacion} size={14} />
+                      ))}
+                    </span>
 
                     {c.comentario && (
                       <p className="text-sm text-ink-muted mt-2">
@@ -536,11 +592,17 @@ function LockIcon() {
     </svg>
   );
 }
-function VideoIcon() {
+function ChevronLeftIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="23 7 16 12 23 17 23 7" />
-      <rect x="1" y="5" width="15" height="14" rx="2" />
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+function ChevronRightIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <polyline points="9 18 15 12 9 6" />
     </svg>
   );
 }
@@ -552,9 +614,9 @@ function ClipboardIcon() {
     </svg>
   );
 }
-function StarIcon() {
+function StarIcon({ filled = true, size = 16 }: { filled?: boolean; size?: number }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   );

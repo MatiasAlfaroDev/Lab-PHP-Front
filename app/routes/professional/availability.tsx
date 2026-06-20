@@ -617,9 +617,14 @@ export default function Availability() {
       {/* Header */}
       <div className="mb-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-          <h1 className="font-display text-3xl text-ink">
-            Disponibilidad
-          </h1>
+          <div>
+            <h1 className="font-display text-3xl text-ink">
+              Disponibilidad
+            </h1>
+            <p className="text-ink-muted mt-1">
+              Definí cuándo aceptás reservas y tus reglas de agenda.
+            </p>
+          </div>
 
           <button
             onClick={() => {
@@ -631,10 +636,6 @@ export default function Availability() {
             + Nueva excepción
           </button>
         </div>
-
-        <p className="text-ink-muted mt-1">
-          Definí cuándo aceptás reservas y tus reglas de agenda.
-        </p>
       </div>
       {showNuevaExcepcion && (
   <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]">
