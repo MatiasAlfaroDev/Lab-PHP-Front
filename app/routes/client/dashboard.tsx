@@ -220,7 +220,7 @@ export default function ClientDashboard() {
 
                 {/* INFO */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex flex-wrap items-center gap-2 mb-0.5">
                     <span className="text-sm font-medium text-ink">
                       {b.servicio.profesional_nombre}
                     </span>
