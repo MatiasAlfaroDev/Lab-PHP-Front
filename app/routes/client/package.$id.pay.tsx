@@ -144,47 +144,12 @@ const [loading, setLoading] = useState(false);
               />
               <span className="text-lg">💳</span>
               <div>
-                <p className="text-sm font-medium text-ink">Tarjeta de crédito o débito</p>
-                <p className="text-xs text-ink-muted">Visa, Mastercard, Amex</p>
+                <p className="text-sm font-medium text-ink">PayPal</p>
+                <p className="text-xs text-ink-muted">Visa, Mastercard</p>
               </div>
             </label>
 
-          {/* Card form */}
-          {method === "card" && (
-            <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
-              <h3 className="text-sm font-semibold text-ink">Datos de la tarjeta</h3>
-              <div>
-                <label className="block text-xs text-ink-muted mb-1">Número</label>
-                <input
-                  defaultValue="4242 4242 4242 4242"
-                  className="w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1">Vencimiento</label>
-                  <input
-                    defaultValue="08/27"
-                    className="w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1">CVV</label>
-                  <input
-                    defaultValue="•••"
-                    className="w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1">Titular</label>
-                  <input
-                    defaultValue="Lucía Pérez"
-                    className="w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          
         </div>
           <div className="flex items-center gap-4 pt-2">
             <Link
