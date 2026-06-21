@@ -3707,9 +3707,9 @@ var package_$id_pay_default = UNSAFE_withComponentProps(function PackagePay() {
 							className: "text-lg font-semibold text-ink",
 							children: "Método de pago"
 						}),
-						/* @__PURE__ */ jsxs("div", {
+						/* @__PURE__ */ jsx("div", {
 							className: "space-y-3",
-							children: [/* @__PURE__ */ jsxs("label", {
+							children: /* @__PURE__ */ jsxs("label", {
 								className: `flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-colors ${method === "card" ? "border-primary bg-primary-soft/20" : "border-border bg-surface hover:bg-bg"}`,
 								children: [
 									/* @__PURE__ */ jsx("input", {
@@ -3726,54 +3726,13 @@ var package_$id_pay_default = UNSAFE_withComponentProps(function PackagePay() {
 									}),
 									/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
 										className: "text-sm font-medium text-ink",
-										children: "Tarjeta de crédito o débito"
+										children: "PayPal"
 									}), /* @__PURE__ */ jsx("p", {
 										className: "text-xs text-ink-muted",
-										children: "Visa, Mastercard, Amex"
+										children: "Visa, Mastercard"
 									})] })
 								]
-							}), method === "card" && /* @__PURE__ */ jsxs("div", {
-								className: "bg-surface border border-border rounded-2xl p-5 space-y-4",
-								children: [
-									/* @__PURE__ */ jsx("h3", {
-										className: "text-sm font-semibold text-ink",
-										children: "Datos de la tarjeta"
-									}),
-									/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-										className: "block text-xs text-ink-muted mb-1",
-										children: "Número"
-									}), /* @__PURE__ */ jsx("input", {
-										defaultValue: "4242 4242 4242 4242",
-										className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-									})] }),
-									/* @__PURE__ */ jsxs("div", {
-										className: "grid grid-cols-3 gap-3",
-										children: [
-											/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-												className: "block text-xs text-ink-muted mb-1",
-												children: "Vencimiento"
-											}), /* @__PURE__ */ jsx("input", {
-												defaultValue: "08/27",
-												className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-											})] }),
-											/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-												className: "block text-xs text-ink-muted mb-1",
-												children: "CVV"
-											}), /* @__PURE__ */ jsx("input", {
-												defaultValue: "•••",
-												className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-											})] }),
-											/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
-												className: "block text-xs text-ink-muted mb-1",
-												children: "Titular"
-											}), /* @__PURE__ */ jsx("input", {
-												defaultValue: "Lucía Pérez",
-												className: "w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-											})] })
-										]
-									})
-								]
-							})]
+							})
 						}),
 						/* @__PURE__ */ jsxs("div", {
 							className: "flex items-center gap-4 pt-2",
@@ -13579,7 +13538,7 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/package._id.pay--5lvKQA7.js",
+			"module": "/assets/package._id.pay-DpIZ8QhK.js",
 			"imports": [
 				"/assets/chunk-DsLFv447.js",
 				"/assets/jsx-runtime-C_L2gSNW.js",
@@ -14188,8 +14147,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-25a812b2.js",
-	"version": "25a812b2",
+	"url": "/assets/manifest-a7dc4419.js",
+	"version": "a7dc4419",
 	"sri": void 0
 };
 //#endregion

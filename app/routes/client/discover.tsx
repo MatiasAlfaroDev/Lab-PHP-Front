@@ -510,21 +510,36 @@ export default function Discover() {
                 {filteredPkg.map((paquete) => (
                   <div
                     key={paquete.paquete_id}
-                    className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm"
+                    className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm flex flex-col"
                   >
                     <div className="h-32 bg-gradient-to-r from-orange-200 to-pink-200" />
 
-                    <div className="p-5">
-                      <h3 className="font-display text-xl text-ink mb-2">
+                    <div className="p-5 flex flex-col flex-1">
+                        <h3 className="font-display text-xl text-ink mb-2">
                         {paquete.nombre}
                       </h3>
 
                       <p className="text-sm text-ink-muted line-clamp-3">
                         {paquete.descripcion}
                       </p>
+                        <div className="mt-4">
+                          <p className="text-sm font-medium text-ink mb-2">
+                            Incluye:
+                          </p>
 
-                      <div className="mt-4 flex items-center justify-between">
-                        <span className="font-bold text-2xl">
+                          <ul className="space-y-1">
+                            {paquete.servicios.map((servicio) => (
+                              <li
+                                key={servicio.servicio_id}
+                                className="text-sm text-ink-muted"
+                              >
+                                • {servicio.nombre} ({servicio.pivot?.cantidad_sesiones} sesiones)
+                              </li>
+                            ))}
+                          </ul>
+                        </div> 
+                        <div className="mt-auto pt-4 flex items-center justify-between">
+                          <span className="font-bold text-2xl">
                           ${paquete.precio_total}
                         </span>
 
