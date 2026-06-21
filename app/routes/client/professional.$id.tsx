@@ -4,6 +4,7 @@ import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useLocation } from "react-router";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Servicio {
@@ -193,11 +194,11 @@ function BookingModal({
         throw new Error(res.message ?? "Error al crear la reserva");
       }
 
+      setSuccess(true);
+
       window.dispatchEvent(
         new CustomEvent("reserva-updated")
       );
-
-      setSuccess(true);
 
     } catch (e: any) {
       setError(e.message ?? "Error al reservar");
@@ -303,8 +304,11 @@ export default function ProfessionalDetail() {
   const compraItemId = searchParams.get("compraItem");
   const reprogramarId = searchParams.get("reprogramar");
   const isReprogramando = !!reprogramarId;
+  const [reprogramError, setReprogramError] = useState("");
+  const [reprogramado, setReprogramado] = useState(false);
   const [reservaOriginal, setReservaOriginal] = useState<any>(null);
   const [loadingReserva, setLoadingReserva] = useState(false);
+  const [procesando, setProcesando] = useState(false);
 
   // Booking modal
   const [showModal, setShowModal] = useState(false);
@@ -338,6 +342,9 @@ export default function ProfessionalDetail() {
   const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
   const [loadingCalificaciones, setLoadingCalificaciones] = useState(false);
 
+  const location = useLocation();
+  const servicioIdPreseleccionado = location.state?.servicioId;
+
   useEffect(() => {
     if (!id || !token) return;
     setLoadingCalificaciones(true);
@@ -361,9 +368,14 @@ export default function ProfessionalDetail() {
       .then((res) => {
         if (res.success) {
           setProfile(res.data);
-          const first = res.data.profesional?.servicios?.[0] ?? null;
+          const servicios = res.data.profesional?.servicios ?? [];
+          const seleccionado =
+            servicios.find(
+              s => s.servicio_id === Number(servicioIdPreseleccionado)
+            ) ?? servicios[0] ?? null;
+
           if (!reprogramarId) {
-            setSelectedService(first);
+            setSelectedService(seleccionado);
           }
         } else {
           setProfileError("Profesional no encontrado");
@@ -371,7 +383,7 @@ export default function ProfessionalDetail() {
       })
       .catch((e) => setProfileError(e.message))
       .finally(() => setLoadingProfile(false));
-  }, [id]);
+  }, [id, servicioIdPreseleccionado]);
 
   // Load available days when service changes
   useEffect(() => {
@@ -517,7 +529,11 @@ export default function ProfessionalDetail() {
   if (!reprogramarId || !selectedService || !selectedDate || !selectedSlot) return;
 
   try {
-    await api.put(
+   setProcesando(true);
+   const res = await api.put<{
+      success: boolean;
+      message?: string;
+    }>(
       `/reservas/${reprogramarId}/reprogramar`,
       {
         servicio_id: selectedService.servicio_id,
@@ -528,12 +544,29 @@ export default function ProfessionalDetail() {
       token
     );
 
-    window.dispatchEvent(new CustomEvent("reserva-updated"));
+    if (!res.success) {
+      setReprogramError(
+        res.message ?? "Error al reprogramar la reserva"
+      );
+      return;
+    }
+
+    setReprogramado(true);
     toast.success("Reserva reprogramada correctamente");
-    navigate("/client/reservas");
+
+    window.dispatchEvent(
+      new CustomEvent("reserva-updated")
+    );
   } catch (e: any) {
-    toast.error(e.message ?? "Error al reprogramar la reserva");
-  }
+      setReprogramError(
+        e?.message || "Error al reprogramar la reserva"
+      );
+      console.error(e);
+        toast.error("Error al reprogramar la reserva");
+    }
+    finally {
+      setProcesando(false);
+    }
 };
 
   useEffect(() => {
@@ -575,12 +608,23 @@ export default function ProfessionalDetail() {
   }
 
   const { name, profesional } = profile;
-  const todosLosServicios = profesional?.servicios ?? [];
-  const servicios = isReprogramando && reservaOriginal
-    ? todosLosServicios.filter((s) => Number(s.servicio_id) === Number(reservaOriginal.servicio_id))
-    : todosLosServicios;
+  const servicios = profesional?.servicios ?? [];
+  const serviciosAMostrar = isReprogramando
+  ? servicios.filter(
+      s => s.servicio_id === reservaOriginal?.servicio_id
+    )
+  : servicios;
 
   return (
+    <>  
+    <ToastContainer
+      position="top-right"
+      autoClose={3500}
+      hideProgressBar={false}
+      closeOnClick
+      pauseOnHover
+    />
+
     <div className="p-6 max-w-6xl mx-auto">
       <ToastContainer position="top-right" autoClose={3500} hideProgressBar={false} closeOnClick pauseOnHover />
 
@@ -669,7 +713,7 @@ export default function ProfessionalDetail() {
                   {servicios.length === 0 ? (
                     <p className="text-sm text-ink-muted">Sin servicios publicados.</p>
                   ) : (
-                    servicios.map((s) => {
+                    serviciosAMostrar.map((s) => {
                       const modality = normalizeModality(s.modalidad);
                       const isSelected = selectedService?.servicio_id === s.servicio_id;
                       return (
@@ -826,6 +870,21 @@ export default function ProfessionalDetail() {
                 </div>
 
                 <hr className="border-border" />
+                {isReprogramando && !reprogramado && (
+                  <div className="mb-3 bg-blue-100 text-blue-700 px-3 py-2 rounded-xl text-sm">
+                    Estás reprogramando una reserva. Elegí nueva fecha y horario.
+                  </div>
+                )}
+                {reprogramado && (
+                  <div className="mb-3 bg-green-100 text-green-700 px-3 py-2 rounded-xl text-sm">
+                    Reserva reprogramada correctamente ✔
+                  </div>
+                )}
+                {reprogramError && (
+                  <div className="mb-3 bg-red-100 text-red-700 px-3 py-2 rounded-xl text-sm">
+                    {reprogramError}
+                  </div>
+                )}
                 {/* Calendar */}
                 <div>
                   <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-3">
@@ -912,9 +971,9 @@ export default function ProfessionalDetail() {
                 )}
 
                 <button
-                  disabled={!selectedSlot}
+                  disabled={!selectedSlot || procesando}
                   onClick={() => {
-                    if (!selectedSlot) return;
+                    if (!selectedSlot || procesando) return;
 
                     if (isReprogramando) {
                       handleReprogramar();
@@ -923,12 +982,18 @@ export default function ProfessionalDetail() {
                     }
                   }}
                   className={`w-full font-medium py-3 rounded-xl transition-colors ${
-                    selectedSlot
+                    selectedSlot && !procesando
                       ? "bg-primary hover:bg-primary-hover text-white"
                       : "bg-primary/30 text-white cursor-not-allowed"
                   }`}
                 >
-                  {selectedSlot ? "Reservar" : "Seleccioná fecha y horario"}
+                  {procesando
+                    ? "Reprogramando..."
+                    : isReprogramando
+                      ? "Confirmar reprogramación"
+                      : selectedSlot
+                        ? "Reservar"
+                        : "Seleccioná fecha y horario"}
                 </button>
               </>
             ) : (
@@ -954,5 +1019,6 @@ export default function ProfessionalDetail() {
         />
       )}
     </div>
+  </>
   );
 }

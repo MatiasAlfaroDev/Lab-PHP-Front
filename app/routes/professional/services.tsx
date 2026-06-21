@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
-
-declare global { interface Window { google: any } }
-
-const GMAPS_KEY = "AIzaSyBWf1wjKY5nMYkBi0f-1enF1k5k7xDXkq0";
+import "leaflet/dist/leaflet.css";
 const API_BASE  = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000/api";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,92 +84,102 @@ const TIPOS_SERVICIO = [
 const inputCls = "w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
 const labelCls = "block text-sm font-semibold text-ink mb-1.5";
 
-// ─── Google Maps hook ─────────────────────────────────────────────────────────
-
-function useGoogleMaps(): boolean {
-  const [ready, setReady] = useState(() => !!window.google?.maps);
-
-  useEffect(() => {
-    if (window.google?.maps) { setReady(true); return; }
-    if (document.getElementById("gmap-sdk")) return;
-
-    const script = document.createElement("script");
-    script.id    = "gmap-sdk";
-    script.src   = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places`;
-    script.async = true;
-    script.onload = () => setReady(true);
-    document.head.appendChild(script);
-  }, []);
-
-  return ready;
-}
-
-// ─── Map picker ───────────────────────────────────────────────────────────────
-
 function MapPicker({
-  lat, lng, onDragEnd,
+  lat,
+  lng,
+  onDragEnd,
 }: {
   lat: number | null;
   lng: number | null;
   onDragEnd: (lat: number, lng: number, address: string) => void;
 }) {
-  const mapsReady    = useGoogleMaps();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef       = useRef<any>(null);
-  const markerRef    = useRef<any>(null);
-  const onDragEndRef = useRef(onDragEnd);
-  onDragEndRef.current = onDragEnd;
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!mapsReady || !containerRef.current) return;
-    const g      = window.google.maps;
-    const center = { lat: lat ?? -34.9011, lng: lng ?? -56.1645 };
+    let L: any;
 
-    const map    = new g.Map(containerRef.current, { center, zoom: 15 });
-    const marker = new g.Marker({ position: center, map, draggable: true });
+    (async () => {
+      if (!containerRef.current) return;
 
-    marker.addListener("dragend", async () => {
-      const pos    = marker.getPosition();
-      const newLat = pos.lat() as number;
-      const newLng = pos.lng() as number;
-      try {
-        const res  = await fetch(`${API_BASE}/geocoding/reverse?lat=${newLat}&lng=${newLng}`);
-        const json = await res.json();
-        if (res.ok && json.success) {
-          onDragEndRef.current(newLat, newLng, json.data.direccion_formateada);
-        } else {
-          onDragEndRef.current(newLat, newLng, "Ubicación personalizada");
+      L = await import("leaflet");
+      const icon = L.icon({
+        iconUrl: markerIcon,
+        shadowUrl: markerShadow,
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      });
+      delete L.Icon.Default.prototype._getIconUrl;
+
+      if (mapRef.current) return;
+
+      const center: [number, number] = [
+        lat ?? -34.9011,
+        lng ?? -56.1645,
+      ];
+
+      const map = L.map(containerRef.current).setView(center, 15);
+
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap",
+        crossOrigin: true,
+      }).addTo(map);
+
+      const marker = L.marker(center, {
+        draggable: true,
+        icon,
+      }).addTo(map);
+
+      marker.on("dragend", async () => {
+        const pos = marker.getLatLng();
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lng}&format=json`
+          );
+
+          const json = await res.json();
+
+          onDragEnd(
+            pos.lat,
+            pos.lng,
+            json?.display_name || "Ubicación personalizada"
+          );
+        } catch {
+          onDragEnd(pos.lat, pos.lng, "Ubicación personalizada");
         }
-      } catch {
-        onDragEndRef.current(newLat, newLng, "Ubicación personalizada");
-      }
-    });
+      });
 
-    mapRef.current    = map;
-    markerRef.current = marker;
+      mapRef.current = map;
+      markerRef.current = marker;
+    })();
 
-    return () => { marker.setMap(null); };
-  }, [mapsReady]);
+    return () => {
+      mapRef.current?.remove();
+      mapRef.current = null;
+      markerRef.current = null;
+    };
+  }, []);
 
+  // update sin recrear mapa
   useEffect(() => {
-    if (!markerRef.current || lat === null || lng === null) return;
-    const g   = window.google.maps;
-    const pos = new g.LatLng(lat, lng);
-    markerRef.current.setPosition(pos);
-    mapRef.current?.panTo(pos);
+    if (!mapRef.current || !markerRef.current) return;
+    if (lat == null || lng == null) return;
+
+    const pos: [number, number] = [lat, lng];
+
+    markerRef.current.setLatLng(pos);
+    mapRef.current.setView(pos);
   }, [lat, lng]);
 
-  if (!mapsReady) {
-    return (
-      <div className="w-full h-56 rounded border border-border bg-gray-100 flex items-center justify-center text-xs text-ink-muted animate-pulse">
-        Cargando mapa...
-      </div>
-    );
-  }
-
-  return <div ref={containerRef} className="w-full h-56 rounded border border-border" />;
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-56 rounded border border-border"
+    />
+  );
 }
-
 // ─── Toggle ───────────────────────────────────────────────────────────────────
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
@@ -654,28 +663,29 @@ function ServiceFormFields({
   const handleAddressInput = (value: string) => {
     setF({ ubicacion: value, latitud: null, longitud: null });
     setGeocodingError(null);
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!value.trim() || value.trim().length < 8) return;
 
     debounceRef.current = setTimeout(async () => {
       setGeocoding(true);
+
       try {
-        const res  = await fetch(`${API_BASE}/geocoding?address=${encodeURIComponent(value)}`);
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&limit=1`
+        );
+
         const json = await res.json();
-        if (res.status === 404) {
-          setGeocodingError("No se encontró la dirección, intentá con más detalle");
-          return;
-        }
-        if (res.ok && json.success) {
+
+        if (json.length > 0) {
           setF({
-            ubicacion: json.data.direccion_formateada,
-            latitud:   json.data.latitud,
-            longitud:  json.data.longitud,
+            latitud: parseFloat(json[0].lat),
+            longitud: parseFloat(json[0].lon),
           });
           setGeocodingError(null);
         }
       } catch {
-        // silent — user can still drag the pin
+        // fallback silencioso
       } finally {
         setGeocoding(false);
       }

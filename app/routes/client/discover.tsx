@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
+import "leaflet/dist/leaflet.css";
 
 interface Profesional {
   user_id: number;
@@ -19,6 +20,9 @@ interface Servicio {
   duracion: number;
   pausa: number;
   modalidad: string;
+  latitud?: number;
+  longitud?: number;
+  direccion?: string;
   profesional: Profesional | null;
   promedio?: number;
   cantidad_calificaciones?: number;
@@ -74,7 +78,14 @@ export default function Discover() {
   const [priceRange, setPriceRange]             = useState(1000);
   const [buyingPackageId, setBuyingPackageId] = useState<number | null>(null);
   const [searchParams]                          = useSearchParams();
+  const center: [number, number] = [-34.9011, -56.1645];
+  const [LeafletMap, setLeafletMap] = useState<any>(null);
 
+  useEffect(() => {
+    import("react-leaflet").then((mod) => {
+      setLeafletMap(mod);
+    });
+  }, []);
 
   // Fetch servicios + paquetes en paralelo al montar
   useEffect(() => {
@@ -104,7 +115,7 @@ export default function Discover() {
 
     return () => { void svcPromise; void pkgPromise; };
   }, [token]);
- 
+
   const activeTab =
     searchParams.get("tab") === "packages"
       ? "paquetes"
@@ -112,7 +123,7 @@ export default function Discover() {
 
   const servicioId = searchParams.get("servicio");
   const compraItemId = searchParams.get("compraItem");
- 
+
   const serviceTypes = [...new Set(servicios.map((s) => s.tipo))].map((tipo) => ({
     label: tipo,
     count: servicios.filter((s) => s.tipo === tipo).length,
@@ -282,74 +293,139 @@ export default function Discover() {
             )}
 
             {!loadingSvc && !error && filteredSvc.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredSvc.map((servicio) => {
-                  const colors        = getCardColors(servicio.servicio_id);
-                  const initials      = getInitials(servicio.nombre);
-                  const modalityLabel = normalizeModality(servicio.modalidad);
-                  return (
-                    <div
-                      key={servicio.servicio_id}
-                      onClick={() => navigate(`/client/professional/${servicio.profesional_id}`)}
-                      className="bg-surface border border-border rounded-2xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                    >
-                      <div className={`h-28 bg-gradient-to-br ${colors.bg} relative`}>
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-ink-fixed/70 hover:text-accent transition-colors cursor-pointer"
-                        >
-                          <ion-icon name="heart-outline" style={{ fontSize: "16px" }} />
-                        </button>
-                      </div>
-                      <div className="p-4">
-                        <div className="flex items-start gap-3 mb-3 relative">
-                          <div className={`w-9 h-9 rounded-full ${colors.avatar} flex items-center justify-center text-white text-xs font-semibold border-2 border-white`}>
-                            {initials}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-ink">{servicio.nombre}</p>
-                            <p className="text-xs text-ink-muted">{servicio.tipo}</p>
-                            {servicio.cantidad_calificaciones ? (
-                                <p className="text-xs text-ink-muted mt-1">
-                                  ⭐ {servicio.promedio?.toFixed(1)} ({servicio.cantidad_calificaciones})
-                                </p>
-                              ) : (
-                                <p className="text-xs text-ink-muted mt-1">
-                                  Sin reseñas
-                                </p>
-                              )}
-                          </div>
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredSvc.map((servicio) => {
+                    const colors        = getCardColors(servicio.servicio_id);
+                    const initials      = getInitials(servicio.nombre);
+                    const modalityLabel = normalizeModality(servicio.modalidad);
+
+                    return (
+                      <div
+                        key={servicio.servicio_id}
+                        onClick={() => navigate(`/client/professional/${servicio.profesional_id}`, {state: {servicioId: servicio.servicio_id}})}
+                        className="bg-surface border border-border rounded-2xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                      >
+                        <div className={`h-28 bg-gradient-to-br ${colors.bg} relative`}>
+                          <button
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-ink-fixed/70 hover:text-accent transition-colors cursor-pointer"
+                          >
+                            <ion-icon name="heart-outline" style={{ fontSize: "16px" }} />
+                          </button>
                         </div>
-                        {servicio.descripcion && (
-                          <p className="text-xs text-ink-muted mb-3 line-clamp-2">{servicio.descripcion}</p>
-                        )}
-                        <div className="flex flex-wrap gap-1.5 mb-3">
-                          <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${modalityLabel === "Virtual" ? "border-primary/30 text-primary bg-primary-soft/40" : "border-border text-ink-muted bg-bg"}`}>
-                            <ion-icon name={modalityLabel === "Virtual" ? "desktop-outline" : "location-outline"} style={{ fontSize: "12px" }} />
-                            {modalityLabel}
-                          </span>
-                          <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-border text-ink-muted bg-bg">
-                            <ion-icon name="time-outline" style={{ fontSize: "12px" }} />
-                            {servicio.duracion} min
-                          </span>
-                        </div>
-                        <div className="flex items-end justify-between">
-                          {servicio.profesional?.ubicacion ? (
-                            <div className="flex items-center gap-1">
-                              <ion-icon name="location-outline" style={{ fontSize: "13px", color: "var(--color-ink-muted)" }} />
-                              <p className="text-sm font-medium text-ink">{servicio.profesional.ubicacion}</p>
+                        <div className="p-4">
+                          <div className="flex items-start gap-3 mb-3 relative">
+                            <div className={`w-9 h-9 rounded-full ${colors.avatar} flex items-center justify-center text-white text-xs font-semibold border-2 border-white`}>
+                              {initials}
                             </div>
-                          ) : <div />}
-                          <div className="text-right">
-                            <p className="text-xs text-ink-muted">desde</p>
-                            <p className="text-lg font-bold text-ink">$ {Number(servicio.precio).toFixed(0)}</p>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-ink">{servicio.nombre}</p>
+                              <p className="text-xs text-ink-muted">{servicio.tipo}</p>
+                              {servicio.cantidad_calificaciones ? (
+                                  <p className="text-xs text-ink-muted mt-1">
+                                    ⭐ {servicio.promedio?.toFixed(1)} ({servicio.cantidad_calificaciones})
+                                  </p>
+                                ) : (
+                                  <p className="text-xs text-ink-muted mt-1">
+                                    Sin reseñas
+                                  </p>
+                                )}
+                            </div>
+                          </div>
+                          {servicio.descripcion && (
+                            <p className="text-xs text-ink-muted mb-3 line-clamp-2">{servicio.descripcion}</p>
+                          )}
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${modalityLabel === "Virtual" ? "border-primary/30 text-primary bg-primary-soft/40" : "border-border text-ink-muted bg-bg"}`}>
+                              <ion-icon name={modalityLabel === "Virtual" ? "desktop-outline" : "location-outline"} style={{ fontSize: "12px" }} />
+                              {modalityLabel}
+                            </span>
+                            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-border text-ink-muted bg-bg">
+                              <ion-icon name="time-outline" style={{ fontSize: "12px" }} />
+                              {servicio.duracion} min
+                            </span>
+                          </div>
+                          <div className="flex items-end justify-between">
+                            {servicio.profesional?.ubicacion ? (
+                              <div className="flex items-center gap-1">
+                                <ion-icon name="location-outline" style={{ fontSize: "13px", color: "var(--color-ink-muted)" }} />
+                                <p className="text-sm font-medium text-ink">{servicio.profesional.ubicacion}</p>
+                              </div>
+                            ) : <div />}
+                            <div className="text-right">
+                              <p className="text-xs text-ink-muted">desde</p>
+                              <p className="text-lg font-bold text-ink">$ {Number(servicio.precio).toFixed(0)}</p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-8">
+                  <h2 className="text-xl font-semibold mb-4">
+                    Servicios en el mapa
+                  </h2>
+
+                  {LeafletMap && (
+                    <LeafletMap.MapContainer
+                      center={center}
+                      zoom={7}
+                      style={{ height: "500px", width: "100%" }}
+                    >
+                      <LeafletMap.TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+
+                      <LeafletMap.Marker position={[-34.9011, -56.1645]}>
+                        <LeafletMap.Popup>
+                          Montevideo
+                        </LeafletMap.Popup>
+                      </LeafletMap.Marker>
+
+                      {filteredSvc
+                        .filter((s) => s.latitud && s.longitud)
+                        .map((servicio) => (
+                          <LeafletMap.Marker
+                            key={servicio.servicio_id}
+                            position={[
+                              servicio.latitud!,
+                              servicio.longitud!,
+                            ]}
+                          >
+                            <LeafletMap.Popup>
+                              <div className="min-w-[180px]">
+                                <strong>{servicio.nombre}</strong>
+                                <br />
+                                ${servicio.precio}
+                                <br />
+                                {servicio.tipo}
+
+                                <button
+                                  className="mt-2 w-full bg-primary text-white px-2 py-1 rounded text-sm"
+                                  onClick={() =>
+                                    navigate(
+                                      `/client/professional/${servicio.profesional_id}`,
+                                      {
+                                        state: {
+                                          servicioId: servicio.servicio_id,
+                                        },
+                                      }
+                                    )
+                                  }
+                                >
+                                  Ver servicio
+                                </button>
+                              </div>
+                            </LeafletMap.Popup>
+                          </LeafletMap.Marker>
+                        ))}
+                    </LeafletMap.MapContainer>
+                  )}
+                </div>
+              </>
             )}
           </>
         )}
@@ -388,7 +464,7 @@ export default function Discover() {
               </div>
             )}
             {!loadingPkg && !errorPkg && filteredPkg.length > 0 && (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredPkg.map((paquete) => (
                   <div
                     key={paquete.paquete_id}

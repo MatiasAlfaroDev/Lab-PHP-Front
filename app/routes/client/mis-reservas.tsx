@@ -61,6 +61,7 @@ export default function MisReservas() {
   const [comentario, setComentario] = useState("");
   const [cancelSuccess, setCancelSuccess] = useState(false);
   const [search, setSearch] = useState("");
+  const [enviandoCalificacion, setEnviandoCalificacion] = useState(false);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
@@ -127,6 +128,7 @@ export default function MisReservas() {
     if (!reservaSeleccionada) return;
 
     try {
+      setEnviandoCalificacion(true);
       const response: any = await api.post(
         `/reservas/${reservaSeleccionada.reserva_id}/calificar`,
         {
@@ -159,7 +161,9 @@ export default function MisReservas() {
       setShowCalificacion(false);
     } catch (e: any) {
       toast.error(e.message ?? "Error al enviar la calificación");
-    }
+    } finally {
+        setEnviandoCalificacion(false);
+      }
   };
 
   return (
@@ -277,16 +281,17 @@ export default function MisReservas() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowCalificacion(false)}
-                className="px-4 py-2 border rounded-lg"
+                className="px-4 py-2 border rounded-lg hover:bg-gray-100 transition-colors"
               >
                 Cancelar
               </button>
 
               <button
                 onClick={guardarCalificacion}
-                className="px-4 py-2 bg-primary text-white rounded-lg"
+                disabled={enviandoCalificacion}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50"
               >
-                Enviar
+                {enviandoCalificacion ? "Enviando..." : "Enviar"}
               </button>
             </div>
           </div>

@@ -306,6 +306,13 @@ export default function ProfessionalDashboard() {
       setLoadingId(id);
       await api.put(`/reservas/${id}/estado`, { estado }, token);
       setPendientes((prev) => prev.filter((r) => r.reserva_id !== id));
+      setAllReservas((prev) =>
+        prev.map((r) =>
+          r.reserva_id === id
+            ? { ...r, estado }
+            : r
+        )
+      );
     } catch (err) {
       console.error(err);
     } finally {
