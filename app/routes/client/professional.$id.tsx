@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Servicio {
@@ -56,10 +58,11 @@ const TABS = ["Acerca de", "Servicios", "Reseñas"];
 
 // ── Mini Calendar ──────────────────────────────────────────────────────────
 function MiniCalendar({
-  year, month, availableDays, selectedDate, onSelect, onPrev, onNext,
+  year, month, availableDays, fullyBookedDates, selectedDate, onSelect, onPrev, onNext,
 }: {
   year: number; month: number;
   availableDays: Set<string>;   // set of "lunes"|"martes"...
+  fullyBookedDates: Set<string>; // dates (YYYY-MM-DD) que matchean el patrón pero ya no tienen turnos
   selectedDate: string | null;
   onSelect: (date: string) => void;
   onPrev: () => void; onNext: () => void;
@@ -109,7 +112,9 @@ function MiniCalendar({
           const dateStr = toDateStr(year, month, day);
           const isPast = date < today;
           const dow = DOW_MAP[date.getDay()];
-          const isAvailable = availableDays.has(dow) && !isPast;
+          const matchesPattern = availableDays.has(dow) && !isPast;
+          const isFullyBooked = matchesPattern && fullyBookedDates.has(dateStr);
+          const isAvailable = matchesPattern && !isFullyBooked;
           const isSelected = selectedDate === dateStr;
 
           return (
@@ -293,11 +298,11 @@ function BookingModal({
 export default function ProfessionalDetail() {
   const { id } = useParams();
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const compraItemId = searchParams.get("compraItem");
   const reprogramarId = searchParams.get("reprogramar");
   const isReprogramando = !!reprogramarId;
-  const [reprogramado, setReprogramado] = useState(false);
   const [reservaOriginal, setReservaOriginal] = useState<any>(null);
   const [loadingReserva, setLoadingReserva] = useState(false);
 
@@ -320,6 +325,7 @@ export default function ProfessionalDetail() {
   });
   const [availableDays, setAvailableDays] = useState<Set<string>>(new Set());
   const [loadingDays, setLoadingDays] = useState(false);
+  const [fullyBookedDates, setFullyBookedDates] = useState<Set<string>>(new Set());
 
   // Slots
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -384,6 +390,41 @@ export default function ProfessionalDetail() {
       .catch(() => setAvailableDays(new Set()))
       .finally(() => setLoadingDays(false));
   }, [selectedService]);
+
+  // Check, day by day, which dates of the visible month actually have open slots —
+  // availableDays only encodes the weekly pattern, not whether a specific day is full.
+  useEffect(() => {
+    if (!selectedService || availableDays.size === 0) { setFullyBookedDates(new Set()); return; }
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const { year, month } = calMonth;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const candidates: string[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      if (date < today) continue;
+      if (!availableDays.has(DOW_MAP[date.getDay()])) continue;
+      candidates.push(toDateStr(year, month, day));
+    }
+    if (candidates.length === 0) return;
+
+    let cancelled = false;
+    Promise.all(
+      candidates.map((fecha) =>
+        api
+          .get<{ success: boolean; data: { hora: string; modalidad: string }[] }>(
+            `/servicios/${selectedService.servicio_id}/slots?fecha=${fecha}`
+          )
+          .then((res) => [fecha, res.success && res.data.length === 0] as const)
+          .catch(() => [fecha, false] as const)
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      setFullyBookedDates(new Set(results.filter(([, full]) => full).map(([fecha]) => fecha)));
+    });
+
+    return () => { cancelled = true; };
+  }, [selectedService, calMonth, availableDays]);
 
   // Load slots when date changes
   useEffect(() => {
@@ -487,11 +528,19 @@ export default function ProfessionalDetail() {
       token
     );
 
-    setReprogramado(true);
-  } catch (e) {
-    console.error(e);
+    window.dispatchEvent(new CustomEvent("reserva-updated"));
+    toast.success("Reserva reprogramada correctamente");
+    navigate("/client/reservas");
+  } catch (e: any) {
+    toast.error(e.message ?? "Error al reprogramar la reserva");
   }
 };
+
+  useEffect(() => {
+    if (reprogramarId) {
+      toast.info("Estás reprogramando una reserva. Elegí nueva fecha y horario.");
+    }
+  }, [reprogramarId]);
 
   // ── Loading / error states ────────────────────────────────────────────
   if (loadingProfile) {
@@ -526,10 +575,15 @@ export default function ProfessionalDetail() {
   }
 
   const { name, profesional } = profile;
-  const servicios = profesional?.servicios ?? [];
+  const todosLosServicios = profesional?.servicios ?? [];
+  const servicios = isReprogramando && reservaOriginal
+    ? todosLosServicios.filter((s) => Number(s.servicio_id) === Number(reservaOriginal.servicio_id))
+    : todosLosServicios;
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
+      <ToastContainer position="top-right" autoClose={3500} hideProgressBar={false} closeOnClick pauseOnHover />
+
       {/* Breadcrumb */}
       <nav className="text-sm text-ink-muted mb-4 flex items-center gap-2">
         <Link to="/client/discover" className="hover:text-ink">Descubrir</Link>
@@ -597,9 +651,17 @@ export default function ProfessionalDetail() {
 
             <div className="p-6">
               {activeTab === "Acerca de" && (
-                <p className="text-sm text-ink leading-relaxed">
-                  {"Descripción:"} {profesional?.descripcion ?? "Este profesional aún no ha completado su descripción."}
-                </p>
+                <div className="space-y-3">
+                  <p className="text-sm text-ink leading-relaxed">
+                    {"Descripción:"} {profesional?.descripcion ?? "Este profesional aún no ha completado su descripción."}
+                  </p>
+                  {profesional?.ubicacion && (
+                    <p className="flex items-center gap-1.5 text-sm text-ink-muted">
+                      <ion-icon name="location-outline" style={{ fontSize: "14px" }} />
+                      {profesional.ubicacion}
+                    </p>
+                  )}
+                </div>
               )}
 
               {activeTab === "Servicios" && (
@@ -764,16 +826,6 @@ export default function ProfessionalDetail() {
                 </div>
 
                 <hr className="border-border" />
-                {isReprogramando && !reprogramado && (
-                  <div className="mb-3 bg-blue-100 text-blue-700 px-3 py-2 rounded-xl text-sm">
-                    Estás reprogramando una reserva. Elegí nueva fecha y horario.
-                  </div>
-                )}
-                {reprogramado && (
-                  <div className="mb-3 bg-green-100 text-green-700 px-3 py-2 rounded-xl text-sm">
-                    Reserva reprogramada correctamente ✔
-                  </div>
-                )}
                 {/* Calendar */}
                 <div>
                   <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-3">
@@ -793,6 +845,7 @@ export default function ProfessionalDetail() {
                       year={calMonth.year}
                       month={calMonth.month}
                       availableDays={availableDays}
+                      fullyBookedDates={fullyBookedDates}
                       selectedDate={selectedDate}
                       onSelect={setSelectedDate}
                       onPrev={() =>

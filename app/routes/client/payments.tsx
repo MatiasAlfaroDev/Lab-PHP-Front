@@ -3,7 +3,7 @@ import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 
 interface Reserva {
   reserva_id: number;
@@ -28,6 +28,11 @@ const badgeCls: Record<string, string> = {
   fallido:   "badge badge-cancelada",
 };
 
+const TIPO_BADGE: Record<"reserva" | "paquete", string> = {
+  reserva: "text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800",
+  paquete: "text-xs font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800",
+};
+
 function PayPalLogo() {
   return (
     <span className="flex items-center gap-0 leading-none select-none" style={{ fontFamily: "Arial, Helvetica, sans-serif", fontWeight: 800, fontStyle: "italic", fontSize: "15px" }}>
@@ -50,12 +55,26 @@ function CashIcon() {
 export default function ClientPayments() {
   const { token } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reservas, setReservas]   = useState<Reserva[]>([]);
   const [comprasPaquetes, setComprasPaquetes] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [selected, setSelected]   = useState<Reserva | null>(null);
   const [method, setMethod]       = useState<"paypal" | "presencial">("presencial");
   const [loadingPay, setLoadingPay] = useState(false);
+  const [search, setSearch]       = useState("");
+
+  useEffect(() => {
+    const pago = searchParams.get("pago");
+    if (!pago) return;
+
+    if (pago === "success") toast.success("Pago realizado correctamente");
+    else if (pago === "cancelled") toast.info("Pago cancelado");
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("pago");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!token) return;
@@ -73,11 +92,15 @@ export default function ClientPayments() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const conPago   = reservas.filter((r) => r.pago);
+  const q = search.trim().toLowerCase();
+  const matchesReserva = (r: Reserva) =>
+    !q || r.servicio.nombre.toLowerCase().includes(q) || r.servicio.profesional_nombre.toLowerCase().includes(q);
+  const matchesPaquete = (p: any) => !q || p.paquete.nombre.toLowerCase().includes(q);
+
+  const conPago   = reservas.filter((r) => r.pago).filter(matchesReserva);
   const pendientes = conPago.filter((r) => r.pago?.estado === "pendiente");
-  const pagadas    = conPago.filter((r) => r.pago?.estado === "aprobado");
-  const paquetesPendientes = comprasPaquetes.filter((p) => p.pago?.estado === "pendiente");
-  const paquetesPagados = comprasPaquetes.filter((p) => p.pago?.estado === "aprobado");
+  const comprasFiltradas = comprasPaquetes.filter(matchesPaquete);
+  const paquetesPendientes = comprasFiltradas.filter((p) => p.pago?.estado === "pendiente");
 
   const iniciarPago = async () => {
     if (!selected) return;
@@ -116,125 +139,114 @@ export default function ClientPayments() {
     setMethod("presencial");
   };
 
-  const totalPendienteReservas =
-    pendientes.reduce(
-      (acc, r) => acc + Number(r.servicio.precio),
-      0
-    );
-
-  const totalPendientePaquetes =
-    paquetesPendientes.reduce(
-      (acc, p) => acc + Number(p.paquete.precio_total),
-      0
-    );
-
   if (loading) return <p className="p-8 text-ink-muted">Cargando...</p>;
 
   return (
     <>
       <ToastContainer position="top-right" autoClose={3500} hideProgressBar={false} closeOnClick pauseOnHover />
 
-      <div className="p-4 md:p-8 max-w-4xl mx-auto">
-        <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Cliente</nav>
-        <h1 className="font-display text-3xl text-ink mb-6">Pagos</h1>
-
-        {/* Resumen */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="bg-surface border border-border rounded-2xl p-5">
-            <p className="text-xs font-bold text-ink-muted uppercase mb-1">Pendiente</p>
-            <p className="text-3xl font-bold text-ink">
-              ${totalPendienteReservas + totalPendientePaquetes}
-            </p>
-          </div>
-          <div className="bg-surface border border-border rounded-2xl p-5">
-            <p className="text-xs font-bold text-ink-muted uppercase mb-1">Pagadas</p>
-            <p className="text-3xl font-bold text-ink">{pagadas.length+paquetesPagados.length}</p>
+      <div className="w-full">
+        {/* Toolbar — búsqueda, coherente con /professional/services */}
+        <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
+          <div className="relative flex-1 max-w-xs">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted">
+              <SearchIcon />
+            </span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar pagos"
+              className="w-full pl-8 pr-3 py-1.5 text-sm text-ink placeholder-ink-muted bg-transparent focus:outline-none"
+            />
           </div>
         </div>
+
+      <div className="p-4 md:p-6">
 
         {/* Pendientes */}
-        <h2 className="text-lg font-semibold text-ink mb-3">Reservas pendientes de pago</h2>
-        
-        <div className="space-y-3 mb-10">
-          {pendientes.length === 0 ? (
-            <p className="text-sm text-ink-muted">No hay pagos pendientes</p>
+        <h2 className="text-lg font-semibold text-ink mb-3">Pendientes de pago</h2>
+
+        <div className="border border-border rounded-2xl overflow-hidden mb-10 bg-surface">
+          {pendientes.length === 0 && paquetesPendientes.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-ink-muted">No hay pagos pendientes</p>
           ) : (
-            pendientes.map((r) => (
-              <div
-                key={r.reserva_id}
-                className="flex justify-between items-center border border-border rounded-2xl p-4 bg-surface"
-              >
-                <div>
-                  <p className="font-semibold text-ink">{r.servicio.nombre}</p>
-                  <p className="text-xs text-ink-muted">
-                    {r.servicio.profesional_nombre} · {r.fecha} {r.hora.slice(0, 5)}
-                  </p>
-                  <p className="text-sm font-bold text-ink mt-1">${r.servicio.precio}</p>
-                </div>
-                <button
-                  onClick={() => openModal(r)}
-                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors cursor-pointer text-sm font-medium"
+            <>
+              {pendientes.map((r, i) => (
+                <div
+                  key={`reserva-${r.reserva_id}`}
+                  className={`flex justify-between items-center gap-4 px-5 py-4 ${i > 0 ? "border-t border-border" : ""}`}
                 >
-                  Pagar
-                </button>
-              </div>
-            ))
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-ink truncate">{r.servicio.nombre}</p>
+                    <p className="text-xs text-ink-muted">
+                      {r.servicio.profesional_nombre} · {r.fecha} {r.hora.slice(0, 5)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={TIPO_BADGE.reserva}>Reserva</span>
+                    <span className="text-sm font-bold text-ink">${r.servicio.precio}</span>
+                    <button
+                      onClick={() => openModal(r)}
+                      className="bg-ink-fixed text-white px-4 py-1.5 rounded-full hover:bg-primary transition-colors cursor-pointer text-xs font-semibold"
+                    >
+                      Pagar
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {paquetesPendientes.map((compra, i) => (
+                <div
+                  key={`paquete-${compra.compra_paquete_id}`}
+                  className={`flex justify-between items-center gap-4 px-5 py-4 ${(pendientes.length > 0 || i > 0) ? "border-t border-border" : ""}`}
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-ink truncate">{compra.paquete.nombre}</p>
+                    <p className="text-xs text-ink-muted">Compra #{compra.compra_paquete_id}</p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={TIPO_BADGE.paquete}>Paquete</span>
+                    <span className="text-sm font-bold text-ink">${compra.paquete.precio_total}</span>
+                    <button
+                      onClick={() => navigate(`/client/compra-package/${compra.compra_paquete_id}/pay`)}
+                      className="bg-ink-fixed text-white px-4 py-1.5 rounded-full hover:bg-primary transition-colors cursor-pointer text-xs font-semibold"
+                    >
+                      Completar pago
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
           )}
-          <h2 className="text-lg font-semibold text-ink mb-3 mt-8">Paquetes pendientes de pago</h2>
-          {paquetesPendientes.map((compra) => (
-            <div
-              key={compra.compra_paquete_id}
-              className="flex justify-between items-center border border-border rounded-2xl p-4 bg-surface"
-            >
-              <div>
-                <p className="font-semibold text-ink">
-                  {compra.paquete.nombre}
-                </p>
-
-                <p className="text-xs text-ink-muted">
-                  Compra #{compra.compra_paquete_id}
-                </p>
-
-                <p className="text-sm font-bold text-ink mt-1">
-                  ${compra.paquete.precio_total}
-                </p>
-              </div>
-
-              <button
-                onClick={() =>
-                  navigate(
-                    `/client/compra-package/${compra.compra_paquete_id}/pay`
-                  )
-                }
-                className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors"
-              >
-                Completar pago
-              </button>
-            </div>
-          ))}
         </div>
 
-        {/* Historial */}
+        {/* Historial de reservas — coherente con /professional/services */}
         <h2 className="text-lg font-semibold text-ink mb-3">Historial de reservas</h2>
-        <div className="border border-border rounded-2xl overflow-x-auto">
+        <div className="bg-surface border-t border-border w-full overflow-x-auto">
           <div style={{ minWidth: "520px" }}>
-            <div className="grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase bg-bg">
-              <div className="col-span-2">Fecha</div>
-              <div className="col-span-4">Servicio</div>
-              <div className="col-span-3">Profesional</div>
-              <div className="col-span-2">Monto</div>
-              <div className="col-span-1">Estado</div>
+            <div className="grid px-0 py-2 border-b border-border" style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}>
+              {["Servicio", "Fecha", "Monto", "Estado"].map((h) => (
+                <div key={h} className="text-sm text-ink-muted">{h}</div>
+              ))}
+            </div>
+            <div className="px-0 py-2 border-b border-border bg-sidebar">
+              <span className="text-sm font-bold text-ink">Historial de reservas</span>
             </div>
             {conPago.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-ink-muted bg-surface">Sin registros</p>
+              <div className="px-5 py-6 text-sm text-ink-muted">Sin registros</div>
             ) : (
-              conPago.map((r) => (
-                <div key={r.reserva_id} className="grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0 bg-surface">
-                  <div className="col-span-2 text-sm text-ink-muted">{r.fecha}</div>
-                  <div className="col-span-4 text-sm text-ink">{r.servicio.nombre}</div>
-                  <div className="col-span-3 text-sm text-ink-muted">{r.servicio.profesional_nombre}</div>
-                  <div className="col-span-2 font-bold text-ink">${r.servicio.precio}</div>
-                  <div className="col-span-1">
+              conPago.map((r, idx) => (
+                <div
+                  key={r.reserva_id}
+                  className={`grid px-5 py-4 items-center ${idx > 0 ? "border-t border-border" : ""}`}
+                  style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm text-ink truncate">{r.servicio.nombre}</p>
+                    <p className="text-xs text-ink-muted truncate mt-0.5">{r.servicio.profesional_nombre}</p>
+                  </div>
+                  <div className="text-sm text-ink-muted">{r.fecha}</div>
+                  <div className="text-sm font-bold text-ink">${r.servicio.precio}</div>
+                  <div>
                     <span className={badgeCls[r.pago?.estado ?? "pendiente"]}>
                       {(r.pago?.estado ?? "pendiente").toUpperCase()}
                     </span>
@@ -244,54 +256,43 @@ export default function ClientPayments() {
             )}
           </div>
         </div>
-      
-      <h2 className="text-lg font-semibold text-ink mb-3 mt-8">Historial de paquetes</h2>
 
-      <div className="border border-border rounded-2xl overflow-x-auto">
-        <div style={{ minWidth: "400px" }}>
-          <div className="grid grid-cols-12 px-5 py-3 border-b border-border text-xs font-bold text-ink-muted uppercase bg-bg">
-            <div className="col-span-3">Fecha</div>
-            <div className="col-span-5">Paquete</div>
-            <div className="col-span-2">Monto</div>
-            <div className="col-span-2">Estado</div>
-          </div>
-
-        {comprasPaquetes.length === 0 ? (
-          <p className="px-5 py-6 text-sm text-ink-muted bg-surface">
-            Sin registros
-          </p>
-        ) : (
-          comprasPaquetes.map((compra) => (
-            <div
-              key={compra.compra_paquete_id}
-              className="grid grid-cols-12 px-5 py-4 border-b border-border items-center last:border-0 bg-surface"
-            >
-              <div className="col-span-3 text-sm text-ink-muted">
-                {compra.fecha_compra}
-              </div>
-
-              <div className="col-span-5 text-sm text-ink">
-                {compra.paquete.nombre}
-              </div>
-
-              <div className="col-span-2 font-bold text-ink">
-                ${compra.paquete.precio_total}
-              </div>
-
-              <div className="col-span-2">
-                <span
-                  className={
-                    badgeCls[
-                      compra.pago?.estado ?? "pendiente"
-                    ]
-                  }
-                >
-                  {(compra.pago?.estado ?? "pendiente").toUpperCase()}
-                </span>
-              </div>
+        {/* Historial de paquetes — mismo patrón */}
+        <h2 className="text-lg font-semibold text-ink mb-3 mt-8">Historial de paquetes</h2>
+        <div className="bg-surface border-t border-border w-full overflow-x-auto">
+          <div style={{ minWidth: "400px" }}>
+            <div className="grid px-0 py-2 border-b border-border" style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}>
+              {["Paquete", "Fecha", "Monto", "Estado"].map((h) => (
+                <div key={h} className="text-sm text-ink-muted">{h}</div>
+              ))}
             </div>
-          ))
-        )}
+            <div className="px-0 py-2 border-b border-border bg-sidebar">
+              <span className="text-sm font-bold text-ink">Historial de paquetes</span>
+            </div>
+            {comprasFiltradas.length === 0 ? (
+              <div className="px-5 py-6 text-sm text-ink-muted">Sin registros</div>
+            ) : (
+              comprasFiltradas.map((compra, idx) => (
+                <div
+                  key={compra.compra_paquete_id}
+                  className={`grid px-5 py-4 items-center ${idx > 0 ? "border-t border-border" : ""}`}
+                  style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm text-ink truncate">{compra.paquete.nombre}</p>
+                    <p className="text-xs text-ink-muted truncate mt-0.5">Compra #{compra.compra_paquete_id}</p>
+                  </div>
+                  <div className="text-sm text-ink-muted">{compra.fecha_compra}</div>
+                  <div className="text-sm font-bold text-ink">${compra.paquete.precio_total}</div>
+                  <div>
+                    <span className={badgeCls[compra.pago?.estado ?? "pendiente"]}>
+                      {(compra.pago?.estado ?? "pendiente").toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -375,5 +376,14 @@ export default function ClientPayments() {
         </div>
       )}
     </>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
   );
 }

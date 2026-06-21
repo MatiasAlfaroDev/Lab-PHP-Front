@@ -137,101 +137,77 @@ export default function Discover() {
     setPriceRange(maxPrice);
   };
 
-  return (
-    <div className="flex h-screen overflow-hidden">
+  const typeChips = loadingSvc ? (
+    <span className="text-xs text-ink-muted">Cargando...</span>
+  ) : serviceTypes.length === 0 ? (
+    <span className="text-xs text-ink-muted">Sin tipos disponibles</span>
+  ) : (
+    serviceTypes.map(({ label, count, key }) => (
+      <button
+        key={key}
+        onClick={() => toggleType(key)}
+        className={`shrink-0 text-xs px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
+          selectedTypes.includes(key)
+            ? "bg-ink-fixed text-white border-ink-fixed"
+            : "border-border text-ink-muted hover:border-ink hover:text-ink"
+        }`}
+      >
+        {label} <span className="opacity-70">{count}</span>
+      </button>
+    ))
+  );
 
-      {/* Filters sidebar — siempre visible */}
-      <aside className="w-64 bg-surface border-r border-border shrink-0 flex flex-col overflow-y-auto">
-        <div className="flex items-center justify-between p-5 pb-4">
-          <h3 className="text-sm font-semibold text-ink uppercase tracking-wide">Filtros</h3>
-          <button className="text-xs text-primary underline cursor-pointer" onClick={resetFilters}>
+  const modalityChips = MODALITIES.map((m) => (
+    <button
+      key={m}
+      onClick={() => setSelectedModality(m)}
+      className={`shrink-0 text-xs px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
+        selectedModality === m
+          ? "bg-ink-fixed text-white border-ink-fixed"
+          : "border-border text-ink-muted hover:border-ink hover:text-ink"
+      }`}
+    >
+      {m}
+    </button>
+  ));
+
+  return (
+    <div className="w-full">
+      {/* Toolbar de filtros — horizontal, coherente con /professional/services */}
+      <div className="flex flex-wrap items-center gap-2 px-4 md:px-6 py-3 border-b border-border overflow-x-auto">
+        {typeChips}
+        <span className="w-px h-5 bg-border shrink-0" />
+        {modalityChips}
+
+        <div className="flex items-center gap-2 ml-auto shrink-0">
+          {activeTab === "servicios" && (
+            <div className="hidden lg:flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5">
+              <ion-icon name="location-outline" style={{ fontSize: "14px", color: "var(--color-ink-muted)" }} />
+              <input
+                className="w-28 bg-transparent text-xs text-ink placeholder-ink-muted outline-none"
+                placeholder="Ciudad o zona..."
+              />
+            </div>
+          )}
+          <span className="hidden sm:inline text-xs text-ink-muted whitespace-nowrap">
+            hasta $ {priceRange}
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={maxPrice}
+            value={priceRange}
+            onChange={(e) => setPriceRange(Number(e.target.value))}
+            className="hidden sm:block w-24 accent-primary"
+          />
+          <button className="text-xs text-primary underline cursor-pointer shrink-0" onClick={resetFilters}>
             Limpiar
           </button>
         </div>
-
-        <div className="px-5 pb-5 space-y-5 flex-1">
-          {/* Tipo de servicio */}
-          <div>
-            <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">Tipo de servicio</p>
-            {loadingSvc ? (
-              <p className="text-xs text-ink-muted">Cargando...</p>
-            ) : serviceTypes.length === 0 ? (
-              <p className="text-xs text-ink-muted">Sin tipos disponibles</p>
-            ) : (
-              <div className="space-y-2">
-                {serviceTypes.map(({ label, count, key }) => (
-                  <label key={key} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedTypes.includes(key)}
-                      onChange={() => toggleType(key)}
-                      className="w-4 h-4 rounded accent-primary"
-                    />
-                    <span className="text-sm text-ink flex-1">{label}</span>
-                    <span className="text-xs text-ink-muted">{count}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Modalidad */}
-          <div>
-            <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">Modalidad</p>
-            <div className="flex flex-wrap gap-1.5">
-              {MODALITIES.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setSelectedModality(m)}
-                  className={`text-xs px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
-                    selectedModality === m
-                      ? "bg-ink-fixed text-white border-ink-fixed"
-                      : "border-border text-ink-muted hover:border-ink hover:text-ink"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Precio */}
-          <div>
-            <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
-              {activeTab === "paquetes" ? "Precio del paquete" : "Precio por sesión"}
-            </p>
-            <input
-              type="range"
-              min={0}
-              max={maxPrice}
-              value={priceRange}
-              onChange={(e) => setPriceRange(Number(e.target.value))}
-              className="w-full accent-primary"
-            />
-            <div className="flex justify-between text-xs text-ink-muted mt-1">
-              <span>$ 0</span>
-              <span>$ {priceRange}</span>
-            </div>
-          </div>
-
-          {/* Ubicación (solo servicios) */}
-          {activeTab === "servicios" && (
-            <div>
-              <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">Ubicación</p>
-              <div className="flex items-center gap-2 border border-border rounded-xl px-3 py-2 bg-bg">
-                <ion-icon name="location-outline" style={{ fontSize: "16px", color: "var(--color-ink-muted)" }} />
-                <input
-                  className="flex-1 bg-transparent text-sm text-ink placeholder-ink-muted outline-none"
-                  placeholder="Ciudad o zona..."
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </aside>
+      </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="p-4 md:p-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>

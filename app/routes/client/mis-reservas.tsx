@@ -27,14 +27,14 @@ interface Reserva {
 }
 
 const ESTADO_STYLE: Record<string, { label: string; cls: string }> = {
-  pendiente:    { label: "Pendiente",   cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  confirmada:   { label: "Confirmada",  cls: "bg-blue-50 text-blue-700 border-blue-200" },
-  pagada:       { label: "Pagada",      cls: "bg-green-50 text-green-700 border-green-200" },
-  en_curso:     { label: "En curso",    cls: "bg-violet-50 text-violet-700 border-violet-200" },
-  cancelada:    { label: "Cancelada",   cls: "bg-red-50 text-red-400 border-red-200" },
-  finalizada:   { label: "Finalizada",  cls: "bg-surface text-ink-muted border-border" },
-  no_asistida:  { label: "No asistida", cls: "bg-red-50 text-red-400 border-red-200" },
-  realizada:    { label: "No aceptada",   cls: "bg-green-50 text-green-600 border-green-200" },
+  pendiente:    { label: "Pendiente",   cls: "bg-amber-100 text-amber-800" },
+  confirmada:   { label: "Confirmada",  cls: "bg-blue-100 text-blue-800" },
+  pagada:       { label: "Pagada",      cls: "bg-green-100 text-green-800" },
+  en_curso:     { label: "En curso",    cls: "bg-violet-100 text-violet-800" },
+  cancelada:    { label: "Cancelada",   cls: "bg-gray-100 text-ink-muted" },
+  finalizada:   { label: "Finalizada",  cls: "bg-gray-100 text-ink-muted" },
+  no_asistida:  { label: "No asistida", cls: "bg-gray-100 text-ink-muted" },
+  realizada:    { label: "No aceptada", cls: "bg-green-100 text-green-800" },
 };
 
 const TERMINAL = new Set(["cancelada", "finalizada", "no_asistida", "no aceptada"]);
@@ -60,6 +60,7 @@ export default function MisReservas() {
   const [puntuacion, setPuntuacion] = useState(5);
   const [comentario, setComentario] = useState("");
   const [cancelSuccess, setCancelSuccess] = useState(false);
+  const [search, setSearch] = useState("");
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
@@ -78,10 +79,15 @@ export default function MisReservas() {
     const rDate = new Date(y, m - 1, d);
     const past      = rDate < today;
     const cancelled = r.estado === "cancelada" || r.estado === "no_asistida";
-    if (filter === "Próximas")   return !past && !cancelled;
-    if (filter === "Pasadas")    return past && !cancelled;
-    if (filter === "Canceladas") return cancelled;
-    return true;
+    if (filter === "Próximas"   && (past || cancelled)) return false;
+    if (filter === "Pasadas"    && (!past || cancelled)) return false;
+    if (filter === "Canceladas" && !cancelled) return false;
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return (
+      r.servicio?.nombre?.toLowerCase().includes(q) ||
+      r.servicio?.profesional_nombre?.toLowerCase().includes(q)
+    );
   });
 
   const handleCancel = async () => {
@@ -287,13 +293,24 @@ export default function MisReservas() {
         </div>
       )}
 
-      <div className="p-6 max-w-3xl mx-auto">
-        <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Cliente</nav>
-        <h1 className="font-display text-3xl text-ink mb-1">Reservas</h1>
-        <p className="text-ink-muted text-sm mb-6">Historial y estado de tus turnos.</p>
+      <div className="w-full">
+        {/* Toolbar — búsqueda, coherente con /professional/services */}
+        <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
+          <div className="relative flex-1 max-w-xs">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted">
+              <SearchIcon />
+            </span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar reservas"
+              className="w-full pl-8 pr-3 py-1.5 text-sm text-ink placeholder-ink-muted bg-transparent focus:outline-none"
+            />
+          </div>
+        </div>
 
-        {/* Filters */}
-        <div className="flex gap-2 mb-6 flex-wrap">
+        {/* Filtros */}
+        <div className="flex gap-2 px-4 py-3 flex-wrap">
           {FILTERS.map((f) => (
             <button
               key={f}
@@ -310,9 +327,15 @@ export default function MisReservas() {
         </div>
 
         {loading ? (
-          <div className="space-y-3">
+          <div className="bg-surface border-t border-border">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-surface border border-border rounded-2xl animate-pulse" />
+              <div key={i} className={`flex items-center gap-4 px-4 py-4 ${i > 1 ? "border-t border-border" : ""}`}>
+                <div className="w-14 h-14 rounded-xl bg-border/50 animate-pulse shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 w-40 rounded bg-border/50 animate-pulse" />
+                  <div className="h-3 w-28 rounded bg-border/50 animate-pulse" />
+                </div>
+              </div>
             ))}
           </div>
         ) : error ? (
@@ -333,8 +356,8 @@ export default function MisReservas() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filtered.map((r) => {
+          <div className="bg-surface border-t border-border">
+            {filtered.map((r, idx) => {
               const [ry, rm, rd] = r.fecha.split("-").map(Number);
               const rDate = new Date(ry, rm - 1, rd);
               const isPast = rDate < today;
@@ -342,18 +365,18 @@ export default function MisReservas() {
               const canReschedule = ["confirmada", "pagada"].includes(r.estado) && !isPast;
               const isCancelled = r.estado === "cancelada" || r.estado === "no_asistida";
               const displayEstado = isPast && !TERMINAL.has(r.estado) ? "no aceptada" : r.estado;
-              const badge      = ESTADO_STYLE[displayEstado] ?? { label: displayEstado, cls: "bg-surface text-ink-muted border-border" };
+              const badge      = ESTADO_STYLE[displayEstado] ?? { label: displayEstado, cls: "bg-gray-100 text-ink-muted" };
               const canCancel  = ["pendiente", "confirmada"].includes(r.estado) && !isPast;
 
               return (
                 <div
                   key={r.reserva_id}
-                  className={`bg-surface border border-border rounded-2xl p-4 flex items-start gap-4 transition-opacity ${
+                  className={`flex items-center gap-4 px-4 py-4 transition-opacity ${idx > 0 ? "border-t border-border" : ""} ${
                     isCancelled ? "opacity-50" : ""
                   }`}
                 >
                   {/* Date block */}
-                  <div className="shrink-0 w-14 flex flex-col items-center bg-bg border border-border rounded-xl py-2">
+                  <div className="shrink-0 w-14 flex flex-col items-center bg-bg rounded-xl py-2">
                     <span className="text-xs text-ink-muted uppercase">
                       {MONTH_NAMES[Number(r.fecha.split("-")[1]) - 1]}
                     </span>
@@ -365,16 +388,10 @@ export default function MisReservas() {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <p className={`text-sm font-semibold ${isCancelled ? "text-ink-muted line-through" : "text-ink"}`}>
-                        {r.servicio?.nombre}
-                      </p>
-                      <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${badge.cls}`}>
-                        {badge.label}
-                      </span>
-                    </div>
-                    <p className="text-xs text-ink-muted mb-1">{r.servicio?.profesional_nombre}</p>
-                    <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
+                    <p className={`text-sm font-semibold mb-1 ${isCancelled ? "text-ink-muted line-through" : "text-ink"}`}>
+                      {r.servicio?.nombre}
+                    </p>
+                    <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap mb-2">
                       <span className="flex items-center gap-1">
                         <ion-icon name="time-outline" style={{ fontSize: "12px" }} />
                         {r.servicio?.duracion} min
@@ -387,43 +404,42 @@ export default function MisReservas() {
                         $ {Number(r.servicio?.precio).toFixed(0)}
                       </span>
                     </div>
+                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded ${badge.cls}`}>
+                      {badge.label}
+                    </span>
                   </div>
 
-                  {/* Actions */}
-                  <div className="shrink-0 flex flex-col gap-2">
-                    
+                  {/* Acciones — botón coherente con /professional, ícono de borrar alineado */}
+                  <div className="shrink-0 flex items-center gap-3">
                     {canReschedule && (
                       <Link
                         to={`/client/professional/${r.servicio.profesional_id}?reprogramar=${r.reserva_id}`}
-                        className="px-3 py-2 text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-lg text-xs"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer"
                       >
                         Reprogramar
                       </Link>
+                    )}
+
+                    {puedeCalificar && (
+                      <button
+                        onClick={() => abrirModalCalificacion(r)}
+                        title="Calificar"
+                        className="text-amber-500 hover:text-amber-600 transition-colors cursor-pointer"
+                      >
+                        <ion-icon name="star-outline" style={{ fontSize: "16px" }} />
+                      </button>
                     )}
 
                     {canCancel && (
                       <button
                         onClick={() => setConfirmingCancel(r.reserva_id)}
                         disabled={cancelling === r.reserva_id}
-                        title="Cancelar reserva"
-                        className="w-full px-3 py-2 text-red-400 hover:text-red-600 border border-red-200 hover:bg-red-50 rounded-lg text-xs transition-colors disabled:opacity-50"
+                        className="px-4 py-2 rounded-full text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {cancelling === r.reserva_id
-                          ? <ion-icon name="hourglass-outline" style={{ fontSize: "16px" }} />
-                          : <ion-icon name="trash-outline" style={{ fontSize: "16px" }} />
-                        }
+                        {cancelling === r.reserva_id ? "Cancelando..." : "Cancelar"}
                       </button>
                     )}
-
                   </div>
-                  {puedeCalificar && (
-                    <button
-                      onClick={() => abrirModalCalificacion(r)}
-                      className="px-3 py-2 bg-yellow-500 text-white rounded-lg text-xs"
-                    >
-                      Calificar
-                    </button>
-                  )}
                 </div>
               );
             })}
@@ -431,6 +447,15 @@ export default function MisReservas() {
         )}
       </div>
     </>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
   );
 }
 

@@ -3,11 +3,18 @@ import Pusher from "pusher-js";
 import { APP_BASE_URL } from "./api";
 
 let echo: Echo<any> | null = null;
+let echoToken: string | undefined;
 
 export function getEcho(token?: string) {
   if (typeof window === "undefined") return null;
 
+  if (echo && token !== echoToken) {
+    echo.disconnect();
+    echo = null;
+  }
+
   if (!echo) {
+    echoToken = token;
     (window as any).Pusher = Pusher;
     Pusher.logToConsole = true;
 

@@ -1,7 +1,5 @@
 import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "~/context/AuthContext";
-import { useGlobalNotifications } from "~/context/NotificationContext";
-
 
 const navItems = [
   { to: "/client", label: "Resumen", icon: HomeIcon, end: true },
@@ -9,20 +7,17 @@ const navItems = [
   { to: "/client/packages", label: "Paquetes", icon: PackageIcon },
   { to: "/client/reservas", label: "Reservas", icon: CalendarIcon, end: true },
   { to: "/client/payments", label: "Pagos", icon: CardIcon },
-  { to: "/client/notifications", label: "Notificaciones", icon: BellIcon },
 ];
 
 interface Props {
   collapsed: boolean;
-  onToggle: () => void;
   isMobileOpen: boolean;
   onMobileClose: () => void;
 }
 
-export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose }: Props) {
+export function ClientSidebar({ collapsed, isMobileOpen, onMobileClose }: Props) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { unreadCount } = useGlobalNotifications();
   function getInitials(name?: string) {
     if (!name) return "U";
     return name
@@ -60,41 +55,26 @@ export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose
           "md:min-h-screen",
         ].join(" ")}
       >
-        {/* Logo + toggle */}
-        <div className="p-4 border-b border-white/10">
-          <div className={`flex items-center ${effectiveCollapsed ? "justify-center" : "justify-between"}`}>
+        {/* Logo + cerrar — solo en el drawer móvil; en desktop el logo vive en la barra superior compartida */}
+        {isMobileOpen && (
+          <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-5 h-5 rounded-sm bg-surface flex items-center justify-center shrink-0">
                 <span className="text-ink font-bold text-xs">+</span>
               </span>
-              {!effectiveCollapsed && (
-                <span className="font-display text-sidebar-text text-lg tracking-tight">
-                  Cita.Pro
-                </span>
-              )}
+              <span className="font-display text-sidebar-text text-lg tracking-tight">
+                Cita.Pro
+              </span>
             </div>
-            {!effectiveCollapsed && (
-              <button
-                onClick={isMobileOpen ? onMobileClose : onToggle}
-                title={isMobileOpen ? "Cerrar menú" : "Contraer menú"}
-                className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
-              >
-                <ChevronLeftIcon className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={onMobileClose}
+              title="Cerrar menú"
+              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
+            >
+              <ChevronLeftIcon className="w-4 h-4" />
+            </button>
           </div>
-          {effectiveCollapsed && (
-            <div className="flex justify-center mt-3">
-              <button
-                onClick={onToggle}
-                title="Expandir menú"
-                className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
-              >
-                <ChevronRightIcon className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Nav */}
         <nav className="flex-1 p-2 space-y-0.5">
@@ -110,7 +90,7 @@ export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose
           effectiveCollapsed ? "justify-center px-0" : ""
         } ${
           isActive
-            ? "bg-white text-ink-fixed"
+            ? "bg-accent/15 text-accent-hover"
             : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"
         }`
       }
@@ -120,36 +100,18 @@ export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose
       {!effectiveCollapsed && (
         <span className="flex-1">{label}</span>
       )}
-
-      {to === "/client/notifications" &&
-        unreadCount > 0 &&
-        !effectiveCollapsed && (
-          <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-            {unreadCount}
-          </span>
-        )}
     </NavLink>
   ))}
 </nav>
 
-        {/* User */}
-        <div className="p-3 border-t border-white/10">
-          {effectiveCollapsed ? (
-            <div className="flex justify-center py-1">
-              <button
-                onClick={() => navigate("/client/profile")}
-                title={user?.name ?? "Usuario"}
-                className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold hover:ring-2 hover:ring-white/40 transition-all"
-              >
-                {getInitials(user?.name)}
-              </button>
-            </div>
-          ) : (
+        {/* User — solo en el drawer móvil; en desktop vive en HeaderControls */}
+        {isMobileOpen && (
+          <div className="p-3 border-t border-sidebar-border">
             <div className="flex items-center gap-3 px-3 py-2">
               <button
-                onClick={() => { navigate("/client/profile"); if (isMobileOpen) onMobileClose(); }}
+                onClick={() => { navigate("/client/profile"); onMobileClose(); }}
                 title="Editar perfil"
-                className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold shrink-0 hover:ring-2 hover:ring-white/40 transition-all"
+                className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold shrink-0 hover:ring-2 hover:ring-accent-hover/40 transition-all"
               >
                 {getInitials(user?.name)}
               </button>
@@ -170,8 +132,8 @@ export function ClientSidebar({ collapsed, onToggle, isMobileOpen, onMobileClose
                 <LogoutIcon className="w-4 h-4" />
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </aside>
     </>
   );
@@ -193,15 +155,9 @@ function CalendarIcon({ className }: { className?: string }) {
 function CardIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
 }
-function BellIcon({ className }: { className?: string }) {
-  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 1-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>;
-}
 function LogoutIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
 }
 function ChevronLeftIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="15 18 9 12 15 6"/></svg>;
-}
-function ChevronRightIcon({ className }: { className?: string }) {
-  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="9 18 15 12 9 6"/></svg>;
 }
