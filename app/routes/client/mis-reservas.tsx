@@ -65,6 +65,27 @@ export default function MisReservas() {
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
+  const loadReservas = async () => {
+    if (!token) return;
+
+    setLoading(true);
+
+    try {
+      const res = await api.get<{
+        success: boolean;
+        data: Reserva[];
+      }>("/mis-reservas", token);
+
+      if (res.success) {
+        setReservas(res.data);
+      }
+    } catch (e: any) {
+      setError(e.message ?? "Error al cargar reservas");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!token) return;
     setLoading(true);
@@ -74,6 +95,23 @@ export default function MisReservas() {
       .catch((e: any) => setError(e.message ?? "Error al cargar reservas"))
       .finally(() => setLoading(false));
   }, [token]);
+
+  useEffect(() => {
+    const handler = () => {
+      loadReservas();
+    };
+
+    window.addEventListener(
+      "reserva-updated",
+      handler
+    );
+
+    return () =>
+      window.removeEventListener(
+        "reserva-updated",
+        handler
+      );
+  }, []);
 
   const filtered = reservas.filter((r) => {
     const [y, m, d] = r.fecha.split("-").map(Number);

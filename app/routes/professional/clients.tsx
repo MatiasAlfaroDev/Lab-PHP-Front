@@ -83,7 +83,20 @@ export default function Clients() {
   useEffect(() => {
   if (!token) return;
 
-  fetchAgenda();
+   const handler = () => {
+    fetchAgenda();
+  };
+
+  window.addEventListener(
+    "reserva-updated",
+    handler
+  );
+
+  return () =>
+    window.removeEventListener(
+      "reserva-updated",
+      handler
+    );
 
   setClientsLoading(true);
 
