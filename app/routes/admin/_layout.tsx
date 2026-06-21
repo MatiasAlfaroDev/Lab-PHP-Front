@@ -1,18 +1,13 @@
-import { Outlet, useNavigate, NavLink } from "react-router";
+import { Outlet, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "~/context/AuthContext";
+import { AdminSidebar } from "~/components/AdminSidebar";
 
-const navItems = [
-  { to: "/admin", label: "Panel", icon: "▣", end: true },
-  { to: "/admin/users", label: "Usuarios", icon: "👥" },
-  { to: "/admin/payments", label: "Pagos", icon: "💳" },
-];
-function LogoutIcon({ className }: { className?: string }) {
-  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
-}
 export default function AdminLayout() {
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -20,94 +15,144 @@ export default function AdminLayout() {
   }, [user, isLoading, navigate]);
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-bg"><div className="w-8 h-8 rounded-full border-2 border-ink border-t-transparent animate-spin" /></div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
   }
 
   return (
-    <div className="flex min-h-screen bg-bg">
-      {/* Backdrop — mobile only */}
-      {mobileOpen && (
+    <div className="flex flex-col min-h-screen bg-sidebar">
+      {/* Barra superior — logo + toggle, compartida por sidebar y contenido. Solo desktop */}
+      <div className="hidden md:flex bg-sidebar shrink-0">
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      <aside
-        className={[
-          "flex flex-col bg-sidebar shrink-0 transition-all duration-200 ease-in-out",
-          "fixed inset-y-0 left-0 z-50",
-          "w-72",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-          "md:relative md:inset-y-auto md:left-auto md:z-auto",
-          "md:translate-x-0 md:w-56 md:min-h-screen",
-        ].join(" ")}
-      >
-        <div className="p-5 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 bg-surface flex items-center justify-center"><span className="text-ink font-bold text-xs">+</span></span>
-              <span className="font-display text-sidebar-text text-lg">Cita.Pro</span>
-            </div>
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="md:hidden text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-          </div>
-        </div>
-        <nav className="flex-1 p-3 space-y-0.5">
-          {navItems.map(({ to, label, icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={() => setMobileOpen(false)}
-              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive ? "bg-white text-ink-fixed" : "text-sidebar-muted hover:bg-white/10 hover:text-sidebar-text"}`}
-            >
-              <span>{icon}</span>
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="p-3 border-t border-white/10">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold shrink-0">A</div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-sidebar-text truncate">Admin</p>
-              <p className="text-xs text-sidebar-muted">Administrador</p>
-            </div>
-            <button onClick={() => { logout(); navigate("/login"); }} className="text-sidebar-muted hover:text-sidebar-text text-xs">
-              <LogoutIcon className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-auto">
-        {/* Mobile top header — hidden on desktop */}
-        <div className="sticky top-0 z-30 flex md:hidden items-center justify-between bg-sidebar px-4 py-3 border-b border-white/10">
+          className={`flex items-center justify-between px-4 py-4 shrink-0 transition-all duration-200 ease-in-out ${
+            sidebarCollapsed ? "w-14" : "w-56"
+          }`}
+        >
           <div className="flex items-center gap-2">
-            <span className="w-5 h-5 bg-surface flex items-center justify-center shrink-0">
-              <span className="text-ink font-bold text-xs">+</span>
+            <span className="w-5 h-5 rounded-sm bg-primary flex items-center justify-center shrink-0">
+              <span className="text-white font-bold text-xs">+</span>
             </span>
-            <span className="font-display text-sidebar-text text-lg">Cita.Pro</span>
+            {!sidebarCollapsed && (
+              <span className="font-display text-sidebar-text text-lg tracking-tight">Cita.Pro</span>
+            )}
           </div>
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="text-sidebar-text p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-            aria-label="Abrir menú"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
+          {!sidebarCollapsed && (
+            <button
+              onClick={() => setSidebarCollapsed((v) => !v)}
+              title="Contraer menú"
+              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
+            >
+              <ChevronLeftIcon className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        <Outlet />
-      </main>
+        {sidebarCollapsed && (
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            title="Expandir menú"
+            className="flex items-center px-2 text-sidebar-muted hover:text-sidebar-text transition-colors"
+          >
+            <ChevronRightIcon className="w-4 h-4" />
+          </button>
+        )}
+        <div className="flex-1 flex items-center justify-end px-4">
+          <HeaderControls />
+        </div>
+      </div>
+
+      {/* Mobile top header — hidden on desktop */}
+      <div className="sticky top-0 z-30 flex md:hidden items-center justify-between bg-sidebar px-4 py-3 border-b border-sidebar-border shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-sm bg-primary flex items-center justify-center shrink-0">
+            <span className="text-white font-bold text-xs">+</span>
+          </span>
+          <span className="font-display text-sidebar-text text-lg tracking-tight">Cita.Pro</span>
+        </div>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="text-sidebar-text p-1.5 rounded-lg hover:bg-sidebar-hover transition-colors"
+          aria-label="Abrir menú"
+        >
+          <MenuIcon className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="flex flex-1 min-h-0">
+        <AdminSidebar
+          collapsed={sidebarCollapsed}
+          isMobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+        />
+
+        <main className="flex-1 overflow-auto min-w-0 bg-surface border-l border-sidebar-border rounded-t-2xl">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
+}
+
+function HeaderControls() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  function getInitials(name?: string) {
+    if (!name) return "A";
+    return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setMenuOpen((v) => !v)}
+        title="Cuenta"
+        className="flex items-center gap-2 cursor-pointer rounded-lg pl-3 pr-1.5 py-1.5"
+      >
+        <div className="text-right leading-tight">
+          <p className="text-sm font-semibold text-sidebar-text">{user?.name ?? "Admin"}</p>
+          <p className="text-xs text-sidebar-muted">Administrador</p>
+        </div>
+        <span className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold shrink-0">
+          {getInitials(user?.name)}
+        </span>
+      </button>
+
+      {menuOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+          <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-xl shadow-lg z-50 py-1.5 overflow-hidden">
+            <button
+              onClick={async () => { setMenuOpen(false); await logout(); navigate("/login"); }}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-bg transition-colors cursor-pointer"
+            >
+              <LogoutIcon className="w-4 h-4 text-ink-muted" /> Cerrar sesión
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function LogoutIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+}
+function MenuIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  );
+}
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="15 18 9 12 15 6"/></svg>;
+}
+function ChevronRightIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="9 18 15 12 9 6"/></svg>;
 }

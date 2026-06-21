@@ -55,6 +55,13 @@ export function NotificationProvider({
     }
   };
 
+  // Carga inicial — antes solo se disparaba al entrar a /notifications,
+  // dejando el badge/lista vacíos en el resto de la app hasta ese momento.
+  useEffect(() => {
+    if (!userId || !token) return;
+    loadNotifications();
+  }, [userId, token]);
+
   const unreadCount = notifications.filter((n) => n.read_at === null).length;
 
   // 🔵 MARK ONE

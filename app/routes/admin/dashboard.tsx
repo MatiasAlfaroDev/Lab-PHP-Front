@@ -97,12 +97,12 @@ export default function AdminDashboard() {
 
 const step = Math.ceil(rawMax / 4);
 const maxScale = step * 4;
-  const ESTADO_STYLE: Record<string, string> = {
-    pendiente: "bg-amber-50 text-amber-700 border-amber-200",
-    confirmada: "bg-blue-50 text-blue-700 border-blue-200",
-    pagada: "bg-green-50 text-green-700 border-green-200",
-    cancelada: "bg-red-50 text-red-500 border-red-200",
-    finalizada: "bg-gray-100 text-gray-700 border-gray-200",
+  const ESTADO_BADGE: Record<string, string> = {
+    pendiente: "badge badge-pendiente",
+    confirmada: "badge badge-confirmada",
+    pagada: "badge badge-pagada",
+    cancelada: "badge badge-cancelada",
+    finalizada: "badge badge-no-asistida",
   };
 
   return (
@@ -111,6 +111,7 @@ const maxScale = step * 4;
       {/* HEADER */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
+          <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Admin</nav>
           <h1 className="font-display text-3xl text-ink">Panel administrativo</h1>
         </div>
       </div>
@@ -320,12 +321,7 @@ const maxScale = step * 4;
                   </p>
                 </div>
 
-                <span
-                  className={`px-2 py-0.5 rounded-full border text-xs font-medium ${
-                    ESTADO_STYLE[a.estado] ??
-                    "bg-gray-100 text-gray-600 border-gray-200"
-                  }`}
-                >
+                <span className={ESTADO_BADGE[a.estado] ?? "badge badge-no-asistida"}>
                   {a.estado}
                 </span>
               </div>

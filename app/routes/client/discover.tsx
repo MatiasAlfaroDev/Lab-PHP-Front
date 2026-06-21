@@ -55,6 +55,14 @@ const CARD_COLORS = [
 ];
 
 const MODALITIES = ["Todas", "Presencial", "Virtual", "Híbrida"];
+const MODALITY_PARAM: Record<string, string> = {
+  Presencial: "presencial", Virtual: "virtual", Híbrida: "hibrido",
+};
+const ORDEN_OPTIONS = [
+  { value: "", label: "Relevancia" },
+  { value: "precio_asc", label: "Precio: menor a mayor" },
+  { value: "precio_desc", label: "Precio: mayor a menor" },
+];
 
 function getCardColors(id: number) { return CARD_COLORS[id % CARD_COLORS.length]; }
 function getInitials(text: string) { return text.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(); }
@@ -72,10 +80,18 @@ export default function Discover() {
   const [loadingPkg, setLoadingPkg]             = useState(true);
   const [error, setError]                       = useState<string | null>(null);
   const [errorPkg, setErrorPkg]                 = useState<string | null>(null);
-  const [selectedTypes, setSelectedTypes]       = useState<string[]>([]);
-  const [selectedModality, setSelectedModality] = useState("Todas");
+
+  // Opciones de filtro — se derivan una sola vez de la lista completa (sin filtrar)
+  const [allTypes, setAllTypes]                 = useState<{ label: string; count: number }[]>([]);
   const [maxPrice, setMaxPrice]                 = useState(1000);
+
+  // Filtros — se envían como query params a GET /servicios
+  const [search, setSearch]                     = useState("");
+  const [selectedType, setSelectedType]         = useState<string | null>(null);
+  const [selectedModality, setSelectedModality] = useState("Todas");
   const [priceRange, setPriceRange]             = useState(1000);
+  const [orden, setOrden]                       = useState("");
+
   const [buyingPackageId, setBuyingPackageId] = useState<number | null>(null);
   const [searchParams]                          = useSearchParams();
   const center: [number, number] = [-34.9011, -56.1645];
@@ -87,24 +103,28 @@ export default function Discover() {
     });
   }, []);
 
-  // Fetch servicios + paquetes en paralelo al montar
+  // Opciones de filtro (tipos + tope de precio) — una sola vez, sin filtros aplicados
   useEffect(() => {
-    const svcPromise = api
+    api
       .get<{ success: boolean; data: Servicio[] }>("/servicios")
       .then((res) => {
-        if (res.success) {
-          setServicios(res.data);
-          setSelectedTypes([...new Set(res.data.map((s) => s.tipo))]);
-          const max = Math.max(...res.data.map((s) => Number(s.precio)), 100);
-          const rounded = Math.ceil(max / 100) * 100;
-          setMaxPrice(rounded);
-          setPriceRange(rounded);
-        }
+        if (!res.success) return;
+        const tipos = [...new Set(res.data.map((s) => s.tipo))].map((tipo) => ({
+          label: tipo,
+          count: res.data.filter((s) => s.tipo === tipo).length,
+        }));
+        setAllTypes(tipos);
+        const max = Math.max(...res.data.map((s) => Number(s.precio)), 100);
+        const rounded = Math.ceil(max / 100) * 100;
+        setMaxPrice(rounded);
+        setPriceRange(rounded);
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoadingSvc(false));
+      .catch(() => {});
+  }, []);
 
-    const pkgPromise = api
+  // Paquetes (sin filtros de back — Tarea 2 solo cubre /servicios)
+  useEffect(() => {
+    api
       .get<Paquete[] | { success: boolean; data: Paquete[] }>("/paquetes", token)
       .then((res) => {
         const list = Array.isArray(res) ? res : (res as any).data ?? [];
@@ -112,9 +132,35 @@ export default function Discover() {
       })
       .catch((e) => setErrorPkg(e.message ?? "Error al cargar paquetes"))
       .finally(() => setLoadingPkg(false));
-
-    return () => { void svcPromise; void pkgPromise; };
   }, [token]);
+
+  // Servicios filtrados — debounced, consume los query params de GET /servicios
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      setLoadingSvc(true);
+      setError(null);
+
+      const params = new URLSearchParams();
+      if (search.trim()) params.set("q", search.trim());
+      if (selectedType) params.set("tipo", selectedType);
+      if (selectedModality !== "Todas") params.set("modalidad", MODALITY_PARAM[selectedModality]);
+      if (priceRange < maxPrice) params.set("precio_max", String(priceRange));
+      if (orden) params.set("orden", orden);
+
+      const qs = params.toString();
+
+      api
+        .get<{ success: boolean; data: Servicio[] }>(`/servicios${qs ? `?${qs}` : ""}`, undefined, controller.signal)
+        .then((res) => {
+          if (res.success) setServicios(res.data);
+        })
+        .catch((e) => { if (e?.name !== "AbortError") setError(e.message); })
+        .finally(() => setLoadingSvc(false));
+    }, 350);
+
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [search, selectedType, selectedModality, priceRange, maxPrice, orden]);
 
   const activeTab =
     searchParams.get("tab") === "packages"
@@ -124,41 +170,26 @@ export default function Discover() {
   const servicioId = searchParams.get("servicio");
   const compraItemId = searchParams.get("compraItem");
 
-  const serviceTypes = [...new Set(servicios.map((s) => s.tipo))].map((tipo) => ({
-    label: tipo,
-    count: servicios.filter((s) => s.tipo === tipo).length,
-    key: tipo,
-  }));
-
-  const toggleType = (key: string) =>
-    setSelectedTypes((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
-
-  const filteredSvc = servicios.filter((s) => {
-    const typeMatch     = selectedTypes.length === 0 || selectedTypes.includes(s.tipo);
-    const modalityMatch = selectedModality === "Todas" || normalizeModality(s.modalidad) === selectedModality;
-    const priceMatch    = Number(s.precio) <= priceRange;
-    return typeMatch && modalityMatch && priceMatch;
-  });
-
+  const filteredSvc = servicios;
   const filteredPkg = paquetes.filter((p) => Number(p.precio_total) <= priceRange);
 
   const resetFilters = () => {
-    setSelectedTypes([]);
+    setSearch("");
+    setSelectedType(null);
     setSelectedModality("Todas");
     setPriceRange(maxPrice);
+    setOrden("");
   };
 
-  const typeChips = loadingSvc ? (
-    <span className="text-xs text-ink-muted">Cargando...</span>
-  ) : serviceTypes.length === 0 ? (
+  const typeChips = allTypes.length === 0 ? (
     <span className="text-xs text-ink-muted">Sin tipos disponibles</span>
   ) : (
-    serviceTypes.map(({ label, count, key }) => (
+    allTypes.map(({ label, count }) => (
       <button
-        key={key}
-        onClick={() => toggleType(key)}
+        key={label}
+        onClick={() => setSelectedType((prev) => (prev === label ? null : label))}
         className={`shrink-0 text-xs px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
-          selectedTypes.includes(key)
+          selectedType === label
             ? "bg-ink-fixed text-white border-ink-fixed"
             : "border-border text-ink-muted hover:border-ink hover:text-ink"
         }`}
@@ -192,13 +223,26 @@ export default function Discover() {
 
         <div className="flex items-center gap-2 ml-auto shrink-0">
           {activeTab === "servicios" && (
-            <div className="hidden lg:flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5">
-              <ion-icon name="location-outline" style={{ fontSize: "14px", color: "var(--color-ink-muted)" }} />
-              <input
-                className="w-28 bg-transparent text-xs text-ink placeholder-ink-muted outline-none"
-                placeholder="Ciudad o zona..."
-              />
-            </div>
+            <>
+              <div className="hidden lg:flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5">
+                <ion-icon name="search-outline" style={{ fontSize: "14px", color: "var(--color-ink-muted)" }} />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-32 bg-transparent text-xs text-ink placeholder-ink-muted outline-none"
+                  placeholder="Buscar servicios..."
+                />
+              </div>
+              <select
+                value={orden}
+                onChange={(e) => setOrden(e.target.value)}
+                className="hidden md:block text-xs border border-border rounded-full px-3 py-1.5 bg-transparent text-ink-muted cursor-pointer"
+              >
+                {ORDEN_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </>
           )}
           <span className="hidden sm:inline text-xs text-ink-muted whitespace-nowrap">
             hasta $ {priceRange}
@@ -252,13 +296,11 @@ export default function Discover() {
         {/* ── SERVICIOS ── */}
         {activeTab === "servicios" && (
           <>
-            {selectedTypes.length > 0 && (
+            {selectedType && (
               <div className="flex items-center gap-3 mb-6 flex-wrap">
-                {selectedTypes.map((t) => (
-                  <span key={t} className="flex items-center gap-1 text-xs bg-primary-soft text-primary px-3 py-1 rounded-full font-medium">
-                    <ion-icon name="checkmark-outline" style={{ fontSize: "12px" }} />{t}
-                  </span>
-                ))}
+                <span className="flex items-center gap-1 text-xs bg-primary-soft text-primary px-3 py-1 rounded-full font-medium">
+                  <ion-icon name="checkmark-outline" style={{ fontSize: "12px" }} />{selectedType}
+                </span>
               </div>
             )}
 

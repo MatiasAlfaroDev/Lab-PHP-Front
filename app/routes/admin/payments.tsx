@@ -37,6 +37,7 @@ export default function AdminPayments() {
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
+          <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Admin</nav>
           <h1 className="font-display text-3xl text-ink">Pagos</h1>
           <p className="text-ink-muted mt-1">
             Todas las transacciones de la plataforma
@@ -79,52 +80,37 @@ export default function AdminPayments() {
       <div className="border border-border rounded overflow-x-auto">
         <div style={{ minWidth: "640px" }}>
           {/* HEADER */}
-          <div className="flex px-5 py-3 border-b border-border bg-bg text-xs font-bold text-ink-muted uppercase tracking-widest items-center">
-  
-            <div className="w-24">FECHA</div>
-            <div className="flex-[2]">DE</div>
-            <div className="flex-[2]">PARA</div>
-            <div className="flex-[3]">SERVICIO</div>
-            <div className="w-20 text-left">TOTAL</div>
-            <div className="w-24 text-center">MÉTODO</div>
-            <div className="w-28 text-center">ESTADO</div>
-
+          <div
+            className="grid px-5 py-3 border-b border-border bg-bg text-xs font-bold text-ink-muted uppercase tracking-widest items-center"
+            style={{ gridTemplateColumns: "96px 1.4fr 1.4fr 2fr 90px 100px 110px" }}
+          >
+            <div>FECHA</div>
+            <div>DE</div>
+            <div>PARA</div>
+            <div>SERVICIO</div>
+            <div>TOTAL</div>
+            <div className="text-center">MÉTODO</div>
+            <div className="text-center">ESTADO</div>
           </div>
 
           {/* ROWS */}
           {transactions.map((t, i) => (
-            <div className="flex px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors text-sm bg-surface">
-
-              <div className="w-24 text-ink-muted">
-                {t.fecha}
-              </div>
-
-              <div className="flex-[2] text-ink font-semibold truncate pr-2">
-                {t.de}
-              </div>
-
-              <div className="flex-[2] text-ink font-semibold truncate pr-2">
-                {t.para}
-              </div>
-
-              <div className="flex-[3] text-ink-muted truncate pr-2">
-                {t.servicio}
-              </div>
-
-              <div className="w-20 text-left font-bold text-ink">
-                ${t.total}
-              </div>
-
-              <div className="w-24 text-center text-ink-muted uppercase text-xs">
-                {t.metodo}
-              </div>
-
-              <div className="w-28 text-center">
+            <div
+              key={i}
+              className="grid px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors text-sm bg-surface"
+              style={{ gridTemplateColumns: "96px 1.4fr 1.4fr 2fr 90px 100px 110px" }}
+            >
+              <div className="text-ink-muted">{t.fecha}</div>
+              <div className="text-ink font-semibold truncate pr-2">{t.de}</div>
+              <div className="text-ink font-semibold truncate pr-2">{t.para}</div>
+              <div className="text-ink-muted truncate pr-2">{t.servicio}</div>
+              <div className="font-bold text-ink">${t.total}</div>
+              <div className="text-center text-ink-muted uppercase text-xs">{t.metodo}</div>
+              <div className="text-center">
                 <span className={badgeCls[t.estado]}>
                   {t.estado?.toUpperCase()}
                 </span>
               </div>
-
             </div>
           ))}
         </div>
