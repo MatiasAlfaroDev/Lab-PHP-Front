@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useLocation } from "react-router";
+import { DateSlotPicker, normalizeModality, type Slot } from "~/components/DateSlotPicker";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Servicio {
@@ -34,113 +35,7 @@ function getInitials(name: string) {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-function normalizeModality(m: string): string {
-  const map: Record<string, string> = {
-    presencial: "Presencial", virtual: "Virtual",
-    hibrida: "Híbrida",      híbrida: "Híbrida",
-  };
-  return map[m.toLowerCase()] ?? m;
-}
-
-// Returns the Spanish day-of-week key for a Date
-const DOW_MAP = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
-
-function toDateStr(year: number, month: number, day: number) {
-  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-const MONTH_NAMES = [
-  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
-];
-const DAY_NAMES = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
-
 const TABS = ["Acerca de", "Servicios", "Reseñas"];
-
-// ── Mini Calendar ──────────────────────────────────────────────────────────
-function MiniCalendar({
-  year, month, availableDays, fullyBookedDates, selectedDate, onSelect, onPrev, onNext,
-}: {
-  year: number; month: number;
-  availableDays: Set<string>;   // set of "lunes"|"martes"...
-  fullyBookedDates: Set<string>; // dates (YYYY-MM-DD) que matchean el patrón pero ya no tienen turnos
-  selectedDate: string | null;
-  onSelect: (date: string) => void;
-  onPrev: () => void; onNext: () => void;
-}) {
-  const today = useMemo(() => {
-    const d = new Date(); d.setHours(0,0,0,0); return d;
-  }, []);
-
-  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (number | null)[] = [
-    ...Array(firstDow).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <button
-          onClick={onPrev}
-          className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg text-sm"
-        >
-          ‹
-        </button>
-        <span className="text-sm font-semibold text-ink">
-          {MONTH_NAMES[month]} {year}
-        </span>
-        <button
-          onClick={onNext}
-          className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg text-sm"
-        >
-          ›
-        </button>
-      </div>
-
-      <div className="grid grid-cols-7 gap-0.5 mb-1">
-        {DAY_NAMES.map((d) => (
-          <div key={d} className="text-center text-xs text-ink-muted py-1 font-medium">{d}</div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7 gap-0.5">
-        {cells.map((day, i) => {
-          if (!day) return <div key={i} />;
-          const date = new Date(year, month, day);
-          const dateStr = toDateStr(year, month, day);
-          const isPast = date < today;
-          const dow = DOW_MAP[date.getDay()];
-          const matchesPattern = availableDays.has(dow) && !isPast;
-          const isFullyBooked = matchesPattern && fullyBookedDates.has(dateStr);
-          const isAvailable = matchesPattern && !isFullyBooked;
-          const isSelected = selectedDate === dateStr;
-
-          return (
-            <button
-              key={i}
-              disabled={!isAvailable}
-              onClick={() => isAvailable && onSelect(dateStr)}
-              className={`relative text-xs py-1.5 rounded-lg transition-colors font-medium
-                ${isSelected
-                  ? "bg-primary text-white"
-                  : isAvailable
-                  ? "hover:bg-primary/10 text-ink"
-                  : "text-ink-muted/40 cursor-default"}`}
-            >
-              {day}
-              {isAvailable && !isSelected && (
-                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-accent" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 const MONTH_NAMES_SHORT = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const DOW_FULL = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
@@ -322,21 +217,9 @@ export default function ProfessionalDetail() {
   const [activeTab, setActiveTab] = useState("Servicios");
   const [selectedService, setSelectedService] = useState<Servicio | null>(null);
 
-  // Calendar
-  const [calMonth, setCalMonth] = useState(() => {
-    const now = new Date();
-    return { year: now.getFullYear(), month: now.getMonth() };
-  });
-  const [availableDays, setAvailableDays] = useState<Set<string>>(new Set());
-  const [loadingDays, setLoadingDays] = useState(false);
-  const [fullyBookedDates, setFullyBookedDates] = useState<Set<string>>(new Set());
-
-  // Slots
+  // Date + slot selection (fetching/calendar logic lives in DateSlotPicker)
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [slots, setSlots] = useState<{ hora: string; modalidad: string }[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<{ hora: string; modalidad: string } | null>(null);
-  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [calificaciones, setCalificaciones] = useState<any[]>([]);
   const [promedio, setPromedio] = useState(0);
   const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
@@ -384,115 +267,6 @@ export default function ProfessionalDetail() {
       .catch((e) => setProfileError(e.message))
       .finally(() => setLoadingProfile(false));
   }, [id, servicioIdPreseleccionado]);
-
-  // Load available days when service changes
-  useEffect(() => {
-    if (!selectedService) { setAvailableDays(new Set()); return; }
-    setLoadingDays(true);
-    setSelectedDate(null);
-    setSlots([]);
-    setSelectedSlot(null);
-    api
-    .get<{ success: boolean; data: string[] }>(
-      `/servicios/${selectedService.servicio_id}/dias-disponibles`
-    )
-    .then((res: { success: boolean; data: string[] }) => {
-      if (res.success) setAvailableDays(new Set(res.data));
-    })
-      .catch(() => setAvailableDays(new Set()))
-      .finally(() => setLoadingDays(false));
-  }, [selectedService]);
-
-  // Check, day by day, which dates of the visible month actually have open slots —
-  // availableDays only encodes the weekly pattern, not whether a specific day is full.
-  useEffect(() => {
-    if (!selectedService || availableDays.size === 0) { setFullyBookedDates(new Set()); return; }
-
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const { year, month } = calMonth;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const candidates: string[] = [];
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      if (date < today) continue;
-      if (!availableDays.has(DOW_MAP[date.getDay()])) continue;
-      candidates.push(toDateStr(year, month, day));
-    }
-    if (candidates.length === 0) return;
-
-    let cancelled = false;
-    Promise.all(
-      candidates.map((fecha) =>
-        api
-          .get<{ success: boolean; data: { hora: string; modalidad: string }[] }>(
-            `/servicios/${selectedService.servicio_id}/slots?fecha=${fecha}`
-          )
-          .then((res) => [fecha, res.success && res.data.length === 0] as const)
-          .catch(() => [fecha, false] as const)
-      )
-    ).then((results) => {
-      if (cancelled) return;
-      setFullyBookedDates(new Set(results.filter(([, full]) => full).map(([fecha]) => fecha)));
-    });
-
-    return () => { cancelled = true; };
-  }, [selectedService, calMonth, availableDays]);
-
-  // Load slots when date changes
-  useEffect(() => {
-    if (!selectedDate || !selectedService) return;
-
-    setLoadingSlots(true);
-    setSlots([]);
-    setSelectedSlot(null);
-    setSlotsError(null);
-
-    api
-      .get<{ success: boolean; data: { hora: string; modalidad: string }[] }>(
-        `/servicios/${selectedService.servicio_id}/slots?fecha=${selectedDate}`
-      )
-      .then((res) => {
-        if (res.success) setSlots(res.data);
-      })
-      .catch((e: any) =>
-        setSlotsError(e.message ?? "Error al cargar horarios")
-      )
-      .finally(() => setLoadingSlots(false));
-  }, [selectedDate, selectedService]);
-
-  useEffect(() => {
-    if (!selectedDate || !selectedService) return;
-
-    const handler = async () => {
-      console.log("SLOTS REFRESH");
-
-      try {
-        const res = await api.get<{
-          success: boolean;
-          data: { hora: string; modalidad: string }[];
-        }>(
-          `/servicios/${selectedService.servicio_id}/slots?fecha=${selectedDate}`
-        );
-
-        if (res.success) {
-          setSlots(res.data);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    window.addEventListener(
-      "reserva-updated",
-      handler
-    );
-
-    return () =>
-      window.removeEventListener(
-        "reserva-updated",
-        handler
-      );
-  }, [selectedDate, selectedService]);
 
   useEffect(() => {
     if (!reprogramarId) return;
@@ -885,90 +659,14 @@ export default function ProfessionalDetail() {
                     {reprogramError}
                   </div>
                 )}
-                {/* Calendar */}
-                <div>
-                  <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-3">
-                    Seleccioná una fecha
-                  </p>
-                  {loadingDays ? (
-                    <div className="flex justify-center py-6">
-                      <span className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  ) : availableDays.size === 0 ? (
-                    <div className="flex items-center gap-2 py-4 text-sm text-ink-muted">
-                      <ion-icon name="calendar-outline" style={{ fontSize: "16px" }} />
-                      Este servicio no tiene horarios configurados aún.
-                    </div>
-                  ) : (
-                    <MiniCalendar
-                      year={calMonth.year}
-                      month={calMonth.month}
-                      availableDays={availableDays}
-                      fullyBookedDates={fullyBookedDates}
-                      selectedDate={selectedDate}
-                      onSelect={setSelectedDate}
-                      onPrev={() =>
-                        setCalMonth(({ year, month }) =>
-                          month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 }
-                        )
-                      }
-                      onNext={() =>
-                        setCalMonth(({ year, month }) =>
-                          month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 }
-                        )
-                      }
-                    />
-                  )}
-                </div>
-
-                {/* Slots */}
-                {selectedDate && (
-                  <>
-                    <hr className="border-border" />
-                    <div>
-                      <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-3">
-                        Horarios disponibles
-                      </p>
-                      {loadingSlots ? (
-                        <div className="flex justify-center py-4">
-                          <span className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      ) : slotsError ? (
-                        <p className="text-sm text-red-500">{slotsError}</p>
-                      ) : slots.length === 0 ? (
-                        <p className="text-sm text-ink-muted">
-                          No hay turnos disponibles para este día.
-                        </p>
-                      ) : (
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {slots.map((slot) => (
-                            <button
-                              key={slot.hora}
-                              onClick={() =>
-                                setSelectedSlot(
-                                  selectedSlot?.hora === slot.hora ? null : slot
-                                )
-                              }
-                              className={`text-sm py-2 rounded-xl border transition-colors flex flex-col items-center ${
-                                selectedSlot?.hora === slot.hora
-                                  ? "bg-primary text-white border-primary"
-                                  : "border-border text-ink hover:bg-bg"
-                              }`}
-                            >
-                              <span>{slot.hora}</span>
-
-                              {selectedService.modalidad === "hibrido" && (
-                                <span className="text-[10px] opacity-70">
-                                  {normalizeModality(slot.modalidad)}
-                                </span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
+                <DateSlotPicker
+                  servicioId={selectedService.servicio_id}
+                  modalidad={selectedService.modalidad}
+                  selectedDate={selectedDate}
+                  selectedSlot={selectedSlot}
+                  onSelectDate={setSelectedDate}
+                  onSelectSlot={setSelectedSlot}
+                />
 
                 <button
                   disabled={!selectedSlot || procesando}

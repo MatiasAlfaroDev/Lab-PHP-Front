@@ -147,7 +147,7 @@ export default function ClientPayments() {
 
       <div className="w-full">
         {/* Toolbar — búsqueda, coherente con /professional/services */}
-        <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-4 px-4 md:px-6 py-3 border-b border-border">
           <div className="relative flex-1 max-w-xs">
             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted">
               <SearchIcon />
@@ -223,12 +223,12 @@ export default function ClientPayments() {
         <h2 className="text-lg font-semibold text-ink mb-3">Historial de reservas</h2>
         <div className="bg-surface border-t border-border w-full overflow-x-auto">
           <div style={{ minWidth: "520px" }}>
-            <div className="grid px-0 py-2 border-b border-border" style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}>
+            <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}>
               {["Servicio", "Fecha", "Monto", "Estado"].map((h) => (
                 <div key={h} className="text-sm text-ink-muted">{h}</div>
               ))}
             </div>
-            <div className="px-0 py-2 border-b border-border bg-sidebar">
+            <div className="px-5 py-2 border-b border-border bg-sidebar">
               <span className="text-sm font-bold text-ink">Historial de reservas</span>
             </div>
             {conPago.length === 0 ? (
@@ -261,12 +261,12 @@ export default function ClientPayments() {
         <h2 className="text-lg font-semibold text-ink mb-3 mt-8">Historial de paquetes</h2>
         <div className="bg-surface border-t border-border w-full overflow-x-auto">
           <div style={{ minWidth: "400px" }}>
-            <div className="grid px-0 py-2 border-b border-border" style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}>
+            <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}>
               {["Paquete", "Fecha", "Monto", "Estado"].map((h) => (
                 <div key={h} className="text-sm text-ink-muted">{h}</div>
               ))}
             </div>
-            <div className="px-0 py-2 border-b border-border bg-sidebar">
+            <div className="px-5 py-2 border-b border-border bg-sidebar">
               <span className="text-sm font-bold text-ink">Historial de paquetes</span>
             </div>
             {comprasFiltradas.length === 0 ? (

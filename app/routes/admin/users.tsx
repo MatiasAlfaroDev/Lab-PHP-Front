@@ -112,7 +112,7 @@ export default function AdminUsers() {
                 className="grid grid-cols-24 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface"            >
               {/* USER */}
               <div className="col-span-6 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-violet-500 flex items-center justify-center text-white text-xs font-bold">
+                <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold">
                   {getInitials(u.name)}
                 </div>
 
@@ -140,15 +140,9 @@ export default function AdminUsers() {
 
               {/* ESTADO */}
               <div className="col-span-3 text-center">
-                {u.activo ? (
-                  <span className="text-xs px-2 py-1 rounded bg-green-500 text-white">
-                    Activo
-                  </span>
-                ) : (
-                  <span className="text-xs px-2 py-1 rounded bg-red-500 text-white">
-                    Bloqueado
-                  </span>
-                )}
+                <span className={u.activo ? "badge badge-confirmada" : "badge badge-cancelada"}>
+                  {u.activo ? "Activo" : "Bloqueado"}
+                </span>
               </div>
 
               {/* ACTIONS */}
@@ -156,10 +150,10 @@ export default function AdminUsers() {
                 <button
                   onClick={() => blockUser(Number(u.id))}
                   disabled={loadingId === u.id}
-                  className={`text-xs px-2 py-1 rounded text-white ${
+                  className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
                     u.activo
-                      ? "bg-red-500 hover:bg-red-600"
-                      : "bg-green-500 hover:bg-green-600"
+                      ? "border border-red-200 text-red-500 hover:bg-red-50"
+                      : "bg-ink-fixed text-white hover:bg-primary"
                   } ${loadingId === u.id ? "opacity-60 cursor-not-allowed" : ""}`}
                 >
                   {loadingId === u.id
@@ -179,6 +173,7 @@ export default function AdminUsers() {
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <div className="mb-6">
+        <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Admin</nav>
         <h1 className="font-display text-3xl text-ink">Usuarios</h1>
         <p className="text-ink-muted mt-1">
           Gestión de clientes y profesionales
@@ -188,13 +183,19 @@ export default function AdminUsers() {
       <Table title="Clientes" data={clients} />
       <Table title="Profesionales" data={professionals} />
       {modal.open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-surface rounded-lg p-6 shadow-lg w-[300px] text-center">
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setModal({ open: false, message: "" })}
+        >
+          <div
+            className="bg-surface border border-border rounded-2xl p-6 shadow-xl w-[300px] text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
             <p className="text-sm text-ink mb-4">{modal.message}</p>
 
             <button
               onClick={() => setModal({ open: false, message: "" })}
-              className="bg-violet-500 text-white px-4 py-2 rounded"
+              className="bg-ink-fixed text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary transition-colors"
             >
               OK
             </button>

@@ -4,6 +4,7 @@ import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { DateSlotPicker, type Slot } from "~/components/DateSlotPicker";
 
 interface Reserva {
   reserva_id: number;
@@ -62,6 +63,15 @@ export default function MisReservas() {
   const [cancelSuccess, setCancelSuccess] = useState(false);
   const [search, setSearch] = useState("");
   const [enviandoCalificacion, setEnviandoCalificacion] = useState(false);
+
+  // Reprogramar (popup in-place, sin navegar a /client/professional/:id)
+  const [reprogramando, setReprogramando] = useState<Reserva | null>(null);
+  const [reprogramServicioId, setReprogramServicioId] = useState<number | null>(null);
+  const [loadingReprogramDetail, setLoadingReprogramDetail] = useState(false);
+  const [reprogramDate, setReprogramDate] = useState<string | null>(null);
+  const [reprogramSlot, setReprogramSlot] = useState<Slot | null>(null);
+  const [reprogramSubmitting, setReprogramSubmitting] = useState(false);
+  const [reprogramError, setReprogramError] = useState<string | null>(null);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
@@ -156,6 +166,60 @@ export default function MisReservas() {
       setConfirmingCancel(null);
     }
   };
+  const abrirReprogramar = async (reserva: Reserva) => {
+    setReprogramando(reserva);
+    setReprogramServicioId(null);
+    setReprogramDate(null);
+    setReprogramSlot(null);
+    setReprogramError(null);
+    setLoadingReprogramDetail(true);
+
+    try {
+      const res = await api.get<{ success: boolean; data: { servicio_id: number } }>(
+        `/reservas/${reserva.reserva_id}`,
+        token
+      );
+      if (res.success) setReprogramServicioId(res.data.servicio_id);
+    } catch (e: any) {
+      setReprogramError(e.message ?? "No se pudo cargar la reserva");
+    } finally {
+      setLoadingReprogramDetail(false);
+    }
+  };
+
+  const confirmarReprogramacion = async () => {
+    if (!reprogramando || !reprogramServicioId || !reprogramDate || !reprogramSlot) return;
+
+    setReprogramSubmitting(true);
+    setReprogramError(null);
+
+    try {
+      const res = await api.put<{ success: boolean; message?: string }>(
+        `/reservas/${reprogramando.reserva_id}/reprogramar`,
+        {
+          servicio_id: reprogramServicioId,
+          fecha: reprogramDate,
+          hora: reprogramSlot.hora,
+          modalidad: reprogramSlot.modalidad,
+        },
+        token
+      );
+
+      if (!res.success) {
+        setReprogramError(res.message ?? "Error al reprogramar la reserva");
+        return;
+      }
+
+      toast.success("Reserva reprogramada correctamente");
+      window.dispatchEvent(new CustomEvent("reserva-updated"));
+      setReprogramando(null);
+    } catch (e: any) {
+      setReprogramError(e.message ?? "Error al reprogramar la reserva");
+    } finally {
+      setReprogramSubmitting(false);
+    }
+  };
+
   const abrirModalCalificacion = (reserva: Reserva) => {
       setReservaSeleccionada(reserva);
       setPuntuacion(5);
@@ -336,6 +400,56 @@ export default function MisReservas() {
         </div>
       )}
 
+      {reprogramando && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setReprogramando(null)}
+        >
+          <div
+            className="bg-surface rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl border border-border max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="font-display text-lg text-ink mb-1">Reprogramar reserva</h2>
+            <p className="text-sm text-ink-muted mb-4">{reprogramando.servicio?.nombre}</p>
+
+            {loadingReprogramDetail ? (
+              <div className="flex justify-center py-8">
+                <span className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : reprogramServicioId ? (
+              <DateSlotPicker
+                servicioId={reprogramServicioId}
+                modalidad={reprogramando.servicio.modalidad}
+                selectedDate={reprogramDate}
+                selectedSlot={reprogramSlot}
+                onSelectDate={setReprogramDate}
+                onSelectSlot={setReprogramSlot}
+              />
+            ) : null}
+
+            {reprogramError && (
+              <p className="text-sm text-red-500 mt-3">{reprogramError}</p>
+            )}
+
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setReprogramando(null)}
+                className="flex-1 px-4 py-2 rounded-xl border border-border text-ink text-sm font-medium hover:bg-bg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarReprogramacion}
+                disabled={!reprogramSlot || reprogramSubmitting}
+                className="flex-1 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {reprogramSubmitting ? "Reprogramando..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="w-full">
         {/* Toolbar — búsqueda, coherente con /professional/services */}
         <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
@@ -455,12 +569,12 @@ export default function MisReservas() {
                   {/* Acciones — botón coherente con /professional, ícono de borrar alineado */}
                   <div className="shrink-0 flex items-center gap-3">
                     {canReschedule && (
-                      <Link
-                        to={`/client/professional/${r.servicio.profesional_id}?reprogramar=${r.reserva_id}`}
+                      <button
+                        onClick={() => abrirReprogramar(r)}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer"
                       >
                         Reprogramar
-                      </Link>
+                      </button>
                     )}
 
                     {puedeCalificar && (
