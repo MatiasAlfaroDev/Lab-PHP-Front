@@ -91,25 +91,30 @@ export default function Packages() {
           const estadoPago = compra.pago?.estado;
 
           const badge =
-            !estadoPago
-              ? {
-                  label: "Sin pago",
-                  cls: "bg-slate-50 text-slate-700 border-slate-200",
-                }
-              : estadoPago === "aprobado"
-              ? {
-                  label: "Activo",
-                  cls: "bg-green-50 text-green-700 border-green-200",
-                }
-              : estadoPago === "pendiente"
-              ? {
-                  label: "Pendiente de pago",
-                  cls: "bg-amber-50 text-amber-700 border-amber-200",
-                }
-              : {
-                  label: "Pago rechazado",
-                  cls: "bg-red-50 text-red-700 border-red-200",
-                };
+          !estadoPago
+            ? {
+                label: "Sin pago",
+                cls: "bg-slate-50 text-slate-700 border-slate-200",
+              }
+            : estadoPago === "pendiente"
+            ? {
+                label: "Pendiente de pago",
+                cls: "bg-amber-50 text-amber-700 border-amber-200",
+              }
+            : estadoPago !== "aprobado"
+            ? {
+                label: "Pago rechazado",
+                cls: "bg-red-50 text-red-700 border-red-200",
+              }
+            : restantes > 0
+            ? {
+                label: "Activo",
+                cls: "bg-green-50 text-green-700 border-green-200",
+              }
+            : {
+                label: "Finalizado",
+                cls: "bg-gray-50 text-gray-700 border-gray-200",
+              };
 
           return (
             <div
