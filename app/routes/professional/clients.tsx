@@ -62,6 +62,8 @@ export default function Clients() {
   const [clientsLoading, setClientsLoading] = useState(true);
   const [search,         setSearch]         = useState("");
   const [asistio, setAsistio] = useState<boolean | null>(null);
+  const [marcandoAsistencia, setMarcandoAsistencia] = useState(false);
+  const [asistenciaError, setAsistenciaError] = useState<string | null>(null);
 
   // Selección: cliente y/o turno específico
   const [selectedClient,  setSelectedClient]  = useState<Client | null>(null);
@@ -81,43 +83,37 @@ export default function Clients() {
   };
 
   useEffect(() => {
-  if (!token) return;
+    if (!token) return;
 
-   const handler = () => {
     fetchAgenda();
-  };
+    setClientsLoading(true);
 
-  window.addEventListener(
-    "reserva-updated",
-    handler
-  );
+    api
+      .get<{
+        sesiones: Client[];
+        historicos: Client[];
+        paquetes: Client[];
+      }>("/clientes", token)
+      .then((data) => {
+        setClientesProximos(data.sesiones || []);
+        setClientesHistoricos(data.historicos || []);
+        setClientesPaquetes(data.paquetes || []);
+      })
+      .catch(() => {
+        setClientesProximos([]);
+        setClientesHistoricos([]);
+        setClientesPaquetes([]);
+      })
+      .finally(() => setClientsLoading(false));
+  }, [token]);
 
-  return () =>
-    window.removeEventListener(
-      "reserva-updated",
-      handler
-    );
+  useEffect(() => {
+    if (!token) return;
 
-  setClientsLoading(true);
-
-  api
-    .get<{
-      sesiones: Client[];
-      historicos: Client[];
-      paquetes: Client[];
-    }>("/clientes", token)
-    .then((data) => {
-      setClientesProximos(data.sesiones || []);
-      setClientesHistoricos(data.historicos || []);
-      setClientesPaquetes(data.paquetes || []);
-    })
-    .catch(() => {
-      setClientesProximos([]);
-      setClientesHistoricos([]);
-      setClientesPaquetes([]);
-    })
-    .finally(() => setClientsLoading(false));
-}, [token]);
+    const handler = () => fetchAgenda();
+    window.addEventListener("reserva-updated", handler);
+    return () => window.removeEventListener("reserva-updated", handler);
+  }, [token]);
 
   // ── Cambiar estado de reserva ──────────────────────────────────────────────
   const cambiarEstado = async (reservaId: number, estado: "confirmada" | "cancelada") => {
@@ -426,40 +422,82 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                   {(selectedReserva.estado === "en_curso" ||
                     selectedReserva.estado === "finalizada") &&
                     !asistio && (
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          className="flex-1 bg-green-600 text-white rounded py-1.5 text-xs font-semibold"
-                          onClick={() => setAsistio(true)}
-                        >
-                          Asistió
-                        </button>
+                      <div className="space-y-2 mt-3">
+                        <div className="flex gap-2">
+                          <button
+                            disabled={marcandoAsistencia}
+                            className="flex-1 bg-green-600 text-white rounded py-1.5 text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                            onClick={async () => {
+                              const r = selectedReserva;
+                              setMarcandoAsistencia(true);
+                              setAsistenciaError(null);
 
-                        <button
-                          className="flex-1 bg-red-600 text-white rounded py-1.5 text-xs font-semibold"
-                          onClick={async () => {
-                            const r = selectedReserva;
+                              try {
+                                const res = await api.put<{ success: boolean; message?: string }>(
+                                  `/reservas/${r.reserva_id}/asistida`,
+                                  {},
+                                  token
+                                );
 
-                            await api.put(
-                              `/reservas/${r.reserva_id}/no-asistida`,
-                              { estado: "no_asistida" },
-                              token
-                            );
+                                if (!res.success) {
+                                  setAsistenciaError(res.message ?? "No se pudo marcar la asistencia");
+                                  return;
+                                }
 
-                            setReservas((prev) =>
-                              prev.map((x) =>
-                                x.reserva_id === r.reserva_id
-                                  ? { ...x, estado: "no_asistida" }
-                                  : x
-                              )
-                            );
+                                setReservas((prev) =>
+                                  prev.map((x) =>
+                                    x.reserva_id === r.reserva_id
+                                      ? { ...x, estado: "finalizada" }
+                                      : x
+                                  )
+                                );
 
-                            setSelectedReserva((prev) =>
-                              prev ? { ...prev, estado: "no_asistida" } : null
-                            );
-                          }}
-                        >
-                          No asistió
-                        </button>
+                                setSelectedReserva((prev) =>
+                                  prev ? { ...prev, estado: "finalizada" } : null
+                                );
+
+                                setAsistio(true);
+                              } catch (e: any) {
+                                setAsistenciaError(e.message ?? "No se pudo marcar la asistencia");
+                              } finally {
+                                setMarcandoAsistencia(false);
+                              }
+                            }}
+                          >
+                            {marcandoAsistencia ? "Marcando..." : "Marcar asistencia"}
+                          </button>
+
+                          <button
+                            disabled={marcandoAsistencia}
+                            className="flex-1 bg-red-600 text-white rounded py-1.5 text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                            onClick={async () => {
+                              const r = selectedReserva;
+
+                              await api.put(
+                                `/reservas/${r.reserva_id}/no-asistida`,
+                                { estado: "no_asistida" },
+                                token
+                              );
+
+                              setReservas((prev) =>
+                                prev.map((x) =>
+                                  x.reserva_id === r.reserva_id
+                                    ? { ...x, estado: "no_asistida" }
+                                    : x
+                                )
+                              );
+
+                              setSelectedReserva((prev) =>
+                                prev ? { ...prev, estado: "no_asistida" } : null
+                              );
+                            }}
+                          >
+                            No asistió
+                          </button>
+                        </div>
+                        {asistenciaError && (
+                          <p className="text-xs text-red-600">{asistenciaError}</p>
+                        )}
                       </div>
                   )}
 
