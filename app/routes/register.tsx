@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
 
 type Role = "professional" | "client";
@@ -13,7 +12,6 @@ export default function Register() {
   const [password_confirmation, setPasswordConfirmation] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,16 +23,14 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const data = await api.post<{ token: string; user: any }>("/register", {
+      await api.post<{ success: boolean; message: string; user: any }>("/register", {
         name,
         email,
         password,
         password_confirmation,
         role,
       });
-      login(data.token, data.user);
-      if (data.user.role === "professional") navigate("/professional");
-      else navigate("/client");
+      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err: any) {
       setError(err.message ?? "Error al registrarse");
     } finally {

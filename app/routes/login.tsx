@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "~/context/AuthContext";
-import { api, APP_BASE_URL } from "~/lib/api";
+import { api, APP_BASE_URL, ApiError } from "~/lib/api";
 
 type Role = "professional" | "client";
 
@@ -28,6 +28,10 @@ export default function Login() {
       else if (data.user.role === "admin") navigate("/admin");
       else navigate("/client");
     } catch (err: any) {
+      if (err instanceof ApiError && err.body?.email_not_verified) {
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+        return;
+      }
       setError(err.message ?? "Credenciales incorrectas");
     } finally {
       setLoading(false);

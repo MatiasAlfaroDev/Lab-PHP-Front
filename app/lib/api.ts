@@ -1,5 +1,17 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
 
+// Error de API que conserva el body completo de la respuesta, para que los
+// callers puedan inspeccionar flags adicionales (ej. email_not_verified).
+export class ApiError extends Error {
+  status: number;
+  body: any;
+  constructor(message: string, status: number, body?: any) {
+    super(message);
+    this.status = status;
+    this.body = body;
+  }
+}
+
 // Root URL of the backend (without the /api suffix), for non-API routes
 // like OAuth redirects and broadcasting auth.
 export const APP_BASE_URL = BASE_URL.replace(/\/api\/?$/, "");
@@ -66,9 +78,9 @@ async function doRequest<T>(
       // Laravel validation: { message, errors: { field: [msg] } }
       if (err?.errors) {
         const first = Object.values(err.errors as Record<string, string[]>)[0];
-        throw new Error(Array.isArray(first) ? first[0] : err.message ?? `Error ${res.status}`);
+        throw new ApiError(Array.isArray(first) ? first[0] : err.message ?? `Error ${res.status}`, res.status, err);
       }
-      throw new Error(err?.message ?? err?.error ?? `Error ${res.status}: ${res.statusText || "Request failed"}`);
+      throw new ApiError(err?.message ?? err?.error ?? `Error ${res.status}: ${res.statusText || "Request failed"}`, res.status, err);
     }
     return (await res.json()) as T;
   } catch (e) {
