@@ -4,6 +4,7 @@ export default [
   index("routes/home.tsx"),
   route("login", "routes/login.tsx"),
   route("register", "routes/register.tsx"),
+  route("verify-email", "routes/verify-email.tsx"),
   route("auth/google/callback", "routes/auth.google.callback.tsx"),
   route("client", "routes/client/_layout.tsx", [
     index("routes/client/dashboard.tsx"),
