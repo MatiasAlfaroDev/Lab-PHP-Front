@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { ProfessionalSidebar } from "~/components/ProfessionalSidebar";
 import { NotificationProvider, useGlobalNotifications } from "~/context/NotificationContext";
+import { NotificationButton } from "~/components/NotificationButton";
+
 
 export default function ProfessionalLayout() {
   const { user, isLoading } = useAuth();
@@ -83,6 +85,12 @@ export default function ProfessionalLayout() {
           </span>
           <span className="font-display text-sidebar-text text-lg tracking-tight">Cita.Pro</span>
         </div>
+
+        <div className="flex items-center gap-3">
+          <NotificationButton 
+            notificationsPath="/professional/notifications"
+        />
+      
         <button
           onClick={() => setMobileOpen(true)}
           className="text-sidebar-text p-1.5 rounded-lg hover:bg-sidebar-hover transition-colors"
@@ -90,7 +98,8 @@ export default function ProfessionalLayout() {
         >
           <MenuIcon className="w-5 h-5" />
         </button>
-      </div>
+        </div>
+        </div>
 
       <div className="flex flex-1 min-h-0">
         <ProfessionalSidebar
@@ -152,18 +161,9 @@ function HeaderControls() {
         )}
       </div>
 
-      <button
-        onClick={() => navigate("/professional/notifications")}
-        title="Notificaciones"
-        className="relative text-sidebar-muted hover:text-sidebar-text transition-colors cursor-pointer"
-      >
-        <BellIcon className="w-5 h-5" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] leading-none px-1 py-0.5 rounded-full">
-            {unreadCount}
-          </span>
-        )}
-      </button>
+     <NotificationButton 
+       notificationsPath="/professional/notifications"
+/>
     </div>
   );
 }

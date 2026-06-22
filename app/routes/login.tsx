@@ -9,7 +9,6 @@ export default function Login() {
   const [role, setRole] = useState<Role>("professional");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -138,17 +137,6 @@ export default function Login() {
                 className="w-full px-4 py-3 border border-border bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-ink rounded"
               />
             </div>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="w-4 h-4 accent-ink"
-              />
-              <span className="text-sm text-ink">Mantener sesión iniciada</span>
-            </label>
-
             {error && (
               <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{error}</p>
             )}
