@@ -13,6 +13,11 @@ interface Reserva {
   servicio?: { nombre: string; modalidad?: string; duracion?: number };
   cliente_nombre?: string;
   modalidad?: string;
+  pago?: {
+    pago_id?: number;
+    estado: "pendiente" | "aprobado" | "rechazado" | "fallido";
+    metodo?: "paypal" | "presencial";
+  };
 }
 
 interface Resumen {
@@ -205,6 +210,8 @@ export default function ProfessionalDashboard() {
   const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
   const [resumen, setResumen] = useState<Resumen>({ total_mes: 0, pagado: 0, pendiente: 0 });
   const [agendaStart, setAgendaStart] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
+  const [selectedReserva, setSelectedReserva] = useState<Reserva | null>(null);
+  const [asistenciaMap, setAsistenciaMap] = useState<Record<number, boolean>>({});
 
   const loadDashboard = async () => {
     if (!token || !user?.id) return;
@@ -448,7 +455,8 @@ export default function ProfessionalDashboard() {
                         <div
                           key={r.reserva_id}
                           title={`${r.cliente_nombre} · ${r.servicio?.nombre ?? ""}`}
-                          className={`absolute left-0.5 right-0.5 ${color} rounded-r px-1.5 py-1 overflow-hidden transition-all hover:brightness-95`}
+                          onClick={() => setSelectedReserva(r)}
+                          className={`absolute left-0.5 right-0.5 cursor-pointer ${color} rounded-r px-1.5 py-1 overflow-hidden transition-all hover:brightness-95`}
                           style={{ top: topH * CELL, height: Math.max(durH * CELL - 2, 22) }}
                         >
                           <p className="text-xs font-bold text-ink truncate leading-tight">{r.cliente_nombre}</p>
@@ -629,6 +637,106 @@ export default function ProfessionalDashboard() {
           </div>
         </div>
       )}
+      {selectedReserva && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="bg-surface w-full max-w-md rounded-2xl border border-border p-4">
+      
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-sm font-semibold text-ink">
+          Detalle de reserva
+        </h3>
+
+        <button
+          onClick={() => setSelectedReserva(null)}
+          className="text-ink-muted hover:text-ink"
+        >
+          <XIcon />
+        </button>
+      </div>
+
+      <div className="space-y-2 text-sm">
+        <p><b>Cliente:</b> {selectedReserva.cliente_nombre}</p>
+        <p><b>Servicio:</b> {selectedReserva.servicio?.nombre}</p>
+        <p><b>Fecha:</b> {selectedReserva.fecha}</p>
+        <p><b>Hora:</b> {selectedReserva.hora?.slice(0,5)}</p>
+        <p><b>Estado:</b> {selectedReserva.estado}</p>
+        {!asistenciaMap[selectedReserva.reserva_id] &&
+          (selectedReserva.estado === "en_curso" ||
+          selectedReserva.estado === "finalizada") && (
+          <div className="flex gap-2 mt-3">
+            <button
+              className="flex-1 bg-red-600 text-white rounded py-1.5 text-xs font-semibold"
+              onClick={async () => {
+                const r = selectedReserva;
+
+                await api.put(
+                  `/reservas/${r.reserva_id}/no-asistida`,
+                  { estado: "no_asistida" },
+                  token
+                );
+
+                setSelectedReserva((prev) =>
+                  prev ? { ...prev, estado: "no_asistida" } : null
+                );
+              }}
+            >
+              No asistió
+            </button>
+          </div>
+        )}
+        {(
+          ["en_curso", "finalizada", "no_asistida"].includes(selectedReserva.estado) ||
+          selectedReserva.pago?.metodo === "presencial"
+        ) && (
+          <div className="flex gap-2 mt-3">
+            <button
+              className={`flex-1 rounded py-1.5 text-xs font-semibold transition-colors ${
+                selectedReserva.pago?.estado === "aprobado"
+                  ? "bg-green-600 text-white"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
+              onClick={async () => {
+                const r = selectedReserva;
+
+                await api.post(`/reservas/${r.reserva_id}/pago-presencial`, {}, token);
+
+                setAllReservas((prev) =>
+                  prev.map((res) =>
+                    res.reserva_id === r.reserva_id
+                      ? {
+                          ...res,
+                          pago: {
+                            ...res.pago,
+                            estado: "aprobado",
+                          },
+                        }
+                      : res
+                  )
+                );
+
+                setSelectedReserva((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        pago: {
+                          ...prev.pago!,
+                          estado: "aprobado",
+                        },
+                      }
+                    : null
+                );
+              }}
+            >
+              {selectedReserva.pago?.estado === "aprobado"
+                ? "Pagado"
+                : "Pago"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

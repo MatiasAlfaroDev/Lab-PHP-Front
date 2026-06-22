@@ -198,6 +198,7 @@ export default function ProfessionalDetail() {
   const [searchParams] = useSearchParams();
   const compraItemId = searchParams.get("compraItem");
   const reprogramarId = searchParams.get("reprogramar");
+  const servicioPaqueteId = searchParams.get("servicio");
   const isReprogramando = !!reprogramarId;
   const [reprogramError, setReprogramError] = useState("");
   const [reprogramado, setReprogramado] = useState(false);
@@ -252,23 +253,27 @@ export default function ProfessionalDetail() {
         if (res.success) {
           setProfile(res.data);
           const servicios = res.data.profesional?.servicios ?? [];
-          const seleccionado =
-            servicios.find(
-              s => s.servicio_id === Number(servicioIdPreseleccionado)
-            ) ?? servicios[0] ?? null;
+          const seleccionado: Servicio | null =
+            servicioPaqueteId
+              ? servicios.find(
+                  s => s.servicio_id === Number(servicioPaqueteId)
+                ) ?? null
+              : servicios.find(
+                  s => s.servicio_id === Number(servicioIdPreseleccionado)
+                ) ?? servicios[0] ?? null;
 
-          if (!reprogramarId) {
-            setSelectedService(seleccionado);
-          }
+                  if (!reprogramarId) {
+                    setSelectedService(seleccionado);
+                  }
         } else {
           setProfileError("Profesional no encontrado");
         }
       })
       .catch((e) => setProfileError(e.message))
       .finally(() => setLoadingProfile(false));
-  }, [id, servicioIdPreseleccionado]);
+  }, [id, servicioIdPreseleccionado, servicioPaqueteId, reprogramarId]);
 
-  useEffect(() => {
+useEffect(() => {
     if (!reprogramarId) return;
 
     setLoadingReserva(true);
@@ -387,7 +392,11 @@ export default function ProfessionalDetail() {
   ? servicios.filter(
       s => s.servicio_id === reservaOriginal?.servicio_id
     )
-  : servicios;
+  : servicioPaqueteId
+    ? servicios.filter(
+        s => s.servicio_id === Number(servicioPaqueteId)
+      )
+    : servicios;
 
   return (
     <>  

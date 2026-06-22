@@ -9,7 +9,7 @@ const STEPS = [
   "Confirmación"
 ];
 
-type PayMethod = "card" | "mercadopago";
+type PayMethod = "card" ;
 
 export default function PackagePay() {
 const { id } = useParams();
@@ -125,7 +125,6 @@ const [loading, setLoading] = useState(false);
         {/* Payment form */}
         <div className="lg:col-span-3 space-y-4">
           <h2 className="text-lg font-semibold text-ink">Método de pago</h2>
-          <p className="text-sm text-ink-muted">Elegí cómo abonar tu paquete. El cobro se realiza al confirmar.</p>
 
           {/* Methods */}
           <div className="space-y-3">
@@ -145,68 +144,12 @@ const [loading, setLoading] = useState(false);
               />
               <span className="text-lg">💳</span>
               <div>
-                <p className="text-sm font-medium text-ink">Tarjeta de crédito o débito</p>
-                <p className="text-xs text-ink-muted">Visa, Mastercard, Amex</p>
+                <p className="text-sm font-medium text-ink">PayPal</p>
+                <p className="text-xs text-ink-muted">Visa, Mastercard</p>
               </div>
             </label>
 
-            {/* MercadoPago */}
-            <label
-              className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-colors ${
-                method === "mercadopago" ? "border-primary bg-primary-soft/20" : "border-border bg-surface hover:bg-bg"
-              }`}
-            >
-              <input
-                type="radio"
-                name="method"
-                value="mercadopago"
-                checked={method === "mercadopago"}
-                onChange={() => setMethod("mercadopago")}
-                className="accent-primary"
-              />
-              <span className="text-lg">$</span>
-              <div>
-                <p className="text-sm font-medium text-ink">Mercado Pago</p>
-                <p className="text-xs text-ink-muted">Saldo, tarjetas y transferencia</p>
-              </div>
-            </label>
-
-          {/* Card form */}
-          {method === "card" && (
-            <div className="bg-surface border border-border rounded-2xl p-5 space-y-4">
-              <h3 className="text-sm font-semibold text-ink">Datos de la tarjeta</h3>
-              <div>
-                <label className="block text-xs text-ink-muted mb-1">Número</label>
-                <input
-                  defaultValue="4242 4242 4242 4242"
-                  className="w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1">Vencimiento</label>
-                  <input
-                    defaultValue="08/27"
-                    className="w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1">CVV</label>
-                  <input
-                    defaultValue="•••"
-                    className="w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-ink-muted mb-1">Titular</label>
-                  <input
-                    defaultValue="Lucía Pérez"
-                    className="w-full border border-border rounded-xl px-4 py-2.5 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          
         </div>
           <div className="flex items-center gap-4 pt-2">
             <Link
@@ -250,23 +193,13 @@ const [loading, setLoading] = useState(false);
               ))}
             </div>
             <div className="border-t border-border mt-4 pt-4 space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-ink-muted">Subtotal</span>
-                <span className="text-ink">${Number(paquete?.subtotal).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-ink-muted">Comisión plataforma</span>
-                <span className="text-ink">incluida</span>
-              </div>
+            
               <div className="flex justify-between text-base font-semibold mt-2">
                 <span className="text-ink">Total</span>
                 <span className="font-display italic text-2xl text-ink">{Number(paquete?.precio_total).toFixed(2)}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-4 text-xs text-ink-muted">
-              <span>○</span>
-              <span>Pago seguro · cifrado SSL</span>
-            </div>
+            
           </div>
 
           <div className="bg-surface border border-border rounded-2xl p-4">
