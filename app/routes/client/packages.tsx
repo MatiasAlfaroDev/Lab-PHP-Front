@@ -177,7 +177,7 @@ export default function Packages() {
                             <button
                               onClick={() =>
                                 navigate(
-                                  `/client/professional/${item.item_paquete.servicio.profesional_id}?compraItem=${item.compra_item_paquete_id}`
+                                  `/client/professional/${item.item_paquete.servicio.profesional_id}?compraItem=${item.compra_item_paquete_id}&servicio=${item.item_paquete.servicio.servicio_id}`
                                 )
                               }
                               className="bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-hover"
