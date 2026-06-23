@@ -278,7 +278,7 @@ export default function ServicePackages() {
         <div className="bg-surface border-t border-border w-full overflow-x-auto">
           <div
             className="grid px-5 py-2 border-b border-border bg-surface"
-            style={{ gridTemplateColumns: "2fr 130px 100px 72px" }}
+            style={{ gridTemplateColumns: "minmax(180px, 3fr) 120px 90px 72px" }}
           >
             {["Nombre", "Servicios", "Precio", ""].map((h) => (
               <div key={h} className="text-sm text-ink-muted">{h}</div>
@@ -291,7 +291,7 @@ export default function ServicePackages() {
             <div
               key={row}
               className={`grid px-5 py-4 items-center ${row > 0 ? "border-t border-border" : ""}`}
-              style={{ gridTemplateColumns: "2fr 130px 100px 72px" }}
+              style={{ gridTemplateColumns: "minmax(180px, 3fr) 120px 90px 72px" }}
             >
               <div className="h-3.5 w-32 rounded bg-border animate-pulse" />
               <div className="h-5 w-48 rounded bg-border animate-pulse" />
@@ -331,10 +331,11 @@ export default function ServicePackages() {
       {/* Tabla */}
       {!loading && filteredPaquetes.length > 0 && (
         <div className="bg-surface border-t border-border w-full overflow-x-auto">
+          <div className="min-w-max">
           {/* Cabecera */}
           <div
             className="grid px-5 py-2 border-b border-border bg-surface"
-            style={{ gridTemplateColumns: "2fr 130px 100px 72px" }}
+            style={{ gridTemplateColumns: "minmax(180px, 3fr) 120px 90px 72px" }}
           >
             {["Nombre", "Servicios", "Precio", ""].map((h) => (
               <div key={h} className="text-sm text-ink-muted">{h}</div>
@@ -343,7 +344,9 @@ export default function ServicePackages() {
 
           {/* Sección */}
           <div className="px-5 py-2 border-b border-border bg-sidebar">
-            <span className="text-sm font-bold text-ink">Paquetes</span>
+            <div className="min-w-max">
+              <span className="text-sm font-bold text-ink">Paquetes</span>
+            </div>
           </div>
 
           {filteredPaquetes.map((pkg, idx) => {
@@ -371,7 +374,7 @@ export default function ServicePackages() {
                   className={`grid px-5 py-4 items-center ${
                     isEditing || isDeleting ? "bg-accent/10" : ""
                   }`}
-                  style={{ gridTemplateColumns: "2fr 130px 100px 72px" }}
+                  style={{ gridTemplateColumns: "minmax(180px, 3fr) 120px 90px 72px" }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span
@@ -443,6 +446,7 @@ export default function ServicePackages() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </div>

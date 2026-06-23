@@ -15,7 +15,7 @@ const badgeCls: Record<string, string> = {
   pendiente: "badge badge-pendiente",
 };
 
-const COLS = "110px 2fr 2fr 110px 110px";
+const COLS = "120px minmax(160px, 3fr) minmax(180px, 4fr) 120px 120px";
 
 export default function Payments() {
   const { token, user } = useAuth();
@@ -59,6 +59,7 @@ export default function Payments() {
       {/* Loading */}
       {loading && (
         <div className="bg-surface border-t border-border w-full overflow-x-auto">
+          <div className="min-w-max">
           <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: COLS }}>
             {["Fecha", "Cliente", "Servicio", "Monto", "Estado"].map((h) => (
               <div key={h} className="text-sm text-ink-muted">{h}</div>
@@ -80,6 +81,7 @@ export default function Payments() {
               <div className="h-5 w-16 rounded bg-border animate-pulse" />
             </div>
           ))}
+          </div>
         </div>
       )}
 
@@ -103,6 +105,7 @@ export default function Payments() {
       {/* Tabla */}
       {!loading && filteredTransactions.length > 0 && (
         <div className="bg-surface border-t border-border w-full overflow-x-auto">
+          <div className="min-w-max">
           {/* Cabecera */}
           <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: COLS }}>
             {["Fecha", "Cliente", "Servicio", "Monto", "Estado"].map((h) => (
@@ -112,7 +115,9 @@ export default function Payments() {
 
           {/* Sección */}
           <div className="px-5 py-2 border-b border-border bg-sidebar">
-            <span className="text-sm font-bold text-ink">Pagos</span>
+            <div className="min-w-max">
+              <span className="text-sm font-bold text-ink">Pagos</span>
+            </div>
           </div>
 
           {filteredTransactions.map((t, idx) => (
@@ -123,13 +128,14 @@ export default function Payments() {
             >
               <span className="text-sm text-ink-muted whitespace-nowrap">{t.fecha}</span>
               <span className="text-sm text-ink truncate">{t.cliente}</span>
-              <span className="text-sm text-ink-muted truncate">{t.servicio}</span>
+              <span className="text-sm text-ink-muted break-words whitespace-normal">{t.servicio}</span>
               <span className="text-sm text-ink">${t.monto}</span>
               <span>
                 <span className={badgeCls[t.estado] ?? "badge"}>{t.estado.toUpperCase()}</span>
               </span>
             </div>
           ))}
+          </div>
         </div>
       )}
     </div>
