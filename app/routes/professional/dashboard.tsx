@@ -67,6 +67,21 @@ const ESTADO_COLOR: Record<string, string> = {
   finalizada: "bg-gray-50    border-l-4 border-gray-300",
 };
 
+// Ventana de acceso a la videollamada: desde 10 min antes hasta que termine la sesión.
+function puedeEntrarVideollamada(r: Reserva) {
+  const modalidad = r.modalidad ?? r.servicio?.modalidad;
+  if (modalidad !== "virtual") return false;
+  if (["cancelada", "no_asistida"].includes(r.estado)) return false;
+
+  const ahora = new Date();
+  const inicio = new Date(`${r.fecha}T${r.hora}`);
+  const fin = new Date(inicio);
+  fin.setMinutes(fin.getMinutes() + (r.servicio?.duracion ?? 60));
+  const desde = new Date(inicio);
+  desde.setMinutes(desde.getMinutes() - 10);
+  return ahora >= desde && ahora <= fin;
+}
+
 // ── Skeleton ───────────────────────────────────────────────────────────────
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-border/60 ${className}`} />;
@@ -660,6 +675,15 @@ export default function ProfessionalDashboard() {
         <p><b>Fecha:</b> {selectedReserva.fecha}</p>
         <p><b>Hora:</b> {selectedReserva.hora?.slice(0,5)}</p>
         <p><b>Estado:</b> {selectedReserva.estado}</p>
+        {puedeEntrarVideollamada(selectedReserva) && (
+          <Link
+            to={`/videollamada/${selectedReserva.reserva_id}`}
+            className="flex items-center justify-center gap-1.5 bg-accent hover:bg-accent-hover text-white rounded py-1.5 text-xs font-semibold transition-colors mt-1"
+          >
+            <VideoIcon />
+            Unirse a la videollamada
+          </Link>
+        )}
         {!asistenciaMap[selectedReserva.reserva_id] &&
           (selectedReserva.estado === "en_curso" ||
           selectedReserva.estado === "finalizada") && (
@@ -746,6 +770,14 @@ function PlusIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
       <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+function VideoIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="23 7 16 12 23 17 23 7" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
     </svg>
   );
 }
