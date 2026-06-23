@@ -389,10 +389,17 @@ export default function Discover() {
                             </span>
                           </div>
                           <div className="flex items-end justify-between">
-                            {servicio.profesional?.ubicacion ? (
+                            {servicio.direccion ? (
                               <div className="flex items-center gap-1">
                                 <ion-icon name="location-outline" style={{ fontSize: "13px", color: "var(--color-ink-muted)" }} />
-                                <p className="text-sm font-medium text-ink">{servicio.profesional.ubicacion}</p>
+                                <p className="text-sm font-medium text-ink">{servicio.direccion
+                                  ?.split(",")
+                                  .map(p => p.trim())
+                                  .slice(0, 3)
+                                  .reduce((acc, _, i, arr) => {
+                                    const [num, calle, ciudad] = arr;
+                                    return `${calle} ${num}, ${ciudad}`;
+                                  }, "")}</p>
                               </div>
                             ) : <div />}
                             <div className="text-right">
