@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { ClientSidebar } from "~/components/ClientSidebar";
 import { NotificationProvider, useGlobalNotifications } from "~/context/NotificationContext";
+import { NotificationButton } from "~/components/NotificationButton";
 
 export default function ClientLayout() {
   const { user, isLoading } = useAuth();
@@ -79,6 +80,11 @@ export default function ClientLayout() {
             </span>
             <span className="font-display text-sidebar-text text-lg tracking-tight">Cita.Pro</span>
           </div>
+            <div className="flex items-center gap-3">
+
+          <NotificationButton
+            notificationsPath="/client/notifications"
+           />
           <button
             onClick={() => setMobileOpen(true)}
             className="text-sidebar-text p-1.5 rounded-lg hover:bg-sidebar-hover transition-colors"
@@ -86,6 +92,7 @@ export default function ClientLayout() {
           >
             <MenuIcon className="w-5 h-5" />
           </button>
+        </div>
         </div>
 
         <div className="flex flex-1 min-h-0">
@@ -153,25 +160,14 @@ function HeaderControls() {
         )}
       </div>
 
-      <button
-        onClick={() => navigate("/client/notifications")}
-        title="Notificaciones"
-        className="relative text-sidebar-muted hover:text-sidebar-text transition-colors cursor-pointer"
-      >
-        <BellIcon className="w-5 h-5" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] leading-none px-1 py-0.5 rounded-full">
-            {unreadCount}
-          </span>
-        )}
-      </button>
+      <NotificationButton 
+        notificationsPath="/client/notifications"
+      />
     </div>
   );
 }
 
-function BellIcon({ className }: { className?: string }) {
-  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 1-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>;
-}
+
 function LogoutIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
 }

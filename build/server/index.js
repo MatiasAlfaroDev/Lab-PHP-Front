@@ -70,6 +70,15 @@ function handleRequest(request, responseStatusCode, responseHeaders, routerConte
 //#endregion
 //#region app/lib/api.ts
 var BASE_URL = "http://localhost:8000/api";
+var ApiError = class extends Error {
+	status;
+	body;
+	constructor(message, status, body) {
+		super(message);
+		this.status = status;
+		this.body = body;
+	}
+};
 var APP_BASE_URL = BASE_URL.replace(/\/api\/?$/, "");
 var cache = /* @__PURE__ */ new Map();
 var TTL = 6e4;
@@ -115,9 +124,9 @@ async function doRequest(path, options, token, method) {
 			const err = await res.json().catch(() => null);
 			if (err?.errors) {
 				const first = Object.values(err.errors)[0];
-				throw new Error(Array.isArray(first) ? first[0] : err.message ?? `Error ${res.status}`);
+				throw new ApiError(Array.isArray(first) ? first[0] : err.message ?? `Error ${res.status}`, res.status, err);
 			}
-			throw new Error(err?.message ?? err?.error ?? `Error ${res.status}: ${res.statusText || "Request failed"}`);
+			throw new ApiError(err?.message ?? err?.error ?? `Error ${res.status}: ${res.statusText || "Request failed"}`, res.status, err);
 		}
 		return await res.json();
 	} catch (e) {
@@ -463,6 +472,10 @@ var login_default = UNSAFE_withComponentProps(function Login() {
 			else if (data.user.role === "admin") navigate("/admin");
 			else navigate("/client");
 		} catch (err) {
+			if (err instanceof ApiError && err.body?.email_not_verified) {
+				navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+				return;
+			}
 			setError(err.message ?? "Credenciales incorrectas");
 		} finally {
 			setLoading(false);
@@ -696,7 +709,6 @@ var register_default = UNSAFE_withComponentProps(function Register() {
 	const [password_confirmation, setPasswordConfirmation] = useState("");
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
-	const { login } = useAuth();
 	const navigate = useNavigate();
 	const handleSubmit = async (e) => {
 		e.preventDefault();
@@ -707,16 +719,14 @@ var register_default = UNSAFE_withComponentProps(function Register() {
 		}
 		setLoading(true);
 		try {
-			const data = await api.post("/register", {
+			await api.post("/register", {
 				name,
 				email,
 				password,
 				password_confirmation,
 				role
 			});
-			login(data.token, data.user);
-			if (data.user.role === "professional") navigate("/professional");
-			else navigate("/client");
+			navigate(`/verify-email?email=${encodeURIComponent(email)}`);
 		} catch (err) {
 			setError(err.message ?? "Error al registrarse");
 		} finally {
@@ -873,6 +883,149 @@ var register_default = UNSAFE_withComponentProps(function Register() {
 				]
 			})
 		})]
+	});
+});
+//#endregion
+//#region app/routes/verify-email.tsx
+var verify_email_exports = /* @__PURE__ */ __exportAll({ default: () => verify_email_default });
+var RESEND_COOLDOWN = 45;
+var verify_email_default = UNSAFE_withComponentProps(function VerifyEmail() {
+	const [searchParams] = useSearchParams();
+	const [email, setEmail] = useState(searchParams.get("email") ?? "");
+	const [code, setCode] = useState("");
+	const [error, setError] = useState("");
+	const [info, setInfo] = useState("");
+	const [loading, setLoading] = useState(false);
+	const [resending, setResending] = useState(false);
+	const [cooldown, setCooldown] = useState(0);
+	const { login } = useAuth();
+	const navigate = useNavigate();
+	const cooldownRef = useRef(null);
+	useEffect(() => {
+		return () => {
+			if (cooldownRef.current) clearInterval(cooldownRef.current);
+		};
+	}, []);
+	const startCooldown = () => {
+		setCooldown(RESEND_COOLDOWN);
+		cooldownRef.current = setInterval(() => {
+			setCooldown((prev) => {
+				if (prev <= 1) {
+					if (cooldownRef.current) clearInterval(cooldownRef.current);
+					return 0;
+				}
+				return prev - 1;
+			});
+		}, 1e3);
+	};
+	const handleVerify = async (e) => {
+		e.preventDefault();
+		setError("");
+		setInfo("");
+		setLoading(true);
+		try {
+			const data = await api.post("/verify-email", {
+				email,
+				code
+			});
+			login(data.token, data.user);
+			if (data.user.role === "professional") navigate("/professional");
+			else if (data.user.role === "admin") navigate("/admin");
+			else navigate("/client");
+		} catch (err) {
+			setError(err.message ?? "Código de verificación inválido o vencido");
+		} finally {
+			setLoading(false);
+		}
+	};
+	const handleResend = async () => {
+		setError("");
+		setInfo("");
+		setResending(true);
+		try {
+			setInfo((await api.post("/resend-verification-code", { email })).message ?? "Código de verificación reenviado");
+			startCooldown();
+		} catch (err) {
+			setError(err.message ?? "No se pudo reenviar el código");
+		} finally {
+			setResending(false);
+		}
+	};
+	return /* @__PURE__ */ jsx("div", {
+		className: "min-h-screen flex items-center justify-center bg-bg px-6 py-12",
+		children: /* @__PURE__ */ jsxs("div", {
+			className: "w-full max-w-md",
+			children: [
+				/* @__PURE__ */ jsx("p", {
+					className: "text-sm text-ink-muted mb-1",
+					children: /* @__PURE__ */ jsx(Link, {
+						to: "/login",
+						className: "text-primary underline font-medium",
+						children: "← Volver a iniciar sesión"
+					})
+				}),
+				/* @__PURE__ */ jsx("h2", {
+					className: "font-display italic text-4xl text-ink mb-1",
+					children: "Verificar correo"
+				}),
+				/* @__PURE__ */ jsx("p", {
+					className: "text-ink-muted mb-8",
+					children: "Te enviamos un código de 6 dígitos a tu correo. Ingresalo para activar tu cuenta."
+				}),
+				/* @__PURE__ */ jsxs("form", {
+					onSubmit: handleVerify,
+					className: "space-y-4",
+					children: [
+						/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+							className: "block text-sm font-medium text-ink mb-1",
+							children: "Email"
+						}), /* @__PURE__ */ jsx("input", {
+							type: "email",
+							value: email,
+							onChange: (e) => setEmail(e.target.value),
+							required: true,
+							placeholder: "tu@email.com",
+							className: "w-full px-4 py-3 rounded-xl border border-border bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-primary"
+						})] }),
+						/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("label", {
+							className: "block text-sm font-medium text-ink mb-1",
+							children: "Código de verificación"
+						}), /* @__PURE__ */ jsx("input", {
+							type: "text",
+							inputMode: "numeric",
+							pattern: "[0-9]*",
+							maxLength: 6,
+							value: code,
+							onChange: (e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6)),
+							required: true,
+							placeholder: "123456",
+							className: "w-full px-4 py-3 rounded-xl border border-border bg-surface text-ink placeholder-ink-muted text-center text-2xl tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-primary"
+						})] }),
+						error && /* @__PURE__ */ jsx("p", {
+							className: "text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2",
+							children: error
+						}),
+						info && /* @__PURE__ */ jsx("p", {
+							className: "text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2",
+							children: info
+						}),
+						/* @__PURE__ */ jsx("button", {
+							type: "submit",
+							disabled: loading || code.length !== 6,
+							className: "w-full bg-primary hover:bg-primary-hover text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-60",
+							children: loading ? "Verificando..." : "Verificar →"
+						})
+					]
+				}),
+				/* @__PURE__ */ jsx("button", {
+					type: "button",
+					onClick: handleResend,
+					disabled: resending || cooldown > 0 || !email,
+					className: "w-full mt-4 border border-border text-ink font-medium py-3 rounded-xl transition-colors hover:bg-surface disabled:opacity-60",
+					children: cooldown > 0 ? `Reenviar código (${cooldown}s)` : resending ? "Reenviando..." : "Reenviar código"
+				})
+			]
+		})
 	});
 });
 //#endregion
@@ -1298,6 +1451,31 @@ function useGlobalNotifications() {
 	return ctx;
 }
 //#endregion
+//#region app/components/NotificationButton.tsx
+function NotificationButton() {
+	const navigate = useNavigate();
+	const { unreadCount } = useGlobalNotifications();
+	return /* @__PURE__ */ jsxs("button", {
+		onClick: () => navigate("/client/notifications"),
+		title: "Notificaciones",
+		className: "relative text-sidebar-muted hover:text-sidebar-text transition-colors cursor-pointer",
+		children: [/* @__PURE__ */ jsx(BellIcon$1, { className: "w-5 h-5" }), unreadCount > 0 && /* @__PURE__ */ jsx("span", {
+			className: "absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] leading-none px-1 py-0.5 rounded-full",
+			children: unreadCount
+		})]
+	});
+}
+function BellIcon$1({ className }) {
+	return /* @__PURE__ */ jsx("svg", {
+		className,
+		fill: "none",
+		viewBox: "0 0 24 24",
+		stroke: "currentColor",
+		strokeWidth: 2,
+		children: /* @__PURE__ */ jsx("path", { d: "M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 1-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" })
+	});
+}
+//#endregion
 //#region app/routes/client/_layout.tsx
 var _layout_exports$2 = /* @__PURE__ */ __exportAll({ default: () => _layout_default$2 });
 var _layout_default$2 = UNSAFE_withComponentProps(function ClientLayout() {
@@ -1360,24 +1538,28 @@ var _layout_default$2 = UNSAFE_withComponentProps(function ClientLayout() {
 				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "sticky top-0 z-30 flex md:hidden items-center justify-between bg-sidebar px-4 py-3 border-b border-sidebar-border shrink-0",
-					children: [/* @__PURE__ */ jsxs("div", {
-						className: "flex items-center gap-2",
-						children: [/* @__PURE__ */ jsx("span", {
-							className: "w-5 h-5 rounded-sm bg-primary flex items-center justify-center shrink-0",
-							children: /* @__PURE__ */ jsx("span", {
-								className: "text-white font-bold text-xs",
-								children: "+"
-							})
-						}), /* @__PURE__ */ jsx("span", {
-							className: "font-display text-sidebar-text text-lg tracking-tight",
-							children: "Cita.Pro"
-						})]
-					}), /* @__PURE__ */ jsx("button", {
-						onClick: () => setMobileOpen(true),
-						className: "text-sidebar-text p-1.5 rounded-lg hover:bg-sidebar-hover transition-colors",
-						"aria-label": "Abrir menú",
-						children: /* @__PURE__ */ jsx(MenuIcon$2, { className: "w-5 h-5" })
-					})]
+					children: [
+						/* @__PURE__ */ jsxs("div", {
+							className: "flex items-center gap-2",
+							children: [/* @__PURE__ */ jsx("span", {
+								className: "w-5 h-5 rounded-sm bg-primary flex items-center justify-center shrink-0",
+								children: /* @__PURE__ */ jsx("span", {
+									className: "text-white font-bold text-xs",
+									children: "+"
+								})
+							}), /* @__PURE__ */ jsx("span", {
+								className: "font-display text-sidebar-text text-lg tracking-tight",
+								children: "Cita.Pro"
+							})]
+						}),
+						/* @__PURE__ */ jsx(NotificationButton, {}),
+						/* @__PURE__ */ jsx("button", {
+							onClick: () => setMobileOpen(true),
+							className: "text-sidebar-text p-1.5 rounded-lg hover:bg-sidebar-hover transition-colors",
+							"aria-label": "Abrir menú",
+							children: /* @__PURE__ */ jsx(MenuIcon$2, { className: "w-5 h-5" })
+						})
+					]
 				}),
 				/* @__PURE__ */ jsxs("div", {
 					className: "flex flex-1 min-h-0",
@@ -1446,25 +1628,7 @@ function HeaderControls$2() {
 					children: [/* @__PURE__ */ jsx(LogoutIcon$4, { className: "w-4 h-4 text-ink-muted" }), " Cerrar sesión"]
 				})]
 			})] })]
-		}), /* @__PURE__ */ jsxs("button", {
-			onClick: () => navigate("/client/notifications"),
-			title: "Notificaciones",
-			className: "relative text-sidebar-muted hover:text-sidebar-text transition-colors cursor-pointer",
-			children: [/* @__PURE__ */ jsx(BellIcon$1, { className: "w-5 h-5" }), unreadCount > 0 && /* @__PURE__ */ jsx("span", {
-				className: "absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] leading-none px-1 py-0.5 rounded-full",
-				children: unreadCount
-			})]
-		})]
-	});
-}
-function BellIcon$1({ className }) {
-	return /* @__PURE__ */ jsx("svg", {
-		className,
-		fill: "none",
-		viewBox: "0 0 24 24",
-		stroke: "currentColor",
-		strokeWidth: 2,
-		children: /* @__PURE__ */ jsx("path", { d: "M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 1-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" })
+		}), /* @__PURE__ */ jsx(NotificationButton, {})]
 	});
 }
 function LogoutIcon$4({ className }) {
@@ -2328,9 +2492,9 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 					!loadingPkg && !errorPkg && filteredPkg.length > 0 && /* @__PURE__ */ jsx("div", {
 						className: "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6",
 						children: filteredPkg.map((paquete) => /* @__PURE__ */ jsxs("div", {
-							className: "bg-surface border border-border rounded-xl overflow-hidden shadow-sm",
+							className: "bg-surface border border-border rounded-xl overflow-hidden shadow-sm flex flex-col",
 							children: [/* @__PURE__ */ jsx("div", { className: "h-32 bg-gradient-to-r from-orange-200 to-pink-200" }), /* @__PURE__ */ jsxs("div", {
-								className: "p-5",
+								className: "p-5 flex flex-col flex-1",
 								children: [
 									/* @__PURE__ */ jsx("h3", {
 										className: "font-display text-xl text-ink mb-2",
@@ -2341,7 +2505,26 @@ var discover_default = UNSAFE_withComponentProps(function Discover() {
 										children: paquete.descripcion
 									}),
 									/* @__PURE__ */ jsxs("div", {
-										className: "mt-4 flex items-center justify-between",
+										className: "mt-4",
+										children: [/* @__PURE__ */ jsx("p", {
+											className: "text-sm font-medium text-ink mb-2",
+											children: "Incluye:"
+										}), /* @__PURE__ */ jsx("ul", {
+											className: "space-y-1",
+											children: paquete.servicios.map((servicio) => /* @__PURE__ */ jsxs("li", {
+												className: "text-sm text-ink-muted",
+												children: [
+													"• ",
+													servicio.nombre,
+													" (",
+													servicio.pivot?.cantidad_sesiones,
+													" sesiones)"
+												]
+											}, servicio.servicio_id))
+										})]
+									}),
+									/* @__PURE__ */ jsxs("div", {
+										className: "mt-auto pt-4 flex items-center justify-between",
 										children: [/* @__PURE__ */ jsxs("span", {
 											className: "font-bold text-2xl",
 											children: ["$", paquete.precio_total]
@@ -2845,6 +3028,7 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 	const [searchParams] = useSearchParams();
 	const compraItemId = searchParams.get("compraItem");
 	const reprogramarId = searchParams.get("reprogramar");
+	const servicioPaqueteId = searchParams.get("servicio");
 	const isReprogramando = !!reprogramarId;
 	const [reprogramError, setReprogramError] = useState("");
 	const [reprogramado, setReprogramado] = useState(false);
@@ -2879,11 +3063,16 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 			if (res.success) {
 				setProfile(res.data);
 				const servicios = res.data.profesional?.servicios ?? [];
-				const seleccionado = servicios.find((s) => s.servicio_id === Number(servicioIdPreseleccionado)) ?? servicios[0] ?? null;
+				const seleccionado = servicioPaqueteId ? servicios.find((s) => s.servicio_id === Number(servicioPaqueteId)) ?? null : servicios.find((s) => s.servicio_id === Number(servicioIdPreseleccionado)) ?? servicios[0] ?? null;
 				if (!reprogramarId) setSelectedService(seleccionado);
 			} else setProfileError("Profesional no encontrado");
 		}).catch((e) => setProfileError(e.message)).finally(() => setLoadingProfile(false));
-	}, [id, servicioIdPreseleccionado]);
+	}, [
+		id,
+		servicioIdPreseleccionado,
+		servicioPaqueteId,
+		reprogramarId
+	]);
 	useEffect(() => {
 		if (!reprogramarId) return;
 		setLoadingReserva(true);
@@ -2971,7 +3160,7 @@ var professional_$id_default = UNSAFE_withComponentProps(function ProfessionalDe
 	});
 	const { name, profesional } = profile;
 	const servicios = profesional?.servicios ?? [];
-	const serviciosAMostrar = isReprogramando ? servicios.filter((s) => s.servicio_id === reservaOriginal?.servicio_id) : servicios;
+	const serviciosAMostrar = isReprogramando ? servicios.filter((s) => s.servicio_id === reservaOriginal?.servicio_id) : servicioPaqueteId ? servicios.filter((s) => s.servicio_id === Number(servicioPaqueteId)) : servicios;
 	return /* @__PURE__ */ jsxs(Fragment, { children: [/* @__PURE__ */ jsx(ToastContainer, {
 		position: "top-right",
 		autoClose: 3500,
@@ -4177,15 +4366,18 @@ var packages_default = UNSAFE_withComponentProps(function Packages() {
 				const badge = !estadoPago ? {
 					label: "Sin pago",
 					cls: "bg-slate-50 text-slate-700 border-slate-200"
-				} : estadoPago === "aprobado" ? {
-					label: "Activo",
-					cls: "bg-green-50 text-green-700 border-green-200"
 				} : estadoPago === "pendiente" ? {
 					label: "Pendiente de pago",
 					cls: "bg-amber-50 text-amber-700 border-amber-200"
-				} : {
+				} : estadoPago !== "aprobado" ? {
 					label: "Pago rechazado",
 					cls: "bg-red-50 text-red-700 border-red-200"
+				} : restantes > 0 ? {
+					label: "Activo",
+					cls: "bg-green-50 text-green-700 border-green-200"
+				} : {
+					label: "Finalizado",
+					cls: "bg-gray-50 text-gray-700 border-gray-200"
 				};
 				return /* @__PURE__ */ jsxs("div", {
 					className: "bg-surface border border-border rounded-2xl p-4 flex items-start gap-4 mb-3",
@@ -4236,7 +4428,7 @@ var packages_default = UNSAFE_withComponentProps(function Packages() {
 												className: "text-sm text-ink-muted",
 												children: [item.sesiones_restantes, " sesiones restantes"]
 											})] }), estadoPago === "aprobado" && item.sesiones_restantes > 0 && /* @__PURE__ */ jsx("button", {
-												onClick: () => navigate(`/client/professional/${item.item_paquete.servicio.profesional_id}?compraItem=${item.compra_item_paquete_id}`),
+												onClick: () => navigate(`/client/professional/${item.item_paquete.servicio.profesional_id}?compraItem=${item.compra_item_paquete_id}&servicio=${item.item_paquete.servicio.servicio_id}`),
 												className: "bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-hover",
 												children: "Reservar sesión"
 											})]
@@ -7132,6 +7324,8 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 		d.setHours(0, 0, 0, 0);
 		return d;
 	});
+	const [selectedReserva, setSelectedReserva] = useState(null);
+	const [asistenciaMap, setAsistenciaMap] = useState({});
 	const loadDashboard = async () => {
 		if (!token || !user?.id) return;
 		try {
@@ -7411,7 +7605,8 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 										const color = ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border";
 										return /* @__PURE__ */ jsxs("div", {
 											title: `${r.cliente_nombre} · ${r.servicio?.nombre ?? ""}`,
-											className: `absolute left-0.5 right-0.5 ${color} rounded-r px-1.5 py-1 overflow-hidden transition-all hover:brightness-95`,
+											onClick: () => setSelectedReserva(r),
+											className: `absolute left-0.5 right-0.5 cursor-pointer ${color} rounded-r px-1.5 py-1 overflow-hidden transition-all hover:brightness-95`,
 											style: {
 												top: topH * CELL,
 												height: Math.max(durH * CELL - 2, 22)
@@ -7618,6 +7813,96 @@ var dashboard_default$1 = UNSAFE_withComponentProps(function ProfessionalDashboa
 						}, c.calificacion_id))
 					})]
 				})]
+			}),
+			selectedReserva && /* @__PURE__ */ jsx("div", {
+				className: "fixed inset-0 bg-black/40 flex items-center justify-center z-50",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "bg-surface w-full max-w-md rounded-2xl border border-border p-4",
+					children: [/* @__PURE__ */ jsxs("div", {
+						className: "flex justify-between items-center mb-4",
+						children: [/* @__PURE__ */ jsx("h3", {
+							className: "text-sm font-semibold text-ink",
+							children: "Detalle de reserva"
+						}), /* @__PURE__ */ jsx("button", {
+							onClick: () => setSelectedReserva(null),
+							className: "text-ink-muted hover:text-ink",
+							children: /* @__PURE__ */ jsx(XIcon, {})
+						})]
+					}), /* @__PURE__ */ jsxs("div", {
+						className: "space-y-2 text-sm",
+						children: [
+							/* @__PURE__ */ jsxs("p", { children: [
+								/* @__PURE__ */ jsx("b", { children: "Cliente:" }),
+								" ",
+								selectedReserva.cliente_nombre
+							] }),
+							/* @__PURE__ */ jsxs("p", { children: [
+								/* @__PURE__ */ jsx("b", { children: "Servicio:" }),
+								" ",
+								selectedReserva.servicio?.nombre
+							] }),
+							/* @__PURE__ */ jsxs("p", { children: [
+								/* @__PURE__ */ jsx("b", { children: "Fecha:" }),
+								" ",
+								selectedReserva.fecha
+							] }),
+							/* @__PURE__ */ jsxs("p", { children: [
+								/* @__PURE__ */ jsx("b", { children: "Hora:" }),
+								" ",
+								selectedReserva.hora?.slice(0, 5)
+							] }),
+							/* @__PURE__ */ jsxs("p", { children: [
+								/* @__PURE__ */ jsx("b", { children: "Estado:" }),
+								" ",
+								selectedReserva.estado
+							] }),
+							!asistenciaMap[selectedReserva.reserva_id] && (selectedReserva.estado === "en_curso" || selectedReserva.estado === "finalizada") && /* @__PURE__ */ jsx("div", {
+								className: "flex gap-2 mt-3",
+								children: /* @__PURE__ */ jsx("button", {
+									className: "flex-1 bg-red-600 text-white rounded py-1.5 text-xs font-semibold",
+									onClick: async () => {
+										const r = selectedReserva;
+										await api.put(`/reservas/${r.reserva_id}/no-asistida`, { estado: "no_asistida" }, token);
+										setSelectedReserva((prev) => prev ? {
+											...prev,
+											estado: "no_asistida"
+										} : null);
+									},
+									children: "No asistió"
+								})
+							}),
+							([
+								"en_curso",
+								"finalizada",
+								"no_asistida"
+							].includes(selectedReserva.estado) || selectedReserva.pago?.metodo === "presencial") && /* @__PURE__ */ jsx("div", {
+								className: "flex gap-2 mt-3",
+								children: /* @__PURE__ */ jsx("button", {
+									className: `flex-1 rounded py-1.5 text-xs font-semibold transition-colors ${selectedReserva.pago?.estado === "aprobado" ? "bg-green-600 text-white" : "bg-blue-600 text-white hover:bg-blue-700"}`,
+									onClick: async () => {
+										const r = selectedReserva;
+										await api.post(`/reservas/${r.reserva_id}/pago-presencial`, {}, token);
+										setAllReservas((prev) => prev.map((res) => res.reserva_id === r.reserva_id ? {
+											...res,
+											pago: {
+												...res.pago,
+												estado: "aprobado"
+											}
+										} : res));
+										setSelectedReserva((prev) => prev ? {
+											...prev,
+											pago: {
+												...prev.pago,
+												estado: "aprobado"
+											}
+										} : null);
+									},
+									children: selectedReserva.pago?.estado === "aprobado" ? "Pagado" : "Pago"
+								})
+							})
+						]
+					})]
+				})
 			})
 		]
 	});
@@ -8025,7 +8310,7 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 				children: [
 					/* @__PURE__ */ jsx("div", {
 						className: "grid px-5 py-2 border-b border-border bg-surface",
-						style: { gridTemplateColumns: "2fr 90px 110px 120px 110px 72px" },
+						style: { gridTemplateColumns: "minmax(180px, 3fr) 90px 110px 120px 110px 72px" },
 						children: [
 							"Nombre",
 							"Precio",
@@ -8049,7 +8334,7 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 						3
 					].map((row) => /* @__PURE__ */ jsxs("div", {
 						className: `grid px-5 py-4 items-center ${row > 0 ? "border-t border-border" : ""}`,
-						style: { gridTemplateColumns: "2fr 90px 110px 120px 110px 72px" },
+						style: { gridTemplateColumns: "minmax(180px, 3fr) 90px 110px 120px 110px 72px" },
 						children: [
 							/* @__PURE__ */ jsx("div", { className: "h-3.5 w-40 rounded bg-border animate-pulse" }),
 							/* @__PURE__ */ jsx("div", { className: "h-3.5 w-12 rounded bg-border animate-pulse" }),
@@ -8090,140 +8375,140 @@ var services_default = UNSAFE_withComponentProps(function Services() {
 					"\""
 				]
 			}),
-			!loading && filteredServices.length > 0 && /* @__PURE__ */ jsxs("div", {
+			!loading && filteredServices.length > 0 && /* @__PURE__ */ jsx("div", {
 				className: "bg-surface border-t border-border w-full overflow-x-auto",
-				children: [
-					/* @__PURE__ */ jsx("div", {
-						className: "grid px-5 py-2 border-b border-border bg-surface",
-						style: { gridTemplateColumns: "2fr 90px 110px 120px 110px 72px" },
-						children: [
-							"Nombre",
-							"Precio",
-							"Duración",
-							"Modalidad",
-							"Reservas",
-							""
-						].map((h) => /* @__PURE__ */ jsx("div", {
-							className: "text-sm text-ink-muted",
-							children: h
-						}, h))
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "px-5 py-2 border-b border-border bg-sidebar",
-						children: /* @__PURE__ */ jsx("span", {
-							className: "text-sm font-bold text-ink",
-							children: "Servicios"
-						})
-					}),
-					filteredServices.map((s, idx) => {
-						const activo = s.activo ?? true;
-						const isEditing = editingId === s.servicio_id;
-						const isDeleting = deletingId === s.servicio_id;
-						const modalidad = s.modalidad?.toLowerCase();
-						return /* @__PURE__ */ jsxs("div", {
-							draggable: armedId === s.servicio_id,
-							onDragStart: () => setDragId(s.servicio_id),
-							onDragEnter: () => dragId !== null && setOverId(s.servicio_id),
-							onDragOver: (e) => e.preventDefault(),
-							onDrop: () => handleDrop(s.servicio_id),
-							onDragEnd: () => {
-								setDragId(null);
-								setOverId(null);
-								setArmedId(null);
-							},
-							className: `${idx > 0 ? "border-t border-border" : ""} ${dragId === s.servicio_id ? "opacity-40" : ""} ${overId === s.servicio_id && dragId !== s.servicio_id ? "border-t-2 border-accent" : ""}`,
-							children: [/* @__PURE__ */ jsxs("div", {
-								className: `grid px-5 py-4 items-center ${isEditing || isDeleting ? "bg-accent/10" : ""}`,
-								style: { gridTemplateColumns: "2fr 90px 110px 120px 110px 72px" },
-								children: [
-									/* @__PURE__ */ jsxs("div", {
-										className: "flex items-center gap-3 min-w-0",
-										children: [/* @__PURE__ */ jsx("span", {
-											className: "text-ink-muted/50 shrink-0 cursor-grab active:cursor-grabbing",
-											onMouseDown: () => setArmedId(s.servicio_id),
-											onMouseUp: () => setArmedId(null),
-											children: /* @__PURE__ */ jsx(GripIcon$1, {})
-										}), /* @__PURE__ */ jsxs("div", {
-											className: "min-w-0",
-											children: [/* @__PURE__ */ jsx("p", {
-												className: `text-sm truncate ${activo ? "text-ink" : "text-ink-muted"}`,
-												children: s.nombre
-											}), s.descripcion && /* @__PURE__ */ jsx("p", {
-												className: "text-xs text-ink-muted truncate mt-0.5",
-												children: s.descripcion
-											})]
-										})]
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "text-sm text-ink",
-										children: ["$", s.precio]
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "text-sm text-ink",
-										children: [s.duracion, " minutos"]
-									}),
-									/* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx("span", {
-										className: `text-xs font-semibold px-2 py-0.5 rounded ${MODALIDAD_CLS[modalidad] ?? "bg-gray-100 text-gray-700"}`,
-										children: s.modalidad
-									}) }),
-									/* @__PURE__ */ jsx("div", {
-										className: "text-sm text-ink-muted",
-										children: s.reservas_count != null ? `${s.reservas_count} totales` : "—"
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "flex items-center justify-end gap-3",
-										children: [/* @__PURE__ */ jsx("button", {
-											onClick: () => {
-												setDeletingId(null);
-												openEdit(s);
-											},
-											title: "Editar",
-											className: `transition-colors cursor-pointer ${isEditing ? "text-ink" : "text-ink-muted hover:text-ink"}`,
-											children: /* @__PURE__ */ jsx(EditIcon$1, {})
-										}), /* @__PURE__ */ jsx("button", {
-											onClick: () => {
-												setEditingId(null);
-												setDeletingId(isDeleting ? null : s.servicio_id);
-											},
-											title: "Eliminar",
-											className: `transition-colors cursor-pointer ${isDeleting ? "text-red-700" : "text-red-500 hover:text-red-700"}`,
-											children: /* @__PURE__ */ jsx(TrashIcon$1, {})
-										})]
-									})
-								]
-							}), isDeleting && /* @__PURE__ */ jsxs("div", {
-								className: "px-5 py-4 border-t border-border bg-red-50 flex items-center justify-between gap-4",
-								children: [/* @__PURE__ */ jsxs("p", {
-									className: "text-sm text-red-700",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "min-w-max",
+					children: [
+						/* @__PURE__ */ jsx("div", {
+							className: "grid px-5 py-2 border-b border-border bg-surface",
+							style: { gridTemplateColumns: "minmax(180px, 3fr) 90px 110px 120px 110px 72px" },
+							children: [
+								"Nombre",
+								"Precio",
+								"Duración",
+								"Modalidad",
+								"Reservas",
+								""
+							].map((h) => /* @__PURE__ */ jsx("div", {
+								className: "text-sm text-ink-muted",
+								children: h
+							}, h))
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "px-5 py-2 border-b border-border bg-sidebar",
+							children: /* @__PURE__ */ jsx("span", {
+								className: "text-sm font-bold text-ink",
+								children: "Servicios"
+							})
+						}),
+						filteredServices.map((s, idx) => {
+							const activo = s.activo ?? true;
+							const isEditing = editingId === s.servicio_id;
+							const isDeleting = deletingId === s.servicio_id;
+							const modalidad = s.modalidad?.toLowerCase();
+							return /* @__PURE__ */ jsxs("div", {
+								draggable: armedId === s.servicio_id,
+								onDragStart: () => setDragId(s.servicio_id),
+								onDragEnter: () => dragId !== null && setOverId(s.servicio_id),
+								onDragOver: (e) => e.preventDefault(),
+								onDrop: () => handleDrop(s.servicio_id),
+								onDragEnd: () => {
+									setDragId(null);
+									setOverId(null);
+									setArmedId(null);
+								},
+								className: `${idx > 0 ? "border-t border-border" : ""} ${dragId === s.servicio_id ? "opacity-40" : ""} ${overId === s.servicio_id && dragId !== s.servicio_id ? "border-t-2 border-accent" : ""}`,
+								children: [/* @__PURE__ */ jsxs("div", {
+									className: `grid px-5 py-4 items-center ${isEditing || isDeleting ? "bg-accent/10" : ""}`,
+									style: { gridTemplateColumns: "minmax(180px, 3fr) 90px 110px 120px 110px 72px" },
 									children: [
-										"¿Eliminar ",
-										/* @__PURE__ */ jsxs("span", {
-											className: "font-semibold",
-											children: [
-												"\"",
-												s.nombre,
-												"\""
-											]
+										/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center gap-3 min-w-0",
+											children: [/* @__PURE__ */ jsx("span", {
+												className: "text-ink-muted/50 shrink-0 cursor-grab active:cursor-grabbing",
+												onMouseDown: () => setArmedId(s.servicio_id),
+												onMouseUp: () => setArmedId(null),
+												children: /* @__PURE__ */ jsx(GripIcon$1, {})
+											}), /* @__PURE__ */ jsx("div", {
+												className: "min-w-0",
+												children: /* @__PURE__ */ jsx("p", {
+													className: `text-sm truncate ${activo ? "text-ink" : "text-ink-muted"}`,
+													children: s.nombre
+												})
+											})]
 										}),
-										"? Esta acción no se puede deshacer."
+										/* @__PURE__ */ jsxs("div", {
+											className: "text-sm text-ink",
+											children: ["$", s.precio]
+										}),
+										/* @__PURE__ */ jsxs("div", {
+											className: "text-sm text-ink",
+											children: [s.duracion, " minutos"]
+										}),
+										/* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx("span", {
+											className: `text-xs font-semibold px-2 py-0.5 rounded ${MODALIDAD_CLS[modalidad] ?? "bg-gray-100 text-gray-700"}`,
+											children: s.modalidad
+										}) }),
+										/* @__PURE__ */ jsx("div", {
+											className: "text-sm text-ink-muted",
+											children: s.reservas_count != null ? `${s.reservas_count} totales` : "—"
+										}),
+										/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center justify-end gap-3",
+											children: [/* @__PURE__ */ jsx("button", {
+												onClick: () => {
+													setDeletingId(null);
+													openEdit(s);
+												},
+												title: "Editar",
+												className: `transition-colors cursor-pointer ${isEditing ? "text-ink" : "text-ink-muted hover:text-ink"}`,
+												children: /* @__PURE__ */ jsx(EditIcon$1, {})
+											}), /* @__PURE__ */ jsx("button", {
+												onClick: () => {
+													setEditingId(null);
+													setDeletingId(isDeleting ? null : s.servicio_id);
+												},
+												title: "Eliminar",
+												className: `transition-colors cursor-pointer ${isDeleting ? "text-red-700" : "text-red-500 hover:text-red-700"}`,
+												children: /* @__PURE__ */ jsx(TrashIcon$1, {})
+											})]
+										})
 									]
-								}), /* @__PURE__ */ jsxs("div", {
-									className: "flex gap-2 shrink-0",
-									children: [/* @__PURE__ */ jsx("button", {
-										onClick: () => setDeletingId(null),
-										className: "px-3 py-1.5 rounded border border-border bg-surface text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer",
-										children: "Cancelar"
-									}), /* @__PURE__ */ jsx("button", {
-										onClick: () => handleDelete(s.servicio_id),
-										disabled: saving,
-										className: "px-3 py-1.5 rounded bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer",
-										children: saving ? "Eliminando..." : "Eliminar"
+								}), isDeleting && /* @__PURE__ */ jsxs("div", {
+									className: "px-5 py-4 border-t border-border bg-red-50 flex items-center justify-between gap-4",
+									children: [/* @__PURE__ */ jsxs("p", {
+										className: "text-sm text-red-700",
+										children: [
+											"¿Eliminar ",
+											/* @__PURE__ */ jsxs("span", {
+												className: "font-semibold",
+												children: [
+													"\"",
+													s.nombre,
+													"\""
+												]
+											}),
+											"? Esta acción no se puede deshacer."
+										]
+									}), /* @__PURE__ */ jsxs("div", {
+										className: "flex gap-2 shrink-0",
+										children: [/* @__PURE__ */ jsx("button", {
+											onClick: () => setDeletingId(null),
+											className: "px-3 py-1.5 rounded border border-border bg-surface text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer",
+											children: "Cancelar"
+										}), /* @__PURE__ */ jsx("button", {
+											onClick: () => handleDelete(s.servicio_id),
+											disabled: saving,
+											className: "px-3 py-1.5 rounded bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer",
+											children: saving ? "Eliminando..." : "Eliminar"
+										})]
 									})]
 								})]
-							})]
-						}, s.servicio_id);
-					})
-				]
+							}, s.servicio_id);
+						})
+					]
+				})
 			})
 		]
 	});
@@ -8828,7 +9113,7 @@ var service_packages_default = UNSAFE_withComponentProps(function ServicePackage
 				children: [
 					/* @__PURE__ */ jsx("div", {
 						className: "grid px-5 py-2 border-b border-border bg-surface",
-						style: { gridTemplateColumns: "2fr 130px 100px 72px" },
+						style: { gridTemplateColumns: "minmax(180px, 3fr) 120px 90px 72px" },
 						children: [
 							"Nombre",
 							"Servicios",
@@ -8849,7 +9134,7 @@ var service_packages_default = UNSAFE_withComponentProps(function ServicePackage
 						2
 					].map((row) => /* @__PURE__ */ jsxs("div", {
 						className: `grid px-5 py-4 items-center ${row > 0 ? "border-t border-border" : ""}`,
-						style: { gridTemplateColumns: "2fr 130px 100px 72px" },
+						style: { gridTemplateColumns: "minmax(180px, 3fr) 120px 90px 72px" },
 						children: [
 							/* @__PURE__ */ jsx("div", { className: "h-3.5 w-32 rounded bg-border animate-pulse" }),
 							/* @__PURE__ */ jsx("div", { className: "h-5 w-48 rounded bg-border animate-pulse" }),
@@ -8888,135 +9173,141 @@ var service_packages_default = UNSAFE_withComponentProps(function ServicePackage
 					"\""
 				]
 			}),
-			!loading && filteredPaquetes.length > 0 && /* @__PURE__ */ jsxs("div", {
+			!loading && filteredPaquetes.length > 0 && /* @__PURE__ */ jsx("div", {
 				className: "bg-surface border-t border-border w-full overflow-x-auto",
-				children: [
-					/* @__PURE__ */ jsx("div", {
-						className: "grid px-5 py-2 border-b border-border bg-surface",
-						style: { gridTemplateColumns: "2fr 130px 100px 72px" },
-						children: [
-							"Nombre",
-							"Servicios",
-							"Precio",
-							""
-						].map((h) => /* @__PURE__ */ jsx("div", {
-							className: "text-sm text-ink-muted",
-							children: h
-						}, h))
-					}),
-					/* @__PURE__ */ jsx("div", {
-						className: "px-5 py-2 border-b border-border bg-sidebar",
-						children: /* @__PURE__ */ jsx("span", {
-							className: "text-sm font-bold text-ink",
-							children: "Paquetes"
-						})
-					}),
-					filteredPaquetes.map((pkg, idx) => {
-						const isEditing = editingId === pkg.paquete_id;
-						const isDeleting = deletingId === pkg.paquete_id;
-						const totalSesiones = pkg.servicios?.reduce((acc, s) => acc + (s.pivot?.cantidad_sesiones ?? s.cantidad_sesiones ?? 1), 0) ?? 0;
-						const totalServicios = pkg.servicios?.length ?? 0;
-						return /* @__PURE__ */ jsxs("div", {
-							draggable: armedId === pkg.paquete_id,
-							onDragStart: () => setDragId(pkg.paquete_id),
-							onDragEnter: () => dragId !== null && setOverId(pkg.paquete_id),
-							onDragOver: (e) => e.preventDefault(),
-							onDrop: () => handleDrop(pkg.paquete_id),
-							onDragEnd: () => {
-								setDragId(null);
-								setOverId(null);
-								setArmedId(null);
-							},
-							className: `${idx > 0 ? "border-t border-border" : ""} ${dragId === pkg.paquete_id ? "opacity-40" : ""} ${overId === pkg.paquete_id && dragId !== pkg.paquete_id ? "border-t-2 border-accent" : ""}`,
-							children: [/* @__PURE__ */ jsxs("div", {
-								className: `grid px-5 py-4 items-center ${isEditing || isDeleting ? "bg-accent/10" : ""}`,
-								style: { gridTemplateColumns: "2fr 130px 100px 72px" },
-								children: [
-									/* @__PURE__ */ jsxs("div", {
-										className: "flex items-center gap-3 min-w-0",
-										children: [/* @__PURE__ */ jsx("span", {
-											className: "text-ink-muted/50 shrink-0 cursor-grab active:cursor-grabbing",
-											onMouseDown: () => setArmedId(pkg.paquete_id),
-											onMouseUp: () => setArmedId(null),
-											children: /* @__PURE__ */ jsx(GripIcon, {})
-										}), /* @__PURE__ */ jsxs("div", {
-											className: "min-w-0",
-											children: [/* @__PURE__ */ jsx("p", {
-												className: "text-sm text-ink truncate",
-												children: pkg.nombre
-											}), /* @__PURE__ */ jsxs("p", {
-												className: "text-xs text-ink-muted mt-0.5",
-												children: [
-													totalSesiones,
-													" sesión",
-													totalSesiones !== 1 ? "es" : ""
-												]
-											})]
-										})]
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "text-sm text-ink-muted",
-										children: [
-											totalServicios,
-											" servicio",
-											totalServicios !== 1 ? "s" : ""
-										]
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "text-sm text-ink",
-										children: ["$", Number(pkg.precio_total).toFixed(0)]
-									}),
-									/* @__PURE__ */ jsxs("div", {
-										className: "flex items-center justify-end gap-3",
-										children: [/* @__PURE__ */ jsx("button", {
-											onClick: () => openEdit(pkg),
-											title: "Editar",
-											className: `transition-colors cursor-pointer ${isEditing ? "text-ink" : "text-ink-muted hover:text-ink"}`,
-											children: /* @__PURE__ */ jsx(EditIcon, {})
-										}), /* @__PURE__ */ jsx("button", {
-											onClick: () => {
-												setEditingId(null);
-												setDeletingId(isDeleting ? null : pkg.paquete_id);
-											},
-											title: "Eliminar",
-											className: `transition-colors cursor-pointer ${isDeleting ? "text-red-700" : "text-red-500 hover:text-red-700"}`,
-											children: /* @__PURE__ */ jsx(TrashIcon, {})
-										})]
-									})
-								]
-							}), isDeleting && /* @__PURE__ */ jsxs("div", {
-								className: "px-5 py-4 border-t border-border bg-red-50 flex items-center justify-between gap-4",
-								children: [/* @__PURE__ */ jsxs("p", {
-									className: "text-sm text-red-700",
+				children: /* @__PURE__ */ jsxs("div", {
+					className: "min-w-max",
+					children: [
+						/* @__PURE__ */ jsx("div", {
+							className: "grid px-5 py-2 border-b border-border bg-surface",
+							style: { gridTemplateColumns: "minmax(180px, 3fr) 120px 90px 72px" },
+							children: [
+								"Nombre",
+								"Servicios",
+								"Precio",
+								""
+							].map((h) => /* @__PURE__ */ jsx("div", {
+								className: "text-sm text-ink-muted",
+								children: h
+							}, h))
+						}),
+						/* @__PURE__ */ jsx("div", {
+							className: "px-5 py-2 border-b border-border bg-sidebar",
+							children: /* @__PURE__ */ jsx("div", {
+								className: "min-w-max",
+								children: /* @__PURE__ */ jsx("span", {
+									className: "text-sm font-bold text-ink",
+									children: "Paquetes"
+								})
+							})
+						}),
+						filteredPaquetes.map((pkg, idx) => {
+							const isEditing = editingId === pkg.paquete_id;
+							const isDeleting = deletingId === pkg.paquete_id;
+							const totalSesiones = pkg.servicios?.reduce((acc, s) => acc + (s.pivot?.cantidad_sesiones ?? s.cantidad_sesiones ?? 1), 0) ?? 0;
+							const totalServicios = pkg.servicios?.length ?? 0;
+							return /* @__PURE__ */ jsxs("div", {
+								draggable: armedId === pkg.paquete_id,
+								onDragStart: () => setDragId(pkg.paquete_id),
+								onDragEnter: () => dragId !== null && setOverId(pkg.paquete_id),
+								onDragOver: (e) => e.preventDefault(),
+								onDrop: () => handleDrop(pkg.paquete_id),
+								onDragEnd: () => {
+									setDragId(null);
+									setOverId(null);
+									setArmedId(null);
+								},
+								className: `${idx > 0 ? "border-t border-border" : ""} ${dragId === pkg.paquete_id ? "opacity-40" : ""} ${overId === pkg.paquete_id && dragId !== pkg.paquete_id ? "border-t-2 border-accent" : ""}`,
+								children: [/* @__PURE__ */ jsxs("div", {
+									className: `grid px-5 py-4 items-center ${isEditing || isDeleting ? "bg-accent/10" : ""}`,
+									style: { gridTemplateColumns: "minmax(180px, 3fr) 120px 90px 72px" },
 									children: [
-										"¿Eliminar ",
-										/* @__PURE__ */ jsxs("span", {
-											className: "font-semibold",
+										/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center gap-3 min-w-0",
+											children: [/* @__PURE__ */ jsx("span", {
+												className: "text-ink-muted/50 shrink-0 cursor-grab active:cursor-grabbing",
+												onMouseDown: () => setArmedId(pkg.paquete_id),
+												onMouseUp: () => setArmedId(null),
+												children: /* @__PURE__ */ jsx(GripIcon, {})
+											}), /* @__PURE__ */ jsxs("div", {
+												className: "min-w-0",
+												children: [/* @__PURE__ */ jsx("p", {
+													className: "text-sm text-ink truncate",
+													children: pkg.nombre
+												}), /* @__PURE__ */ jsxs("p", {
+													className: "text-xs text-ink-muted mt-0.5",
+													children: [
+														totalSesiones,
+														" sesión",
+														totalSesiones !== 1 ? "es" : ""
+													]
+												})]
+											})]
+										}),
+										/* @__PURE__ */ jsxs("div", {
+											className: "text-sm text-ink-muted",
 											children: [
-												"\"",
-												pkg.nombre,
-												"\""
+												totalServicios,
+												" servicio",
+												totalServicios !== 1 ? "s" : ""
 											]
 										}),
-										"? Esta acción no se puede deshacer."
+										/* @__PURE__ */ jsxs("div", {
+											className: "text-sm text-ink",
+											children: ["$", Number(pkg.precio_total).toFixed(0)]
+										}),
+										/* @__PURE__ */ jsxs("div", {
+											className: "flex items-center justify-end gap-3",
+											children: [/* @__PURE__ */ jsx("button", {
+												onClick: () => openEdit(pkg),
+												title: "Editar",
+												className: `transition-colors cursor-pointer ${isEditing ? "text-ink" : "text-ink-muted hover:text-ink"}`,
+												children: /* @__PURE__ */ jsx(EditIcon, {})
+											}), /* @__PURE__ */ jsx("button", {
+												onClick: () => {
+													setEditingId(null);
+													setDeletingId(isDeleting ? null : pkg.paquete_id);
+												},
+												title: "Eliminar",
+												className: `transition-colors cursor-pointer ${isDeleting ? "text-red-700" : "text-red-500 hover:text-red-700"}`,
+												children: /* @__PURE__ */ jsx(TrashIcon, {})
+											})]
+										})
 									]
-								}), /* @__PURE__ */ jsxs("div", {
-									className: "flex gap-2 shrink-0",
-									children: [/* @__PURE__ */ jsx("button", {
-										onClick: () => setDeletingId(null),
-										className: "px-3 py-1.5 rounded border border-border bg-surface text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer",
-										children: "Cancelar"
-									}), /* @__PURE__ */ jsx("button", {
-										onClick: () => handleDelete(pkg.paquete_id),
-										disabled: saving,
-										className: "px-3 py-1.5 rounded bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer",
-										children: saving ? "Eliminando..." : "Eliminar"
+								}), isDeleting && /* @__PURE__ */ jsxs("div", {
+									className: "px-5 py-4 border-t border-border bg-red-50 flex items-center justify-between gap-4",
+									children: [/* @__PURE__ */ jsxs("p", {
+										className: "text-sm text-red-700",
+										children: [
+											"¿Eliminar ",
+											/* @__PURE__ */ jsxs("span", {
+												className: "font-semibold",
+												children: [
+													"\"",
+													pkg.nombre,
+													"\""
+												]
+											}),
+											"? Esta acción no se puede deshacer."
+										]
+									}), /* @__PURE__ */ jsxs("div", {
+										className: "flex gap-2 shrink-0",
+										children: [/* @__PURE__ */ jsx("button", {
+											onClick: () => setDeletingId(null),
+											className: "px-3 py-1.5 rounded border border-border bg-surface text-sm text-ink font-medium hover:bg-bg transition-colors cursor-pointer",
+											children: "Cancelar"
+										}), /* @__PURE__ */ jsx("button", {
+											onClick: () => handleDelete(pkg.paquete_id),
+											disabled: saving,
+											className: "px-3 py-1.5 rounded bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer",
+											children: saving ? "Eliminando..." : "Eliminar"
+										})]
 									})]
 								})]
-							})]
-						}, pkg.paquete_id);
-					})
-				]
+							}, pkg.paquete_id);
+						})
+					]
+				})
 			})
 		]
 	});
@@ -13265,11 +13556,11 @@ var session_$id_rating_default = UNSAFE_withComponentProps(function Rating() {
 //#region \0virtual:react-router/server-manifest
 var server_manifest_default = {
 	"entry": {
-		"module": "/assets/entry.client-BHwyYAt4.js",
+		"module": "/assets/entry.client-CFNfbBIJ.js",
 		"imports": [
-			"/assets/chunk-DsLFv447.js",
-			"/assets/jsx-runtime-C_L2gSNW.js",
-			"/assets/react-dom--KX8nem5.js"
+			"/assets/chunk-32_rV3q0.js",
+			"/assets/jsx-runtime-DhTh-y4x.js",
+			"/assets/react-dom-MDWVRLw6.js"
 		],
 		"css": []
 	},
@@ -13287,15 +13578,16 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": true,
-			"module": "/assets/root-Blok_naX.js",
+			"module": "/assets/root-CHsH6RnP.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/react-dom--KX8nem5.js",
-				"/assets/AuthContext-DfXhhtUJ.js",
-				"/assets/ThemeContext-CY2NA4jW.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/react-dom-MDWVRLw6.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/ThemeContext-HbOSMs5N.js",
+				"/assets/api-XgnAEOXj.js"
 			],
-			"css": ["/assets/root-8FGGYw0j.css"],
+			"css": ["/assets/root-BxKmovFj.css"],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
 			"clientMiddlewareModule": void 0,
@@ -13314,11 +13606,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/home-GbYHn6oe.js",
+			"module": "/assets/home-DAKY_Pfl.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13339,11 +13632,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/login-BRFKbDP0.js",
+			"module": "/assets/login-BK1IaS-x.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13364,11 +13658,37 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/register-DQqI-Fyk.js",
+			"module": "/assets/register-CMbNKNk6.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/api-XgnAEOXj.js"
+			],
+			"css": [],
+			"clientActionModule": void 0,
+			"clientLoaderModule": void 0,
+			"clientMiddlewareModule": void 0,
+			"hydrateFallbackModule": void 0
+		},
+		"routes/verify-email": {
+			"id": "routes/verify-email",
+			"parentId": "root",
+			"path": "verify-email",
+			"index": void 0,
+			"caseSensitive": void 0,
+			"hasAction": false,
+			"hasLoader": false,
+			"hasClientAction": false,
+			"hasClientLoader": false,
+			"hasClientMiddleware": false,
+			"hasDefaultExport": true,
+			"hasErrorBoundary": false,
+			"module": "/assets/verify-email-CCXYkwbn.js",
+			"imports": [
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13389,11 +13709,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/auth.google.callback-DGu2rNHk.js",
+			"module": "/assets/auth.google.callback-DR_6H9qY.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13414,12 +13735,13 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-Cc03Hpb6.js",
+			"module": "/assets/_layout-DPJT3lvj.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js",
-				"/assets/NotificationContext-BU1vhxH-.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/NotificationContext-D28SeN0p.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13440,11 +13762,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-wx-7DXAk.js",
+			"module": "/assets/dashboard-CSQFE3aq.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13465,11 +13788,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/discover-sn4k8aKk.js",
+			"module": "/assets/discover-DOoaHiKz.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": ["/assets/leaflet-vh-t_kPv.css"],
 			"clientActionModule": void 0,
@@ -13490,13 +13814,14 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/professional._id-uSdpYEG1.js",
+			"module": "/assets/professional._id-NYpIQilB.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/DateSlotPicker-CCjkLXtQ.js",
-				"/assets/AuthContext-DfXhhtUJ.js",
-				"/assets/ReactToastify-B8SeVteq.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/DateSlotPicker-DJi4qjfV.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js",
+				"/assets/ReactToastify-0FPbEAEz.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
 			"clientActionModule": void 0,
@@ -13517,8 +13842,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/booking._id.pay-CA2c7iCg.js",
-			"imports": ["/assets/chunk-DsLFv447.js", "/assets/jsx-runtime-C_L2gSNW.js"],
+			"module": "/assets/booking._id.pay-x3pUr24u.js",
+			"imports": ["/assets/chunk-32_rV3q0.js", "/assets/jsx-runtime-DhTh-y4x.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -13538,11 +13863,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/package._id.pay-DpIZ8QhK.js",
+			"module": "/assets/package._id.pay-BnztjOGC.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13563,11 +13889,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/compra-package._id.pay-Zv-cCfVS.js",
+			"module": "/assets/compra-package._id.pay-tMIv8T-l.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13588,11 +13915,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/packages-B3PdC0vL.js",
+			"module": "/assets/packages-Bw34vMGh.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13613,8 +13941,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/messages-DYmdLoAR.js",
-			"imports": ["/assets/chunk-DsLFv447.js", "/assets/jsx-runtime-C_L2gSNW.js"],
+			"module": "/assets/messages-Dyx-0_PP.js",
+			"imports": ["/assets/chunk-32_rV3q0.js", "/assets/jsx-runtime-DhTh-y4x.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -13634,12 +13962,13 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-D1xiwtd5.js",
+			"module": "/assets/payments-gfUd2gLC.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js",
-				"/assets/ReactToastify-B8SeVteq.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js",
+				"/assets/ReactToastify-0FPbEAEz.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
 			"clientActionModule": void 0,
@@ -13660,13 +13989,14 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-Dwywi9vh.js",
+			"module": "/assets/notifications-Dk2Y5GY8.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/NotificationContext-BU1vhxH-.js",
-				"/assets/createLucideIcon-1znTPz2U.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/NotificationContext-D28SeN0p.js",
+				"/assets/createLucideIcon-CIzoCB-T.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13687,13 +14017,14 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/mis-reservas-De55k1wy.js",
+			"module": "/assets/mis-reservas-BVMn68Oz.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/DateSlotPicker-CCjkLXtQ.js",
-				"/assets/AuthContext-DfXhhtUJ.js",
-				"/assets/ReactToastify-B8SeVteq.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/DateSlotPicker-DJi4qjfV.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js",
+				"/assets/ReactToastify-0FPbEAEz.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
 			"clientActionModule": void 0,
@@ -13714,12 +14045,13 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-Be6QEMTW.js",
+			"module": "/assets/profile-VofU0vaw.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js",
-				"/assets/ThemeContext-CY2NA4jW.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/ThemeContext-HbOSMs5N.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13740,12 +14072,13 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-rsfeuD2R.js",
+			"module": "/assets/_layout-DiakmWc9.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js",
-				"/assets/NotificationContext-BU1vhxH-.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/NotificationContext-D28SeN0p.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13766,11 +14099,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/clients-Ddk6l2lW.js",
+			"module": "/assets/clients-C2V6AOFy.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13791,11 +14125,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-BH5u7Owc.js",
+			"module": "/assets/dashboard-DE0KOa76.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13816,11 +14151,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/services-Ch1q8K7o.js",
+			"module": "/assets/services-Kk85yuCX.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": ["/assets/leaflet-vh-t_kPv.css"],
 			"clientActionModule": void 0,
@@ -13841,11 +14177,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/service-packages-LybtUM2w.js",
+			"module": "/assets/service-packages-BlqbZr0V.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13866,12 +14203,13 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/availability-B-rHWlXl.js",
+			"module": "/assets/availability-DGfB8W6H.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js",
-				"/assets/ReactToastify-B8SeVteq.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js",
+				"/assets/ReactToastify-0FPbEAEz.js"
 			],
 			"css": ["/assets/ReactToastify-qcT314-W.css"],
 			"clientActionModule": void 0,
@@ -13892,11 +14230,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-hTRrskW2.js",
+			"module": "/assets/payments-BwOBoABp.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13917,8 +14256,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/messages-Dsh-0Qff.js",
-			"imports": ["/assets/chunk-DsLFv447.js", "/assets/jsx-runtime-C_L2gSNW.js"],
+			"module": "/assets/messages-DKFg2zI5.js",
+			"imports": ["/assets/chunk-32_rV3q0.js", "/assets/jsx-runtime-DhTh-y4x.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -13938,12 +14277,13 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/profile-D2yHP_ho.js",
+			"module": "/assets/profile-CcwDcX-P.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js",
-				"/assets/ThemeContext-CY2NA4jW.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/ThemeContext-HbOSMs5N.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13964,13 +14304,14 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/notifications-Cbv94xrk.js",
+			"module": "/assets/notifications-D3Gk-heE.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/NotificationContext-BU1vhxH-.js",
-				"/assets/createLucideIcon-1znTPz2U.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/NotificationContext-D28SeN0p.js",
+				"/assets/createLucideIcon-CIzoCB-T.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -13991,11 +14332,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/_layout-BsSzLlVX.js",
+			"module": "/assets/_layout-B6KJ1pHW.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -14016,11 +14358,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/dashboard-CfuIPe4G.js",
+			"module": "/assets/dashboard-BLAyhwO3.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -14041,11 +14384,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/users-DjzxIQM2.js",
+			"module": "/assets/users-hWXDUrrb.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -14066,11 +14410,12 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/payments-ClEZflJX.js",
+			"module": "/assets/payments-Suqs9Gij.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -14091,12 +14436,13 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/videollamada-BHekWomK.js",
+			"module": "/assets/videollamada-ByNn5BRi.js",
 			"imports": [
-				"/assets/chunk-DsLFv447.js",
-				"/assets/jsx-runtime-C_L2gSNW.js",
-				"/assets/AuthContext-DfXhhtUJ.js",
-				"/assets/createLucideIcon-1znTPz2U.js"
+				"/assets/chunk-32_rV3q0.js",
+				"/assets/jsx-runtime-DhTh-y4x.js",
+				"/assets/AuthContext-FA5jfmJB.js",
+				"/assets/api-XgnAEOXj.js",
+				"/assets/createLucideIcon-CIzoCB-T.js"
 			],
 			"css": [],
 			"clientActionModule": void 0,
@@ -14117,8 +14463,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/session._id-CtVU_lly.js",
-			"imports": ["/assets/chunk-DsLFv447.js", "/assets/jsx-runtime-C_L2gSNW.js"],
+			"module": "/assets/session._id-YYBhGpK4.js",
+			"imports": ["/assets/chunk-32_rV3q0.js", "/assets/jsx-runtime-DhTh-y4x.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -14138,8 +14484,8 @@ var server_manifest_default = {
 			"hasClientMiddleware": false,
 			"hasDefaultExport": true,
 			"hasErrorBoundary": false,
-			"module": "/assets/session._id.rating-D7L9O1Ua.js",
-			"imports": ["/assets/chunk-DsLFv447.js", "/assets/jsx-runtime-C_L2gSNW.js"],
+			"module": "/assets/session._id.rating-BZp0laZ_.js",
+			"imports": ["/assets/chunk-32_rV3q0.js", "/assets/jsx-runtime-DhTh-y4x.js"],
 			"css": [],
 			"clientActionModule": void 0,
 			"clientLoaderModule": void 0,
@@ -14147,8 +14493,8 @@ var server_manifest_default = {
 			"hydrateFallbackModule": void 0
 		}
 	},
-	"url": "/assets/manifest-a7dc4419.js",
-	"version": "a7dc4419",
+	"url": "/assets/manifest-3c360991.js",
+	"version": "3c360991",
 	"sri": void 0
 };
 //#endregion
@@ -14205,6 +14551,14 @@ var routes = {
 		index: void 0,
 		caseSensitive: void 0,
 		module: register_exports
+	},
+	"routes/verify-email": {
+		id: "routes/verify-email",
+		parentId: "root",
+		path: "verify-email",
+		index: void 0,
+		caseSensitive: void 0,
+		module: verify_email_exports
 	},
 	"routes/auth.google.callback": {
 		id: "routes/auth.google.callback",
