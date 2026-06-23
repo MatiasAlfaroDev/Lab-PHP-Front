@@ -40,6 +40,17 @@ const ESTADO_STYLE: Record<string, { label: string; cls: string }> = {
 
 const TERMINAL = new Set(["cancelada", "finalizada", "no_asistida", "no aceptada"]);
 
+// Ventana de acceso a la videollamada: desde 10 min antes hasta que termine la sesión.
+function puedeEntrarVideollamada(fecha: string, hora: string, duracionMin?: number) {
+  const ahora = new Date();
+  const inicio = new Date(`${fecha}T${hora}`);
+  const fin = new Date(inicio);
+  fin.setMinutes(fin.getMinutes() + (duracionMin ?? 60));
+  const desde = new Date(inicio);
+  desde.setMinutes(desde.getMinutes() - 10);
+  return ahora >= desde && ahora <= fin;
+}
+
 const MONTH_NAMES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
 function formatTime(timeStr: string) {
@@ -568,6 +579,18 @@ export default function MisReservas() {
 
                   {/* Acciones — botón coherente con /professional, ícono de borrar alineado */}
                   <div className="shrink-0 flex items-center gap-3">
+                    {r.servicio?.modalidad === "virtual" &&
+                      !isCancelled &&
+                      puedeEntrarVideollamada(r.fecha, r.hora, r.servicio?.duracion) && (
+                        <Link
+                          to={`/videollamada/${r.reserva_id}`}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer"
+                        >
+                          <ion-icon name="videocam-outline" style={{ fontSize: "14px" }} />
+                          Unirse
+                        </Link>
+                      )}
+
                     {canReschedule && (
                       <button
                         onClick={() => abrirReprogramar(r)}

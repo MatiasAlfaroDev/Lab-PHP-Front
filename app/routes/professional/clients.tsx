@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
 
@@ -49,6 +50,57 @@ const ESTADO_LABEL: Record<string, string> = {
 function getInitials(nombre: string) {
   return nombre.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 }
+
+// Ventana de acceso a la videollamada: desde 10 min antes hasta que termine la sesión.
+function puedeEntrarVideollamada(reserva: Reserva) {
+  if (reserva.servicio?.modalidad !== "virtual") return false;
+  if (["cancelada", "no_asistida"].includes(reserva.estado)) return false;
+
+  const ahora = new Date();
+  const inicio = new Date(`${reserva.fecha}T${reserva.hora}`);
+  const fin = new Date(inicio);
+  fin.setMinutes(fin.getMinutes() + (reserva.servicio?.duracion ?? 60));
+  const desde = new Date(inicio);
+  desde.setMinutes(desde.getMinutes() - 10);
+  return ahora >= desde && ahora <= fin;
+}
+
+// Estados que cuentan como reserva activa/futura — incluye "pagada" porque las
+// reservas de paquete suelen quedar en ese estado en vez de "confirmada".
+const ESTADOS_ACTIVOS = ["pendiente", "confirmada", "pagada", "en_curso"];
+
+function getProximoServicioNombre(clienteNombre: string, reservas: Reserva[]): string {
+  const proxima = reservas
+    .filter((r) => r.cliente_nombre === clienteNombre && ESTADOS_ACTIVOS.includes(r.estado))
+    .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`))[0];
+  return proxima?.servicio?.nombre ?? "—";
+}
+
+function getServiciosAdquiridos(clienteNombre: string, reservas: Reserva[]): string {
+  const nombres = Array.from(
+    new Set(
+      reservas
+        .filter((r) => r.cliente_nombre === clienteNombre)
+        .map((r) => r.servicio?.nombre)
+        .filter((n): n is string => !!n)
+    )
+  );
+  return nombres.length > 0 ? nombres.join(", ") : "—";
+}
+
+function tieneReservaFutura(clienteNombre: string, reservas: Reserva[]): boolean {
+  return reservas.some(
+    (r) => r.cliente_nombre === clienteNombre && ESTADOS_ACTIVOS.includes(r.estado)
+  );
+}
+
+// Mobile: solo Cliente + Sesión, sin scroll horizontal.
+// Tabla "Próximas reservas de servicio": Cliente, Email, Servicio, Sesión, Estado
+const ROW_GRID_SERVICIO = "grid grid-cols-[2fr_1.4fr] md:grid-cols-[2fr_2.5fr_2fr_1.6fr_140px]";
+// Tabla "Próximas reservas de paquete": Cliente, Email, Servicio, Sesión, Restantes
+const ROW_GRID_PAQUETE = "grid grid-cols-[2fr_1.4fr] md:grid-cols-[2fr_2.5fr_2fr_2fr_110px]";
+// Tabla "Historial": Nombre, Email, Servicios adquiridos
+const ROW_GRID_HISTORIAL = "grid grid-cols-[1.5fr_1fr] md:grid-cols-[2fr_2.5fr_3fr]";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -176,11 +228,13 @@ export default function Clients() {
     .includes(search.toLowerCase())
 );
 
-const filteredHistoricos = clientesHistoricos.filter((c) =>
-  `${c.nombre} ${c.email}`
-    .toLowerCase()
-    .includes(search.toLowerCase())
-);
+const filteredHistoricos = clientesHistoricos
+  .filter((c) =>
+    `${c.nombre} ${c.email}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  )
+  .filter((c) => !tieneReservaFutura(c.nombre, reservas));
 
 const filteredpaquete = clientesPaquetes.filter((c) =>
   `${c.nombre} ${c.email}`
@@ -189,7 +243,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
 );
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-8 w-full">
+    <div className="p-5 w-full">
       {/* Page header */}
       <div className="mb-6">
         <h1 className="font-display text-3xl text-ink">Clientes</h1>
@@ -199,166 +253,171 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
       </div>
 
       {/* CLIENTES ────────────────────────────────────────────────────── */}
-        <section>
-  <div className="relative max-w-2xl mb-5">
-    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted">
-      <SearchIcon />
-    </span>
-    <input
-      className="w-full border border-border rounded-full pl-10 pr-4 py-2.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink"
-      placeholder="Buscar por nombre o teléfono"
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-    />
-  </div>
-
-  {clientsLoading ? (
-    <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-      <div
-        className="grid px-5 py-2 border-b border-border"
-        style={{ gridTemplateColumns: "minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px" }}
-      >
-        {["Cliente", "Email", "Sesión", "Restantes", "Estado"].map((h) => (
-          <div key={h} className="text-sm text-ink-muted">{h}</div>
-        ))}
-      </div>
-      <div className="px-5 py-2 border-b border-border bg-sidebar">
-        <div className="h-3.5 w-44 rounded bg-border animate-pulse" />
-      </div>
-      {[0, 1, 2].map((row) => (
-        <div
-          key={row}
-          className={`grid px-5 py-4 items-center ${row > 0 ? "border-t border-border" : ""}`}
-          style={{ gridTemplateColumns: "minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px" }}
-        >
-          <div className="h-3.5 w-32 rounded bg-border animate-pulse" />
-          <div className="h-3.5 w-40 rounded bg-border animate-pulse" />
-          <div className="h-3.5 w-24 rounded bg-border animate-pulse" />
-          <div className="h-3.5 w-8 rounded bg-border animate-pulse" />
-          <div className="h-5 w-20 rounded bg-border animate-pulse" />
+      <section className="space-y-6">
+        <div className="relative max-w-2xl">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted">
+            <SearchIcon />
+          </span>
+          <input
+            className="w-full border border-border rounded-full pl-10 pr-4 py-2.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink"
+            placeholder="Buscar por nombre o teléfono"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-      ))}
-    </div>
-  ) : (
-      <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="min-w-[640px]">
 
-            {/* Cabecera */}
-            <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns:"minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px" }}>
-              {["Cliente", "Email", "Sesión", "Restantes", "Estado"].map((h) => (
-                <div key={h} className="text-sm text-ink-muted">{h}</div>
-              ))}
-            </div>
-
-            {/* PRÓXIMAS RESERVAS DE SERVICIO */}
-            <div className="px-5 py-2 border-b border-border bg-sidebar">
-              <span className="text-sm font-bold text-ink">Próximas reservas de servicio ({filteredProximos.length})</span>
-            </div>
-
-            {filteredProximos.length === 0 ? (
-              <div className="px-5 py-6 text-sm text-ink-muted">No hay clientes con reservas futuras</div>
-            ) : (
-              filteredProximos.map((c, idx) => {
-                const isSelected = selectedClient?.cliente_id === c.cliente_id;
-                return (
-                  <div
-                    key={c.cliente_id}
-                    onClick={() => handleClientClick(c)}
-                    className={`grid items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
-                    style={{ gridTemplateColumns: "minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px" }}
-                  >
-                    <span className="text-sm text-ink truncate">{c.nombre}</span>
-                    <span className="text-sm text-ink-muted break-words whitespace-normal">
-                      {c.email}
-                    </span>
-                    <span className="text-sm text-ink">
-                      {c.proxima_sesion}{" "}
-                      {c.hora_proxima_sesion?.slice(0, 5) ?? ""}
-                    </span>
-                    <span className="text-sm text-ink-muted">—</span>
-                    <span>
-                      <span className={`badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`}>
-                        {c.estado}
-                      </span>
-                    </span>
+        {/* TABLA 1 — Próximas reservas de servicio */}
+        <div>
+          <h2 className="text-sm font-bold text-ink mb-2">
+            Próximas reservas de servicio ({filteredProximos.length})
+          </h2>
+          {clientsLoading ? (
+            <TableSkeleton gridClass={ROW_GRID_SERVICIO} columns={5} />
+          ) : (
+            <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+              <div className="md:overflow-x-auto">
+                <div className="md:min-w-[760px]">
+                  <div className={`${ROW_GRID_SERVICIO} px-5 py-2 border-b border-border`}>
+                    <div className="text-sm text-ink-muted">Cliente</div>
+                    <div className="hidden md:block text-sm text-ink-muted">Email</div>
+                    <div className="hidden md:block text-sm text-ink-muted">Servicio</div>
+                    <div className="text-sm text-ink-muted">Sesión</div>
+                    <div className="hidden md:block text-sm text-ink-muted">Estado</div>
                   </div>
-                );
-              })
-            )}
 
-            {/* PRÓXIMAS RESERVAS DE PAQUETE */}
-            <div className="px-5 py-2 border-t border-b border-border bg-sidebar">
-              <span className="text-sm font-bold text-ink">Próximas reservas de paquete ({filteredpaquete.length})</span>
+                  {filteredProximos.length === 0 ? (
+                    <div className="px-5 py-6 text-sm text-ink-muted">No hay clientes con reservas futuras</div>
+                  ) : (
+                    filteredProximos.map((c, idx) => {
+                      const isSelected = selectedClient?.cliente_id === c.cliente_id;
+                      return (
+                        <div
+                          key={c.cliente_id}
+                          onClick={() => handleClientClick(c)}
+                          className={`${ROW_GRID_SERVICIO} items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
+                        >
+                          <span className="text-sm text-ink truncate">{c.nombre}</span>
+                          <span className="hidden md:block text-sm text-ink-muted truncate">{c.email}</span>
+                          <span className="hidden md:block text-sm text-ink-muted truncate">
+                            {getProximoServicioNombre(c.nombre, reservas)}
+                          </span>
+                          <span className="text-sm text-ink">
+                            {c.proxima_sesion}{" "}
+                            {c.hora_proxima_sesion?.slice(0, 5) ?? ""}
+                          </span>
+                          <span className="hidden md:block">
+                            <span className={`badge w-fit ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`}>
+                              {c.estado}
+                            </span>
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
             </div>
-
-            {filteredpaquete.length === 0 ? (
-              <div className="px-5 py-6 text-sm text-ink-muted">No hay clientes con reservas de paquete futuras</div>
-            ) : (
-              filteredpaquete.map((c, idx) => {
-                const isSelected = selectedClient?.cliente_id === c.cliente_id;
-                return (
-                  <div
-                    key={c.cliente_id}
-                    onClick={() => handleClientClick(c)}
-                    className={`grid items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
-                    style={{gridTemplateColumns: "minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px"}}
-                  >
-                    <span className="text-sm text-ink truncate">{c.nombre}</span>
-                    <span className="text-sm text-ink-muted break-words whitespace-normal">
-                      {c.email}
-                    </span>
-                    <span className="text-sm text-ink">
-                      {c.proxima_sesion}{" "}
-                      {c.hora_proxima_sesion?.slice(0, 5) ?? ""}
-                    </span>
-                    <span className="text-sm text-ink-muted">{c.sesiones_restantes}</span>
-                    <span>
-                      <span className={`badge ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`}>
-                        {c.estado}
-                      </span>
-                    </span>
-                  </div>
-                );
-              })
-            )}
-
-            {/* HISTORIAL */}
-            <div className="px-5 py-2 border-t border-b border-border bg-sidebar">
-              <span className="text-sm font-bold text-ink">Historial de clientes ({filteredHistoricos.length})</span>
-            </div>
-
-            {filteredHistoricos.length === 0 ? (
-              <div className="px-5 py-6 text-sm text-ink-muted">No hay clientes históricos</div>
-            ) : (
-              filteredHistoricos.map((c, idx) => {
-                const isSelected = selectedClient?.cliente_id === c.cliente_id;
-                return (
-                  <div
-                    key={c.cliente_id}
-                    onClick={() => handleClientClick(c)}
-                    className={`grid items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
-                    style={{ gridTemplateColumns: "minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px"}}
-                  >
-                    <span className="text-sm text-ink truncate">{c.nombre}</span>
-                    <span className="text-sm text-ink-muted break-words whitespace-normal">
-                      {c.email}
-                    </span>
-                    <span className="text-sm text-ink-muted">Sin reservas futuras</span>
-                    <span className="text-sm text-ink-muted">—</span>
-                    <span>
-                      <span className="badge">Histórico</span>
-                    </span>
-                  </div>
-                );
-              })
-            )}
-
-          </div>
+          )}
         </div>
-      </div>
-  )}
-</section>
+
+        {/* TABLA 2 — Próximas reservas de paquete */}
+        <div>
+          <h2 className="text-sm font-bold text-ink mb-2">
+            Próximas reservas de paquete ({filteredpaquete.length})
+          </h2>
+          {clientsLoading ? (
+            <TableSkeleton gridClass={ROW_GRID_PAQUETE} columns={5} />
+          ) : (
+            <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+              <div className="md:overflow-x-auto">
+                <div className="md:min-w-[760px]">
+                  <div className={`${ROW_GRID_PAQUETE} px-5 py-2 border-b border-border`}>
+                    <div className="text-sm text-ink-muted">Cliente</div>
+                    <div className="hidden md:block text-sm text-ink-muted">Email</div>
+                    <div className="hidden md:block text-sm text-ink-muted">Servicio</div>
+                    <div className="text-sm text-ink-muted">Sesión</div>
+                    <div className="hidden md:block text-sm text-ink-muted">Restantes</div>
+                  </div>
+
+                  {filteredpaquete.length === 0 ? (
+                    <div className="px-5 py-6 text-sm text-ink-muted">No hay clientes con reservas de paquete futuras</div>
+                  ) : (
+                    filteredpaquete.map((c, idx) => {
+                      const isSelected = selectedClient?.cliente_id === c.cliente_id;
+                      return (
+                        <div
+                          key={c.cliente_id}
+                          onClick={() => handleClientClick(c)}
+                          className={`${ROW_GRID_PAQUETE} items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
+                        >
+                          <span className="text-sm text-ink truncate">{c.nombre}</span>
+                          <span className="hidden md:block text-sm text-ink-muted truncate">{c.email}</span>
+                          <span className="hidden md:block text-sm text-ink-muted truncate">
+                            {getProximoServicioNombre(c.nombre, reservas)}
+                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm text-ink">
+                              {c.proxima_sesion}{" "}
+                              {c.hora_proxima_sesion?.slice(0, 5) ?? ""}
+                            </span>
+                            <span className={`badge w-fit ${c.estado === "EN SESION" ? "badge-en-vivo" : "badge-confirmada"}`}>
+                              {c.estado}
+                            </span>
+                          </div>
+                          <span className="hidden md:block text-sm text-ink-muted">{c.sesiones_restantes}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* TABLA 3 — Historial de clientes */}
+        <div>
+          <h2 className="text-sm font-bold text-ink mb-2">
+            Historial de clientes ({filteredHistoricos.length})
+          </h2>
+          {clientsLoading ? (
+            <TableSkeleton gridClass={ROW_GRID_HISTORIAL} columns={3} />
+          ) : (
+            <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+              <div className="md:overflow-x-auto">
+                <div className="md:min-w-[640px]">
+                  <div className={`${ROW_GRID_HISTORIAL} px-5 py-2 border-b border-border`}>
+                    <div className="text-sm text-ink-muted">Nombre</div>
+                    <div className="hidden md:block text-sm text-ink-muted">Email</div>
+                    <div className="text-sm text-ink-muted">Servicios adquiridos</div>
+                  </div>
+
+                  {filteredHistoricos.length === 0 ? (
+                    <div className="px-5 py-6 text-sm text-ink-muted">No hay clientes históricos</div>
+                  ) : (
+                    filteredHistoricos.map((c, idx) => {
+                      const isSelected = selectedClient?.cliente_id === c.cliente_id;
+                      return (
+                        <div
+                          key={c.cliente_id}
+                          onClick={() => handleClientClick(c)}
+                          className={`${ROW_GRID_HISTORIAL} items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
+                        >
+                          <span className="text-sm text-ink truncate">{c.nombre}</span>
+                          <span className="hidden md:block text-sm text-ink-muted truncate">{c.email}</span>
+                          <span className="text-sm text-ink-muted truncate">
+                            {getServiciosAdquiridos(c.nombre, reservas)}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* ── Panel de detalle — drawer lateral, como al editar/crear servicio ── */}
       {panelOpen && selectedClient && (
@@ -586,6 +645,31 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
   );
 }
 
+// ─── TableSkeleton ────────────────────────────────────────────────────────────
+
+function TableSkeleton({ gridClass, columns }: { gridClass: string; columns: number }) {
+  return (
+    <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+      <div className={`${gridClass} px-5 py-2 border-b border-border`}>
+        {Array.from({ length: columns }).map((_, i) => (
+          <div key={i} className={i > 1 ? "hidden md:block" : ""}>
+            <div className="h-3.5 w-16 rounded bg-border animate-pulse" />
+          </div>
+        ))}
+      </div>
+      {[0, 1, 2].map((row) => (
+        <div key={row} className={`${gridClass} px-5 py-4 items-center ${row > 0 ? "border-t border-border" : ""}`}>
+          {Array.from({ length: columns }).map((_, i) => (
+            <div key={i} className={i > 1 ? "hidden md:block" : ""}>
+              <div className="h-3.5 w-24 rounded bg-border animate-pulse" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── ReservaCard ──────────────────────────────────────────────────────────────
 
 function ReservaCard({
@@ -619,6 +703,16 @@ function ReservaCard({
           {ESTADO_LABEL[reserva.estado] ?? reserva.estado}
         </span>
       </div>
+
+      {puedeEntrarVideollamada(reserva) && (
+        <Link
+          to={`/videollamada/${reserva.reserva_id}`}
+          className="flex items-center justify-center gap-1.5 bg-accent hover:bg-accent-hover text-white rounded py-1.5 text-xs font-semibold transition-colors"
+        >
+          <VideoIcon />
+          Unirse a la videollamada
+        </Link>
+      )}
 
       {(canConfirm || canCancel) && (
         <div className="flex gap-1.5 pt-0.5">
@@ -659,6 +753,15 @@ function SearchIcon() {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+function VideoIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="23 7 16 12 23 17 23 7" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
     </svg>
   );
 }

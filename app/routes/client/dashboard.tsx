@@ -32,6 +32,15 @@ interface ResumenData {
   notificaciones_no_leidas: number;
 }
 
+// Habilita el acceso a la videollamada desde 10 min antes de la sesión
+// (no tenemos la duración acá, así que no cerramos la ventana del lado del cliente).
+function puedeEntrarVideollamada(fecha: string, hora: string) {
+  const ahora = new Date();
+  const desde = new Date(`${fecha}T${hora}`);
+  desde.setMinutes(desde.getMinutes() - 10);
+  return ahora >= desde;
+}
+
 export default function ClientDashboard() {
   const { token, user } = useAuth();
   const [resumen, setResumen] = useState<ResumenData | null>(null);
@@ -153,12 +162,25 @@ export default function ClientDashboard() {
                 </p>
               </div>
 
-              <Link
-                to="/client/reservas"
-                className="text-sm text-primary hover:underline shrink-0"
-              >
-                Ver
-              </Link>
+              <div className="flex items-center gap-3 shrink-0">
+                {proxima.modalidad === "virtual" &&
+                  !["cancelada", "no_asistida", "finalizada"].includes(proxima.estado) &&
+                  puedeEntrarVideollamada(proxima.fecha, proxima.hora) && (
+                    <Link
+                      to={`/videollamada/${proxima.reserva_id}`}
+                      className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <VideoIcon />
+                      Unirse
+                    </Link>
+                  )}
+                <Link
+                  to="/client/reservas"
+                  className="text-sm text-primary hover:underline"
+                >
+                  Ver
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="bg-surface border border-border rounded-2xl p-6 text-center">
@@ -242,6 +264,15 @@ export default function ClientDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+function VideoIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="23 7 16 12 23 17 23 7" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+    </svg>
   );
 }
 
