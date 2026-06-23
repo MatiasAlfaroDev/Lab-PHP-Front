@@ -174,10 +174,12 @@ export default function ClientPayments() {
               {pendientes.map((r, i) => (
                 <div
                   key={`reserva-${r.reserva_id}`}
-                  className={`flex justify-between items-center gap-4 px-5 py-4 ${i > 0 ? "border-t border-border" : ""}`}
+                  className={`flex justify-between items-start gap-4 px-5 py-4 ${i > 0 ? "border-t border-border" : ""}`}
                 >
-                  <div className="min-w-0">
-                    <p className="font-semibold text-sm text-ink truncate">{r.servicio.nombre}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-ink break-words">
+                      {r.servicio.nombre}
+                    </p>
                     <p className="text-xs text-ink-muted">
                       {r.servicio.profesional_nombre} · {r.fecha} {r.hora.slice(0, 5)}
                     </p>
@@ -197,20 +199,30 @@ export default function ClientPayments() {
               {paquetesPendientes.map((compra, i) => (
                 <div
                   key={`paquete-${compra.compra_paquete_id}`}
-                  className={`flex justify-between items-center gap-4 px-5 py-4 ${(pendientes.length > 0 || i > 0) ? "border-t border-border" : ""}`}
+                  className={`flex justify-between items-start gap-4 px-5 py-4 ${(pendientes.length > 0 || i > 0) ? "border-t border-border" : ""}`}
                 >
-                  <div className="min-w-0">
-                    <p className="font-semibold text-sm text-ink truncate">{compra.paquete.nombre}</p>
-                    <p className="text-xs text-ink-muted">Compra #{compra.compra_paquete_id}</p>
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm text-ink">
+                      {compra.paquete.nombre}
+                    </p>
+                    <p className="text-xs text-ink-muted">
+                      Compra #{compra.compra_paquete_id}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <span className={TIPO_BADGE.paquete}>Paquete</span>
-                    <span className="text-sm font-bold text-ink">${compra.paquete.precio_total}</span>
+                    <span className="text-sm font-bold text-ink">
+                      ${compra.paquete.precio_total}
+                    </span>
+
                     <button
-                      onClick={() => navigate(`/client/compra-package/${compra.compra_paquete_id}/pay`)}
-                      className="bg-ink-fixed text-white px-4 py-1.5 rounded-full hover:bg-primary transition-colors cursor-pointer text-xs font-semibold"
+                      onClick={() =>
+                        navigate(`/client/compra-package/${compra.compra_paquete_id}/pay`)
+                      }
+                      className="bg-ink-fixed text-white px-3 py-1.5 rounded-full hover:bg-primary transition-colors cursor-pointer text-xs font-semibold whitespace-nowrap"
                     >
-                      Completar pago
+                      <span className="hidden sm:inline">Completar pago</span>
+                      <span className="sm:hidden">Pagar</span>
                     </button>
                   </div>
                 </div>
@@ -222,14 +234,16 @@ export default function ClientPayments() {
         {/* Historial de reservas — coherente con /professional/services */}
         <h2 className="text-lg font-semibold text-ink mb-3">Historial de reservas</h2>
         <div className="bg-surface border-t border-border w-full overflow-x-auto">
-          <div style={{ minWidth: "520px" }}>
-            <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}>
+          <div className="min-w-max">
+            <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: "minmax(320px, 6fr) 90px 80px 90px" }}>
               {["Servicio", "Fecha", "Monto", "Estado"].map((h) => (
                 <div key={h} className="text-sm text-ink-muted">{h}</div>
               ))}
             </div>
             <div className="px-5 py-2 border-b border-border bg-sidebar">
-              <span className="text-sm font-bold text-ink">Historial de reservas</span>
+              <div className="min-w-max">
+                <span className="text-sm font-bold text-ink">Historial de reservas</span>
+              </div>
             </div>
             {conPago.length === 0 ? (
               <div className="px-5 py-6 text-sm text-ink-muted">Sin registros</div>
@@ -238,10 +252,12 @@ export default function ClientPayments() {
                 <div
                   key={r.reserva_id}
                   className={`grid px-5 py-4 items-center ${idx > 0 ? "border-t border-border" : ""}`}
-                  style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}
+                  style={{ gridTemplateColumns: "minmax(320px, 6fr) 90px 80px 90px"}}
                 >
                   <div className="min-w-0">
-                    <p className="text-sm text-ink truncate">{r.servicio.nombre}</p>
+                    <p className="font-semibold text-sm text-ink break-words">
+                      {r.servicio.nombre}
+                    </p>
                     <p className="text-xs text-ink-muted truncate mt-0.5">{r.servicio.profesional_nombre}</p>
                   </div>
                   <div className="text-sm text-ink-muted">{r.fecha}</div>
@@ -260,14 +276,16 @@ export default function ClientPayments() {
         {/* Historial de paquetes — mismo patrón */}
         <h2 className="text-lg font-semibold text-ink mb-3 mt-8">Historial de paquetes</h2>
         <div className="bg-surface border-t border-border w-full overflow-x-auto">
-          <div style={{ minWidth: "400px" }}>
-            <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}>
+          <div className="min-w-max">
+            <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: "minmax(320px, 6fr) 90px 80px 90px" }}>
               {["Paquete", "Fecha", "Monto", "Estado"].map((h) => (
                 <div key={h} className="text-sm text-ink-muted">{h}</div>
               ))}
             </div>
             <div className="px-5 py-2 border-b border-border bg-sidebar">
-              <span className="text-sm font-bold text-ink">Historial de paquetes</span>
+              <div className="min-w-max">
+                <span className="text-sm font-bold text-ink">Historial de paquetes</span>
+              </div>
             </div>
             {comprasFiltradas.length === 0 ? (
               <div className="px-5 py-6 text-sm text-ink-muted">Sin registros</div>
@@ -276,7 +294,7 @@ export default function ClientPayments() {
                 <div
                   key={compra.compra_paquete_id}
                   className={`grid px-5 py-4 items-center ${idx > 0 ? "border-t border-border" : ""}`}
-                  style={{ gridTemplateColumns: "2fr 110px 100px 110px" }}
+                  style={{ gridTemplateColumns: "minmax(320px, 6fr) 90px 80px 90px" }}
                 >
                   <div className="min-w-0">
                     <p className="text-sm text-ink truncate">{compra.paquete.nombre}</p>

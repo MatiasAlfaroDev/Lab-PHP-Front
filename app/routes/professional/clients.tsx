@@ -216,7 +216,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
     <div className="bg-surface border border-border rounded-2xl overflow-hidden">
       <div
         className="grid px-5 py-2 border-b border-border"
-        style={{ gridTemplateColumns: "3fr 3fr 3fr 110px 120px" }}
+        style={{ gridTemplateColumns: "minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px" }}
       >
         {["Cliente", "Email", "Sesión", "Restantes", "Estado"].map((h) => (
           <div key={h} className="text-sm text-ink-muted">{h}</div>
@@ -229,7 +229,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
         <div
           key={row}
           className={`grid px-5 py-4 items-center ${row > 0 ? "border-t border-border" : ""}`}
-          style={{ gridTemplateColumns: "3fr 3fr 3fr 110px 120px" }}
+          style={{ gridTemplateColumns: "minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px" }}
         >
           <div className="h-3.5 w-32 rounded bg-border animate-pulse" />
           <div className="h-3.5 w-40 rounded bg-border animate-pulse" />
@@ -245,7 +245,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
           <div className="min-w-[640px]">
 
             {/* Cabecera */}
-            <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: "3fr 3fr 3fr 110px 120px" }}>
+            <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns:"minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px" }}>
               {["Cliente", "Email", "Sesión", "Restantes", "Estado"].map((h) => (
                 <div key={h} className="text-sm text-ink-muted">{h}</div>
               ))}
@@ -266,10 +266,12 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                     key={c.cliente_id}
                     onClick={() => handleClientClick(c)}
                     className={`grid items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
-                    style={{ gridTemplateColumns: "3fr 3fr 3fr 110px 120px" }}
+                    style={{ gridTemplateColumns: "minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px" }}
                   >
                     <span className="text-sm text-ink truncate">{c.nombre}</span>
-                    <span className="text-sm text-ink-muted truncate">{c.email}</span>
+                    <span className="text-sm text-ink-muted break-words whitespace-normal">
+                      {c.email}
+                    </span>
                     <span className="text-sm text-ink">
                       {c.proxima_sesion}{" "}
                       {c.hora_proxima_sesion?.slice(0, 5) ?? ""}
@@ -300,10 +302,12 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                     key={c.cliente_id}
                     onClick={() => handleClientClick(c)}
                     className={`grid items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
-                    style={{ gridTemplateColumns: "3fr 3fr 3fr 110px 120px" }}
+                    style={{gridTemplateColumns: "minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px"}}
                   >
                     <span className="text-sm text-ink truncate">{c.nombre}</span>
-                    <span className="text-sm text-ink-muted truncate">{c.email}</span>
+                    <span className="text-sm text-ink-muted break-words whitespace-normal">
+                      {c.email}
+                    </span>
                     <span className="text-sm text-ink">
                       {c.proxima_sesion}{" "}
                       {c.hora_proxima_sesion?.slice(0, 5) ?? ""}
@@ -334,10 +338,12 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                     key={c.cliente_id}
                     onClick={() => handleClientClick(c)}
                     className={`grid items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
-                    style={{ gridTemplateColumns: "3fr 3fr 3fr 110px 120px" }}
+                    style={{ gridTemplateColumns: "minmax(140px, 2fr) minmax(160px, 3fr) minmax(120px, 2fr) 90px 100px"}}
                   >
                     <span className="text-sm text-ink truncate">{c.nombre}</span>
-                    <span className="text-sm text-ink-muted truncate">{c.email}</span>
+                    <span className="text-sm text-ink-muted break-words whitespace-normal">
+                      {c.email}
+                    </span>
                     <span className="text-sm text-ink-muted">Sin reservas futuras</span>
                     <span className="text-sm text-ink-muted">—</span>
                     <span>
