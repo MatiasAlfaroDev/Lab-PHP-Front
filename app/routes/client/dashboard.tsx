@@ -32,6 +32,23 @@ interface ResumenData {
   notificaciones_no_leidas: number;
 }
 
+const ESTADO_BADGE: Record<string, string> = {
+  pendiente: "badge badge-pendiente",
+  confirmada: "badge badge-confirmada",
+  pagada: "badge badge-pagada",
+  en_curso: "badge badge-en-curso",
+  cancelada: "badge badge-cancelada",
+  no_asistida: "badge badge-no-asistida",
+  finalizada: "badge badge-no-asistida",
+};
+
+function getSaludo() {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 12) return "Buenos días";
+  if (h >= 12 && h < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
 // Habilita el acceso a la videollamada desde 10 min antes de la sesión
 // (no tenemos la duración acá, así que no cerramos la ventana del lado del cliente).
 function puedeEntrarVideollamada(fecha: string, hora: string) {
@@ -39,6 +56,38 @@ function puedeEntrarVideollamada(fecha: string, hora: string) {
   const desde = new Date(`${fecha}T${hora}`);
   desde.setMinutes(desde.getMinutes() - 10);
   return ahora >= desde;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="p-4 md:p-8 w-full animate-pulse">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div className="space-y-2">
+          <div className="h-8 w-56 rounded bg-border/60" />
+          <div className="h-4 w-40 rounded bg-border/60" />
+        </div>
+        <div className="h-9 w-36 rounded-full bg-border/60" />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-surface border border-border rounded-2xl p-5 space-y-2">
+            <div className="h-3 w-24 rounded bg-border/60" />
+            <div className="h-9 w-16 rounded bg-border/60" />
+            <div className="h-3 w-20 rounded bg-border/60" />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 h-32 bg-surface border border-border rounded-2xl" />
+        <div className="space-y-4">
+          <div className="h-32 bg-surface border border-border rounded-2xl" />
+          <div className="h-20 bg-surface border border-dashed border-border rounded-2xl" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function ClientDashboard() {
@@ -71,21 +120,11 @@ export default function ClientDashboard() {
     return () => window.removeEventListener("reserva-updated", handler);
   }, [token]);
 
-  if (loading) {
-    return (
-      <div className="p-4 md:p-8 max-w-5xl mx-auto animate-pulse space-y-6">
-        <div className="h-8 bg-border/50 rounded w-64" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 h-40 bg-surface border border-border rounded-2xl" />
-          <div className="h-40 bg-surface border border-border rounded-2xl" />
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
   if (error) {
     return (
-      <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col items-center py-16 text-center gap-3">
+      <div className="p-4 md:p-8 w-full flex flex-col items-center py-16 text-center gap-3">
         <ion-icon name="cloud-offline-outline" style={{ fontSize: "40px", color: "var(--color-ink-muted)" }} />
         <p className="text-ink font-medium">No se pudo cargar el resumen</p>
         <p className="text-sm text-ink-muted">{error}</p>
@@ -96,52 +135,81 @@ export default function ClientDashboard() {
     );
   }
 
+  const firstName = user?.name?.split(" ")[0] ?? "";
   const proxima = resumen?.proxima_reserva ?? null;
   const paquetesActivos = resumen?.paquetes_activos ?? [];
   const notificacionesNoLeidas = resumen?.notificaciones_no_leidas ?? 0;
+  const sesionesRestantesTotal = paquetesActivos.reduce((sum, p) => sum + p.sesiones_restantes, 0);
 
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const esHoy = proxima?.fecha === todayStr;
 
+  const kpis = [
+    {
+      label: "PRÓXIMA SESIÓN",
+      value: proxima ? (esHoy ? "Hoy" : proxima.fecha) : "—",
+      sub: proxima ? `${proxima.hora.slice(0, 5)} hs` : "sin reservas",
+    },
+    {
+      label: "PAQUETES ACTIVOS",
+      value: String(paquetesActivos.length),
+      sub: paquetesActivos.length === 1 ? "paquete vigente" : "paquetes vigentes",
+    },
+    {
+      label: "SESIONES RESTANTES",
+      value: String(sesionesRestantesTotal),
+      sub: "en tus paquetes",
+    },
+    {
+      label: "NOTIFICACIONES",
+      value: String(notificacionesNoLeidas),
+      sub: "sin leer",
+    },
+  ];
+
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 w-full">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="font-display italic text-3xl text-ink">Hola, {user?.name}</h1>
+          <h1 className="font-display text-3xl text-ink">{getSaludo()}{firstName ? `, ${firstName}` : ""}</h1>
           <p className="text-ink-muted mt-1">
             {proxima ? "Tenés una reserva próxima" : "No tenés reservas próximas"}
           </p>
-          {notificacionesNoLeidas > 0 && (
-            <Link
-              to="/client/notifications"
-              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
-            >
-              {notificacionesNoLeidas} notificación{notificacionesNoLeidas !== 1 ? "es" : ""} sin leer
-            </Link>
-          )}
         </div>
         <Link
           to="/client/discover"
-          className="self-start sm:self-auto flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer"
         >
-          + Nueva reserva
+          <PlusIcon />
+          Nueva reserva
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {kpis.map((k) => (
+          <div key={k.label} className="bg-surface border border-border rounded-2xl p-5">
+            <p className="text-sm text-ink-muted mb-2">{k.label}</p>
+            <span className="font-display text-3xl text-ink">{k.value}</span>
+            <p className="text-xs text-ink-muted mt-1">{k.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Próxima reserva */}
         <div className="lg:col-span-2">
-          <h3 className="font-display italic text-xl text-ink mb-4">Próxima reserva</h3>
+          <h2 className="font-display text-xl text-ink mb-4">Próxima reserva</h2>
 
           {proxima ? (
             <div className="bg-surface border border-border rounded-2xl p-4 flex items-center gap-4">
-              <div className="text-center min-w-10">
+              <div className="text-center min-w-10 shrink-0">
                 <p className="text-xs text-ink-muted uppercase font-medium">
                   {esHoy ? "Hoy" : proxima.fecha}
                 </p>
-                <p className="font-display italic text-lg text-ink">
+                <p className="font-display text-lg text-ink">
                   {proxima.hora.slice(0, 5)}
                 </p>
               </div>
@@ -155,7 +223,7 @@ export default function ClientDashboard() {
                   <span className="text-sm font-medium text-ink">
                     {proxima.servicio.profesional_nombre ?? proxima.servicio.nombre}
                   </span>
-                  <span className="badge">{proxima.estado}</span>
+                  <span className={ESTADO_BADGE[proxima.estado] ?? "badge"}>{proxima.estado}</span>
                 </div>
                 <p className="text-xs text-ink-muted truncate">
                   {proxima.servicio.nombre} · {proxima.modalidad}
@@ -168,7 +236,7 @@ export default function ClientDashboard() {
                   puedeEntrarVideollamada(proxima.fecha, proxima.hora) && (
                     <Link
                       to={`/videollamada/${proxima.reserva_id}`}
-                      className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+                      className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white text-sm font-medium px-3 py-1.5 rounded-full transition-colors"
                     >
                       <VideoIcon />
                       Unirse
@@ -195,13 +263,13 @@ export default function ClientDashboard() {
         {/* Packages sidebar */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display italic text-xl text-ink">Paquetes</h3>
-            <Link to="/client/packages" className="text-sm text-primary underline">
+            <h2 className="font-display text-xl text-ink">Paquetes</h2>
+            <Link to="/client/packages" className="text-sm text-primary hover:underline">
               Ver todos
             </Link>
           </div>
 
-          <div className="space-y-3 mb-4">
+          <div className="space-y-3 mb-3">
             {paquetesActivos.length === 0 ? (
               <div className="bg-surface border border-border rounded-2xl p-4">
                 <div className="flex items-center gap-1.5 text-xs text-ink-muted font-medium mb-2">
@@ -228,7 +296,7 @@ export default function ClientDashboard() {
                       Activo
                     </div>
 
-                    <p className="font-display italic text-lg text-ink mb-3">
+                    <p className="font-display text-lg text-ink mb-3">
                       {p.item_paquete.servicio.nombre}
                     </p>
 
@@ -253,8 +321,8 @@ export default function ClientDashboard() {
             to="/client/discover?tab=packages"
             className="flex items-center gap-3 bg-surface border border-dashed border-border rounded-2xl p-4 hover:bg-bg transition-colors"
           >
-            <span className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-ink-muted text-lg">
-              +
+            <span className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-ink-muted shrink-0">
+              <PlusIcon />
             </span>
             <div>
               <p className="text-sm font-medium text-ink">Comprar paquete</p>
@@ -264,6 +332,14 @@ export default function ClientDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
   );
 }
 

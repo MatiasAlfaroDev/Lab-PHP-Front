@@ -107,13 +107,28 @@ function NotificacionesFragment() {
   );
 }
 
+function StarIcon({ filled = true, size = 12 }: { filled?: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
 function DescubrirFragment() {
   return (
     <div className="flex items-center gap-2.5 border border-border rounded-xl p-3 mb-4">
       <div className="w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center text-white text-xs font-semibold border-2 border-white shrink-0">LP</div>
       <div className="min-w-0">
         <p className="text-xs font-semibold text-ink truncate">Lucía Pérez</p>
-        <p className="text-[10px] text-ink-muted">⭐ 4.9 (32)</p>
+        <div className="flex items-center gap-1">
+          <span className="flex items-center gap-0.5 text-accent">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <StarIcon key={i} filled={i < 5} />
+            ))}
+          </span>
+          <span className="text-[10px] text-ink-muted">4.9 (32)</span>
+        </div>
       </div>
     </div>
   );
@@ -122,7 +137,11 @@ function DescubrirFragment() {
 function CalificacionesFragment() {
   return (
     <div className="border border-border rounded-xl p-3 mb-4">
-      <p className="text-sm mb-1">⭐⭐⭐⭐⭐</p>
+      <span className="flex items-center gap-0.5 text-accent mb-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <StarIcon key={i} filled />
+        ))}
+      </span>
       <p className="text-[10px] text-ink-muted">"Excelente atención, muy puntual"</p>
     </div>
   );
@@ -451,8 +470,8 @@ export default function Landing() {
           <div>
             <p className="text-xs font-bold text-ink-muted tracking-widest uppercase mb-3">Legal</p>
             <ul className="space-y-2 text-sm text-ink-muted">
-              <li><a href="#" className="hover:text-ink">Términos</a></li>
-              <li><a href="#" className="hover:text-ink">Política de privacidad</a></li>
+              <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-ink">Términos</a></li>
+              <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-ink">Política de privacidad</a></li>
             </ul>
           </div>
         </div>

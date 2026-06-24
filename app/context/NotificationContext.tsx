@@ -10,6 +10,8 @@ type NotificationType = {
     message: string;
     reserva_id?: number;
     type?: string;
+    fecha?: string;
+    hora?: string;
   };
   read_at: string | null;
 };

@@ -36,7 +36,7 @@ export default function NotificationsPage() {
       </div>
 
       {notifications.length === 0 ? (
-        <div className="bg-surface border border-border rounded-2xl p-10 flex flex-col items-center text-center gap-2">
+        <div className="bg-surface border border-border rounded-2xl p-10 flex flex-col items-center text-center gap-2 ">
           <ion-icon name="notifications-outline" style={{ fontSize: "32px", color: "var(--color-ink-muted)" }} />
           <p className="text-ink-muted">No hay notificaciones todavía</p>
         </div>
@@ -45,7 +45,7 @@ export default function NotificationsPage() {
           {notifications.map((n, idx) => (
             <div
               key={n.id}
-              className={`flex items-start gap-3 px-4 py-3.5 transition-colors ${idx > 0 ? "border-t border-border" : ""} ${
+              className={`flex items-start gap-3 px-4 py-3.5 mt-0.5 transition-colors ${idx > 0 ? "border-t border-border" : ""} ${
                 n.read_at ? "opacity-60" : ""
               }`}
             >
@@ -68,7 +68,8 @@ export default function NotificationsPage() {
                   )}
                 </div>
 
-                <p className="text-sm text-ink-muted mt-0.5">{n.data?.message ?? ""}</p>
+                <p className="text-xs text-ink-muted mt-1.5">{n.data?.fecha ?? " " }  |  {n.data?.hora ?? ""}</p>
+                <p className="text-sm text-ink-muted mt-3">{n.data?.message ?? ""}</p>
 
                 {n.data?.reserva_id && (
                   <p className="text-xs text-ink-muted mt-1.5">Reserva #{n.data.reserva_id}</p>
