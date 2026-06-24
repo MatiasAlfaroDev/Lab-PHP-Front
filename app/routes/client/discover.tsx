@@ -60,6 +60,7 @@ const MODALITY_PARAM: Record<string, string> = {
 };
 const ORDEN_OPTIONS = [
   { value: "", label: "Relevancia" },
+  { value: "alfabetico", label: "Alfabético (A-Z)" },
   { value: "precio_asc", label: "Precio: menor a mayor" },
   { value: "precio_desc", label: "Precio: mayor a menor" },
 ];
@@ -91,15 +92,29 @@ export default function Discover() {
   const [selectedModality, setSelectedModality] = useState("Todas");
   const [priceRange, setPriceRange]             = useState(1000);
   const [orden, setOrden]                       = useState("");
+  const [filtersOpen, setFiltersOpen]           = useState(false);
 
   const [buyingPackageId, setBuyingPackageId] = useState<number | null>(null);
   const [searchParams]                          = useSearchParams();
   const center: [number, number] = [-34.9011, -56.1645];
   const [LeafletMap, setLeafletMap] = useState<any>(null);
+  const [markerIcon, setMarkerIcon] = useState<any>(null);
 
+  // El ícono default de Leaflet apunta a rutas relativas a su propio paquete,
+  // que se rompen al bundlear para producción — usamos un ícono propio servido
+  // desde /public (ruta absoluta, no depende del bundler) con el logo de CitaPro.
   useEffect(() => {
-    import("react-leaflet").then((mod) => {
-      setLeafletMap(mod);
+    Promise.all([import("react-leaflet"), import("leaflet")]).then(([reactLeaflet, leaflet]) => {
+      setLeafletMap(reactLeaflet);
+      const L = leaflet.default ?? leaflet;
+      setMarkerIcon(
+        L.icon({
+          iconUrl: "/icon.svg",
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+          popupAnchor: [0, -15],
+        })
+      );
     });
   }, []);
 
@@ -146,7 +161,7 @@ export default function Discover() {
       if (selectedType) params.set("tipo", selectedType);
       if (selectedModality !== "Todas") params.set("modalidad", MODALITY_PARAM[selectedModality]);
       if (priceRange < maxPrice) params.set("precio_max", String(priceRange));
-      if (orden) params.set("orden", orden);
+      if (orden && orden !== "alfabetico") params.set("orden", orden);
 
       const qs = params.toString();
 
@@ -170,7 +185,9 @@ export default function Discover() {
   const servicioId = searchParams.get("servicio");
   const compraItemId = searchParams.get("compraItem");
 
-  const filteredSvc = servicios;
+  const filteredSvc = orden === "alfabetico"
+    ? [...servicios].sort((a, b) => a.nombre.localeCompare(b.nombre))
+    : servicios;
   const filteredPkg = paquetes.filter((p) => Number(p.precio_total) <= priceRange);
 
   const resetFilters = () => {
@@ -181,22 +198,21 @@ export default function Discover() {
     setOrden("");
   };
 
-  const typeChips = allTypes.length === 0 ? (
-    <span className="text-xs text-ink-muted">Sin tipos disponibles</span>
-  ) : (
-    allTypes.map(({ label, count }) => (
-      <button
-        key={label}
-        onClick={() => setSelectedType((prev) => (prev === label ? null : label))}
-        className={`shrink-0 text-xs px-3 py-1.5 rounded-full border cursor-pointer transition-colors ${
-          selectedType === label
-            ? "bg-ink-fixed text-white border-ink-fixed"
-            : "border-border text-ink-muted hover:border-ink hover:text-ink"
-        }`}
+  const typeDropdown = (
+    <div className="flex items-center gap-1.5 shrink-0">
+      <label className="text-xs md:text-sm text-ink-muted font-medium">Tipo</label>
+      <select
+        value={selectedType ?? ""}
+        onChange={(e) => setSelectedType(e.target.value || null)}
+        disabled={allTypes.length === 0}
+        className="text-xs md:text-sm border border-border rounded-full px-3 py-1.5 md:px-4 md:py-2.5 bg-transparent text-ink cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {label} <span className="opacity-70">{count}</span>
-      </button>
-    ))
+        <option value="">Todos</option>
+        {allTypes.map(({ label, count }) => (
+          <option key={label} value={label}>{label} ({count})</option>
+        ))}
+      </select>
+    </div>
   );
 
   const modalityChips = MODALITIES.map((m) => (
@@ -213,51 +229,112 @@ export default function Discover() {
     </button>
   ));
 
+  const activeFiltersCount =
+    (selectedType ? 1 : 0) + (selectedModality !== "Todas" ? 1 : 0);
+
   return (
     <div className="w-full">
-      {/* Toolbar de filtros — horizontal, coherente con /professional/services */}
-      <div className="flex flex-wrap items-center gap-2 px-4 md:px-6 py-3 border-b border-border overflow-x-auto">
-        {typeChips}
-        <span className="w-px h-5 bg-border shrink-0" />
-        {modalityChips}
+      {/* Toolbar de filtros — horizontal en desktop, dropdown en mobile */}
+      <div className="border-b border-border">
+        {/* Mobile: botón que despliega los filtros, para no apilar varias filas de chips */}
+        <div className="flex items-center justify-between gap-2 px-4 py-3 md:hidden">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-ink border border-border rounded-full pl-3 pr-2.5 py-1.5 cursor-pointer"
+          >
+            <ion-icon name="options-outline" style={{ fontSize: "15px" }} />
+            Filtros
+            {activeFiltersCount > 0 && (
+              <span className="bg-ink-fixed text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
+            <ion-icon name={filtersOpen ? "chevron-up-outline" : "chevron-down-outline"} style={{ fontSize: "13px" }} />
+          </button>
+          <button className="text-xs text-ink  underline cursor-pointer shrink-0" onClick={resetFilters}>
+            Limpiar
+          </button>
+        </div>
 
-        <div className="flex items-center gap-2 ml-auto shrink-0">
-          {activeTab === "servicios" && (
-            <>
-              <div className="hidden lg:flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5">
-                <ion-icon name="search-outline" style={{ fontSize: "14px", color: "var(--color-ink-muted)" }} />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-32 bg-transparent text-xs text-ink placeholder-ink-muted outline-none"
-                  placeholder="Buscar servicios..."
-                />
-              </div>
+        {filtersOpen && (
+          <div className="px-4 pb-3 md:hidden space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {typeDropdown}
+              <span className="w-px h-5 bg-border shrink-0" />
+              {modalityChips}
+            </div>
+
+            {activeTab === "servicios" && (
               <select
                 value={orden}
                 onChange={(e) => setOrden(e.target.value)}
-                className="hidden md:block text-xs border border-border rounded-full px-3 py-1.5 bg-transparent text-ink-muted cursor-pointer"
+                className="w-full text-sm border border-border rounded-full px-3 py-2 bg-transparent text-ink cursor-pointer"
               >
                 {ORDEN_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
-            </>
-          )}
-          <span className="hidden sm:inline text-xs text-ink-muted whitespace-nowrap">
-            hasta $ {priceRange}
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={maxPrice}
-            value={priceRange}
-            onChange={(e) => setPriceRange(Number(e.target.value))}
-            className="hidden sm:block w-24 accent-primary"
-          />
-          <button className="text-xs text-primary underline cursor-pointer shrink-0" onClick={resetFilters}>
-            Limpiar
-          </button>
+            )}
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-ink-muted whitespace-nowrap">hasta $ {priceRange}</span>
+              <input
+                type="range"
+                min={0}
+                max={maxPrice}
+                value={priceRange}
+                onChange={(e) => setPriceRange(Number(e.target.value))}
+                className="flex-1 accent-primary"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Desktop: todo en una fila, coherente con /professional/services */}
+        <div className="hidden md:flex md:items-center gap-2 px-6 py-3">
+          {typeDropdown}
+          <span className="w-px h-5 bg-border shrink-0" />
+          {modalityChips}
+
+          <div className="flex items-center gap-2 ml-auto shrink-0">
+            {activeTab === "servicios" && (
+              <>
+                <div className="hidden lg:flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5">
+                  <ion-icon name="search-outline" style={{ fontSize: "14px", color: "var(--color-ink-muted)" }} />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-32 bg-transparent text-xs text-ink placeholder-ink-muted outline-none"
+                    placeholder="Buscar servicios..."
+                  />
+                </div>
+                <select
+                  value={orden}
+                  onChange={(e) => setOrden(e.target.value)}
+                  className="text-xs md:text-sm border border-border rounded-full px-3 py-1.5 md:px-4 md:py-2.5 bg-transparent text-ink cursor-pointer"
+                >
+                  {ORDEN_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </>
+            )}
+            <span className="text-xs text-ink-muted whitespace-nowrap">
+              hasta $ {priceRange}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={maxPrice}
+              value={priceRange}
+              onChange={(e) => setPriceRange(Number(e.target.value))}
+              className="w-24 accent-primary"
+            />
+            <button className="text-xs text-primary underline cursor-pointer shrink-0" onClick={resetFilters}>
+              Limpiar
+            </button>
+          </div>
         </div>
       </div>
 
@@ -348,14 +425,7 @@ export default function Discover() {
                         onClick={() => navigate(`/client/professional/${servicio.profesional_id}`, {state: {servicioId: servicio.servicio_id}})}
                         className="bg-surface border border-border rounded-2xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                       >
-                        <div className={`h-28 bg-gradient-to-br ${colors.bg} relative`}>
-                          <button
-                            onClick={(e) => e.stopPropagation()}
-                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-ink-fixed/70 hover:text-accent transition-colors cursor-pointer"
-                          >
-                            <ion-icon name="heart-outline" style={{ fontSize: "16px" }} />
-                          </button>
-                        </div>
+                        <div className={`h-28 bg-gradient-to-br ${colors.bg} relative`} />
                         <div className="p-4">
                           <div className="flex items-start gap-3 mb-3 relative">
                             <div className={`w-9 h-9 rounded-full ${colors.avatar} flex items-center justify-center text-white text-xs font-semibold border-2 border-white`}>
@@ -365,9 +435,16 @@ export default function Discover() {
                               <p className="text-sm font-semibold text-ink">{servicio.nombre}</p>
                               <p className="text-xs text-ink-muted">{servicio.tipo}</p>
                               {servicio.cantidad_calificaciones ? (
-                                  <p className="text-xs text-ink-muted mt-1">
-                                    ⭐ {servicio.promedio?.toFixed(1)} ({servicio.cantidad_calificaciones})
-                                  </p>
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <span className="flex items-center gap-0.5 text-accent">
+                                      {Array.from({ length: 5 }).map((_, i) => (
+                                        <StarIcon key={i} filled={i < Math.round(servicio.promedio ?? 0)} />
+                                      ))}
+                                    </span>
+                                    <span className="text-xs text-ink-muted">
+                                      {servicio.promedio?.toFixed(1)} ({servicio.cantidad_calificaciones})
+                                    </span>
+                                  </div>
                                 ) : (
                                   <p className="text-xs text-ink-muted mt-1">
                                     Sin reseñas
@@ -418,7 +495,7 @@ export default function Discover() {
                     Servicios en el mapa
                   </h2>
 
-                  {LeafletMap && (
+                  {LeafletMap && markerIcon && (
                     <LeafletMap.MapContainer
                       center={center}
                       zoom={7}
@@ -428,7 +505,7 @@ export default function Discover() {
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       />
 
-                      <LeafletMap.Marker position={[-34.9011, -56.1645]}>
+                      <LeafletMap.Marker position={[-34.9011, -56.1645]} icon={markerIcon}>
                         <LeafletMap.Popup>
                           Montevideo
                         </LeafletMap.Popup>
@@ -443,6 +520,7 @@ export default function Discover() {
                               servicio.latitud!,
                               servicio.longitud!,
                             ]}
+                            icon={markerIcon}
                           >
                             <LeafletMap.Popup>
                               <div className="min-w-[180px]">
@@ -587,5 +665,13 @@ export default function Discover() {
         )}
       </div>
     </div>
+  );
+}
+
+function StarIcon({ filled = true, size = 12 }: { filled?: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
   );
 }

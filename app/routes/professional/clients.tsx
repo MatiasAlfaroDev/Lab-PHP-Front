@@ -5,11 +5,18 @@ import { api } from "~/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type ServicioPaquete = {
+  servicio: string;
+  cantidad_sesiones: number;
+  sesiones_restantes: number;
+};
+
 type Client = {
   cliente_id: number;
   nombre: string;
   email: string;
   sesiones_restantes: number;
+  servicios?: ServicioPaquete[];
   proxima_sesion: string;
   hora_proxima_sesion: string;
   estado: string;
@@ -94,13 +101,15 @@ function tieneReservaFutura(clienteNombre: string, reservas: Reserva[]): boolean
   );
 }
 
-// Mobile: solo Cliente + Sesión, sin scroll horizontal.
+// Mismo template de columnas para las 3 tablas, para que queden alineadas
+// entre secciones. Mobile: solo la 1ra y 3ra columna, sin scroll horizontal.
+const ROW_GRID = "grid grid-cols-[2fr_1.4fr] md:grid-cols-[2fr_2.5fr_2fr_1.6fr_140px]";
 // Tabla "Próximas reservas de servicio": Cliente, Email, Servicio, Sesión, Estado
-const ROW_GRID_SERVICIO = "grid grid-cols-[2fr_1.4fr] md:grid-cols-[2fr_2.5fr_2fr_1.6fr_140px]";
+const ROW_GRID_SERVICIO = ROW_GRID;
 // Tabla "Próximas reservas de paquete": Cliente, Email, Servicio, Sesión, Restantes
-const ROW_GRID_PAQUETE = "grid grid-cols-[2fr_1.4fr] md:grid-cols-[2fr_2.5fr_2fr_2fr_110px]";
-// Tabla "Historial": Nombre, Email, Servicios adquiridos
-const ROW_GRID_HISTORIAL = "grid grid-cols-[1.5fr_1fr] md:grid-cols-[2fr_2.5fr_3fr]";
+const ROW_GRID_PAQUETE = ROW_GRID;
+// Tabla "Historial": Nombre, Email, Servicios adquiridos (ocupa las últimas 3 columnas)
+const ROW_GRID_HISTORIAL = ROW_GRID;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -120,6 +129,8 @@ export default function Clients() {
   // Selección: cliente y/o turno específico
   const [selectedClient,  setSelectedClient]  = useState<Client | null>(null);
   const [selectedReserva, setSelectedReserva] = useState<Reserva | null>(null);
+  const [selectedFrom, setSelectedFrom] = useState<"servicio" | "paquete" | "historial">("servicio");
+  const [servicioFiltro, setServicioFiltro] = useState<string | null>(null);
 
   // Control de acción en curso
   const [updatingId, setUpdatingId] = useState<number | null>(null);
@@ -203,8 +214,35 @@ export default function Clients() {
     ? reservas.filter((r) => r.cliente_nombre === selectedClient.nombre)
     : [];
 
+  // Saldo real del paquete (sesiones_restantes/cantidad_sesiones por servicio),
+  // tal como lo devuelve el backend — no se infiere de la agenda local.
+  const packageServicios = selectedClient?.servicios ?? [];
+  const packageServiceNames = packageServicios.length > 0
+    ? packageServicios.map((s) => s.servicio)
+    : Array.from(new Set(clientReservas.map((r) => r.servicio?.nombre).filter((n): n is string => !!n)));
+
+  const servicioSeleccionado = servicioFiltro
+    ? packageServicios.find((s) => s.servicio === servicioFiltro) ?? null
+    : null;
+  const packageRestantes = servicioSeleccionado
+    ? servicioSeleccionado.sesiones_restantes
+    : packageServicios.length > 0
+      ? packageServicios.reduce((sum, s) => sum + s.sesiones_restantes, 0)
+      : selectedClient?.sesiones_restantes ?? 0;
+  const packageCompletadas = servicioSeleccionado
+    ? servicioSeleccionado.cantidad_sesiones - servicioSeleccionado.sesiones_restantes
+    : packageServicios.reduce((sum, s) => sum + (s.cantidad_sesiones - s.sesiones_restantes), 0);
+
+  // Filtro por servicio dentro del panel — todas las sesiones por default,
+  // o solo las del servicio elegido al apretar su chip.
+  const turnosDelFiltro = servicioFiltro
+    ? clientReservas.filter((r) => r.servicio?.nombre === servicioFiltro)
+    : clientReservas;
+  // En la lista de turnos no mostramos las ya finalizadas — eso ya lo resume "Realizadas".
+  const turnosMostrados = turnosDelFiltro.filter((r) => r.estado !== "finalizada");
+
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleClientClick = (c: Client) => {
+  const handleClientClick = (c: Client, from: "servicio" | "paquete" | "historial") => {
     const isAlreadySelected = selectedClient?.cliente_id === c.cliente_id && !selectedReserva;
     if (isAlreadySelected) {
       setSelectedClient(null);
@@ -212,12 +250,15 @@ export default function Clients() {
     } else {
       setSelectedClient(c);
       setSelectedReserva(null);
+      setSelectedFrom(from);
+      setServicioFiltro(null);
     }
   };
 
   const closePanel = () => {
     setSelectedClient(null);
     setSelectedReserva(null);
+    setServicioFiltro(null);
   };
 
   const panelOpen = !!selectedClient;
@@ -274,9 +315,8 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
           {clientsLoading ? (
             <TableSkeleton gridClass={ROW_GRID_SERVICIO} columns={5} />
           ) : (
-            <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-              <div className="md:overflow-x-auto">
-                <div className="md:min-w-[760px]">
+            <div className="bg-surface border-t border-border w-full overflow-x-auto">
+              <div className="min-w-max md:min-w-[760px]">
                   <div className={`${ROW_GRID_SERVICIO} px-5 py-2 border-b border-border`}>
                     <div className="text-sm text-ink-muted">Cliente</div>
                     <div className="hidden md:block text-sm text-ink-muted">Email</div>
@@ -293,7 +333,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                       return (
                         <div
                           key={c.cliente_id}
-                          onClick={() => handleClientClick(c)}
+                          onClick={() => handleClientClick(c, "servicio")}
                           className={`${ROW_GRID_SERVICIO} items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
                         >
                           <span className="text-sm text-ink truncate">{c.nombre}</span>
@@ -314,7 +354,6 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                       );
                     })
                   )}
-                </div>
               </div>
             </div>
           )}
@@ -328,9 +367,8 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
           {clientsLoading ? (
             <TableSkeleton gridClass={ROW_GRID_PAQUETE} columns={5} />
           ) : (
-            <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-              <div className="md:overflow-x-auto">
-                <div className="md:min-w-[760px]">
+            <div className="bg-surface border-t border-border w-full overflow-x-auto">
+              <div className="min-w-max md:min-w-[760px]">
                   <div className={`${ROW_GRID_PAQUETE} px-5 py-2 border-b border-border`}>
                     <div className="text-sm text-ink-muted">Cliente</div>
                     <div className="hidden md:block text-sm text-ink-muted">Email</div>
@@ -347,7 +385,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                       return (
                         <div
                           key={c.cliente_id}
-                          onClick={() => handleClientClick(c)}
+                          onClick={() => handleClientClick(c, "paquete")}
                           className={`${ROW_GRID_PAQUETE} items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
                         >
                           <span className="text-sm text-ink truncate">{c.nombre}</span>
@@ -369,7 +407,6 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                       );
                     })
                   )}
-                </div>
               </div>
             </div>
           )}
@@ -383,13 +420,12 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
           {clientsLoading ? (
             <TableSkeleton gridClass={ROW_GRID_HISTORIAL} columns={3} />
           ) : (
-            <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-              <div className="md:overflow-x-auto">
-                <div className="md:min-w-[640px]">
+            <div className="bg-surface border-t border-border w-full overflow-x-auto">
+              <div className="min-w-max md:min-w-[640px]">
                   <div className={`${ROW_GRID_HISTORIAL} px-5 py-2 border-b border-border`}>
                     <div className="text-sm text-ink-muted">Nombre</div>
                     <div className="hidden md:block text-sm text-ink-muted">Email</div>
-                    <div className="text-sm text-ink-muted">Servicios adquiridos</div>
+                    <div className="text-sm text-ink-muted md:col-span-3">Servicios adquiridos</div>
                   </div>
 
                   {filteredHistoricos.length === 0 ? (
@@ -400,19 +436,18 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                       return (
                         <div
                           key={c.cliente_id}
-                          onClick={() => handleClientClick(c)}
+                          onClick={() => handleClientClick(c, "historial")}
                           className={`${ROW_GRID_HISTORIAL} items-center px-5 py-4 cursor-pointer transition-colors ${idx > 0 ? "border-t border-border" : ""} ${isSelected ? "bg-accent/10" : "hover:bg-bg"}`}
                         >
                           <span className="text-sm text-ink truncate">{c.nombre}</span>
                           <span className="hidden md:block text-sm text-ink-muted truncate">{c.email}</span>
-                          <span className="text-sm text-ink-muted truncate">
+                          <span className="text-sm text-ink-muted truncate md:col-span-3">
                             {getServiciosAdquiridos(c.nombre, reservas)}
                           </span>
                         </div>
                       );
                     })
                   )}
-                </div>
               </div>
             </div>
           )}
@@ -429,7 +464,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
                 <p className="text-xs font-bold text-ink-muted uppercase tracking-widest">
-                  {selectedReserva ? "Turno" : "Cliente"}
+                  {selectedReserva ? "Turno" : selectedFrom === "paquete" ? "Paquete" : "Cliente"}
                 </p>
                 <button onClick={closePanel} className="text-ink-muted hover:text-ink transition-colors cursor-pointer">
                   <CloseIcon />
@@ -450,22 +485,91 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-2 divide-x divide-border border-b border-border">
-                <div className="px-5 py-3">
-                  <p className="text-xs text-ink-muted uppercase tracking-widest font-bold mb-1">Sesiones</p>
-                  <p className="font-display text-2xl text-ink font-bold">{selectedClient.sesiones_restantes}</p>
-                  <p className="text-xs text-ink-muted">restantes</p>
+              {selectedFrom === "paquete" ? (
+                <div className="border-b border-border">
+                  <div className="px-5 py-4 flex items-center gap-3">
+                    <div className="shrink-0 w-12 h-12 flex items-center justify-center bg-surface border border-border rounded-xl">
+                      <ion-icon name="cube-outline" style={{ fontSize: "22px" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-primary mb-0.5">Paquete activo</p>
+                      <p className="text-sm text-ink">
+                        <span className="font-display text-xl font-bold">{packageRestantes}</span> sesiones restantes
+                      </p>
+                      {selectedClient.proxima_sesion && (
+                        <p className="text-xs text-ink-muted mt-0.5">
+                          Próxima: {selectedClient.proxima_sesion} {selectedClient.hora_proxima_sesion?.slice(0, 5) ?? ""}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {packageServiceNames.length > 0 && (
+                    <div className="px-5 py-3 border-t border-border">
+                      <p className="text-xs text-ink-muted uppercase tracking-widest font-bold mb-2">
+                        Servicios incluidos <span className="font-normal">— tocá uno para filtrar</span>
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setServicioFiltro(null)}
+                          className={`text-xs font-medium px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
+                            servicioFiltro === null
+                              ? "bg-ink-fixed border-ink-fixed text-white"
+                              : "border-border bg-surface text-ink hover:bg-bg"
+                          }`}
+                        >
+                          Todos
+                        </button>
+                        {packageServiceNames.map((nombre) => (
+                          <button
+                            type="button"
+                            key={nombre}
+                            onClick={() => setServicioFiltro((prev) => (prev === nombre ? null : nombre))}
+                            className={`text-xs font-medium px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
+                              servicioFiltro === nombre
+                                ? "bg-ink-fixed border-ink-fixed text-white"
+                                : "border-border bg-surface text-ink hover:bg-bg"
+                            }`}
+                          >
+                            {nombre}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
+                    <div className="px-5 py-2.5">
+                      <p className="text-xs text-ink-muted uppercase tracking-widest font-bold mb-0.5">Realizadas</p>
+                      <p className="text-sm text-ink font-semibold">{packageCompletadas}</p>
+                    </div>
+                    <div className="px-5 py-2.5">
+                      <p className="text-xs text-ink-muted uppercase tracking-widest font-bold mb-0.5">Restantes</p>
+                      <p className="text-sm text-ink font-semibold">{packageRestantes}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="px-5 py-3">
-                  <p className="text-xs text-ink-muted uppercase tracking-widest font-bold mb-1">Próxima</p>
-                  <p className="text-xs text-ink font-semibold leading-snug">
-                    {selectedClient.proxima_sesion ? `${selectedClient.proxima_sesion}` : "—"}
-                  </p>
-                  <p className="text-xs text-ink-muted">
-                    {selectedClient.hora_proxima_sesion?.slice(0, 5) ?? ""}
-                  </p>
+              ) : (
+                <div className={`grid border-b border-border ${selectedClient.sesiones_restantes > 0 ? "grid-cols-2 divide-x divide-border" : "grid-cols-1"}`}>
+                  {selectedClient.sesiones_restantes > 0 && (
+                    <div className="px-5 py-3">
+                      <p className="text-xs text-ink-muted uppercase tracking-widest font-bold mb-1">Sesiones</p>
+                      <p className="font-display text-2xl text-ink font-bold">{selectedClient.sesiones_restantes}</p>
+                      <p className="text-xs text-ink-muted">restantes</p>
+                    </div>
+                  )}
+                  <div className="px-5 py-3">
+                    <p className="text-xs text-ink-muted uppercase tracking-widest font-bold mb-1">Próxima</p>
+                    <p className="text-xs text-ink font-semibold leading-snug">
+                      {selectedClient.proxima_sesion ? `${selectedClient.proxima_sesion}` : "—"}
+                    </p>
+                    <p className="text-xs text-ink-muted">
+                      {selectedClient.hora_proxima_sesion?.slice(0, 5) ?? ""}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Turno seleccionado */}
               {selectedReserva && (
@@ -610,16 +714,16 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                 </div>
               )}
 
-              {/* Todos los turnos del cliente */}
+              {/* Turnos — todo el historial del cliente, o solo las sesiones del paquete */}
               <div className="px-5 py-4">
                 <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-3">
-                  {selectedReserva ? "Otros turnos" : "Turnos"}
+                  {selectedReserva ? "Otros turnos" : selectedFrom === "paquete" ? "Sesiones del paquete" : "Turnos"}
                 </p>
-                {clientReservas.length === 0 ? (
+                {turnosMostrados.length === 0 ? (
                   <p className="text-xs text-ink-muted">Sin turnos registrados</p>
                 ) : (
                   <div className="space-y-3">
-                    {clientReservas
+                    {turnosMostrados
                       .filter((r) => r.reserva_id !== selectedReserva?.reserva_id)
                       .map((r) => (
                         <ReservaCard
@@ -630,7 +734,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                           onCancelarReserva={cancelarReserva}
                         />
                       ))}
-                    {clientReservas.filter((r) => r.reserva_id !== selectedReserva?.reserva_id).length === 0 && (
+                    {turnosMostrados.filter((r) => r.reserva_id !== selectedReserva?.reserva_id).length === 0 && (
                       <p className="text-xs text-ink-muted">Sin otros turnos</p>
                     )}
                   </div>
@@ -649,7 +753,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
 
 function TableSkeleton({ gridClass, columns }: { gridClass: string; columns: number }) {
   return (
-    <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+    <div className="bg-surface border-t border-border w-full overflow-x-auto">
       <div className={`${gridClass} px-5 py-2 border-b border-border`}>
         {Array.from({ length: columns }).map((_, i) => (
           <div key={i} className={i > 1 ? "hidden md:block" : ""}>
@@ -690,7 +794,7 @@ function ReservaCard({
   const isUpdating = updatingId === reserva.reserva_id;
 
   return (
-    <div className={`rounded-lg border p-4 space-y-2 ${highlight ? "border-ink/30 bg-surface" : "border-border bg-surface"}`}>
+    <div className={`rounded-md border p-4 space-y-2 ${highlight ? "border-ink/30 bg-surface" : "border-border bg-surface"}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-ink">

@@ -3,6 +3,14 @@ import { useEffect, useState } from "react";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 
+const ESTADO_BADGE: Record<string, { label: string; cls: string }> = {
+  sin_pago:  { label: "Sin pago",            cls: "bg-gray-100 text-ink-muted" },
+  pendiente: { label: "Pendiente de pago",   cls: "bg-amber-100 text-amber-800" },
+  rechazado: { label: "Pago rechazado",      cls: "bg-red-100 text-red-700" },
+  activo:    { label: "Activo",              cls: "bg-green-100 text-green-800" },
+  finalizado:{ label: "Finalizado",          cls: "bg-gray-100 text-ink-muted" },
+};
+
 export default function Packages() {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -53,202 +61,150 @@ export default function Packages() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-4 md:p-8">
-        Cargando paquetes...
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto">
-      <h1 className="font-display text-3xl text-ink mb-6">
-        Paquetes
-      </h1>
+    <div className="w-full">
+      <div className="px-4 md:px-6 py-4 border-b border-border">
+        <h1 className="font-display text-2xl text-ink">Paquetes</h1>
+        <p className="text-sm text-ink-muted mt-0.5">Tus paquetes de sesiones comprados</p>
+      </div>
 
-      <h2 className="text-xs font-bold text-ink-muted uppercase tracking-widest mb-4">
-        MIS PAQUETES
-      </h2>
-
-      {packages.length === 0 ? (
-        <p>No tienes paquetes comprados.</p>
-      ) : (
-
-        packages.map((compra) => {
-          const total = compra.items.reduce(
-            (sum: number, item: any) =>
-              sum + item.item_paquete.cantidad_sesiones,
-            0
-          );
-
-          const restantes = compra.items.reduce(
-            (sum: number, item: any) =>
-              sum + item.sesiones_restantes,
-            0
-          );
-
-          const estadoPago = compra.pago?.estado;
-
-          const badge =
-          !estadoPago
-            ? {
-                label: "Sin pago",
-                cls: "bg-slate-50 text-slate-700 border-slate-200",
-              }
-            : estadoPago === "pendiente"
-            ? {
-                label: "Pendiente de pago",
-                cls: "bg-amber-50 text-amber-700 border-amber-200",
-              }
-            : estadoPago !== "aprobado"
-            ? {
-                label: "Pago rechazado",
-                cls: "bg-red-50 text-red-700 border-red-200",
-              }
-            : restantes > 0
-            ? {
-                label: "Activo",
-                cls: "bg-green-50 text-green-700 border-green-200",
-              }
-            : {
-                label: "Finalizado",
-                cls: "bg-gray-50 text-gray-700 border-gray-200",
-              };
-
-          return (
-            <div
-              key={compra.compra_paquete_id}
-              className="bg-surface border border-border rounded-2xl p-4 flex items-start gap-4 mb-3"
-            >
-              {/* Icono lateral */}
-              <div className="shrink-0 w-14 h-14 flex items-center justify-center bg-bg border border-border rounded-xl">
-                <ion-icon
-                  name="cube-outline"
-                  style={{ fontSize: "26px" }}
-                />
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <p className="text-sm font-semibold text-ink">
-                    {compra.paquete.nombre}
-                  </p>
-
-                  <span
-                    className={`shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${badge.cls}`}
-                  >
-                    {badge.label}
-                  </span>
-                </div>
-
-                <p className="text-xs text-ink-muted">
-                  Compra #{compra.compra_paquete_id}
-                </p>
-
-                <p className="text-xs text-ink-muted mb-2">
-                  Comprado el {compra.fecha_compra}
-                </p>
-
-                <div className="flex flex-wrap items-center gap-4 text-xs text-ink-muted">
-                  <span>
-                    {restantes} de {total} sesiones restantes
-                  </span>
-
-                  <div className="mt-4 space-y-2">
-                    {compra.items.map((item: any) => (
-                      <div
-                        key={item.compra_item_paquete_id}
-                        className="flex items-center justify-between border rounded-lg p-3"
-                      >
-                        <div>
-                          <p className="font-medium">
-                            {item.item_paquete.servicio.nombre}
-                          </p>
-
-                          <p className="text-sm text-ink-muted">
-                            {item.sesiones_restantes} sesiones restantes
-                          </p>
-                        </div>
-
-                        {estadoPago === "aprobado" &&
-                          item.sesiones_restantes > 0 && (
-                            <button
-                              onClick={() =>
-                                navigate(
-                                  `/client/professional/${item.item_paquete.servicio.profesional_id}?compraItem=${item.compra_item_paquete_id}&servicio=${item.item_paquete.servicio.servicio_id}`
-                                )
-                              }
-                              className="bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary-hover"
-                            >
-                              Reservar sesión
-                            </button>
-                          )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <span className="font-semibold text-ink">
-                    ${Number(
-                      compra.paquete.precio_total
-                    ).toFixed(0)}
-                  </span>
-                </div>
-
-                <div className="mt-3 flex gap-2 flex-wrap">
-                  {estadoPago === "pendiente" && (
-                    <button
-                      onClick={() =>
-                        navigate(
-                          `/client/compra-package/${compra.compra_paquete_id}/pay`
-                        )
-                      }
-                      className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors"
-                    >
-                      Completar pago
-                    </button>
-                  )}
-
-                  {(estadoPago === "rechazado" ||
-                    estadoPago === "fallido") && (
-                    <button
-                      onClick={() =>
-                        navigate(
-                          `/client/compra-package/${compra.compra_paquete_id}/pay`
-                        )
-                      }
-                      className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors"
-                    >
-                      Reintentar pago
-                    </button>
-                  )}
-
-                  {estadoPago === "pendiente" && (
-                    <button
-                      onClick={() =>
-                        cancelarCompra(
-                          compra.compra_paquete_id
-                        )
-                      }
-                      disabled={
-                        cancelling ===
-                        compra.compra_paquete_id
-                      }
-                      className="px-4 py-2 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
-                    >
-                      {cancelling === compra.compra_paquete_id
-                        ? "Cancelando..."
-                        : "Cancelar compra"}
-                    </button>
-                  )}
-                </div>
+      {loading ? (
+        <div className="bg-surface border-t border-border">
+          {[0, 1].map((i) => (
+            <div key={i} className={`flex items-center gap-4 px-4 md:px-6 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
+              <div className="w-14 h-14 rounded-xl bg-border/50 animate-pulse shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3.5 w-40 rounded bg-border/50 animate-pulse" />
+                <div className="h-3 w-28 rounded bg-border/50 animate-pulse" />
               </div>
             </div>
-          );
-        })
+          ))}
+        </div>
+      ) : packages.length === 0 ? (
+        <div className="flex flex-col items-center py-20 text-center gap-3">
+          <ion-icon name="cube-outline" style={{ fontSize: "40px", color: "var(--color-ink-muted)" }} />
+          <p className="text-ink font-medium">Sin paquetes aún</p>
+          <p className="text-sm text-ink-muted">Comprá un paquete de sesiones para empezar a ahorrar</p>
+          <button
+            onClick={() => navigate("/client/discover?tab=packages")}
+            className="text-sm text-primary hover:underline cursor-pointer"
+          >
+            Explorar paquetes
+          </button>
+        </div>
+      ) : (
+        <div className="bg-surface border-t border-border">
+          {packages.map((compra, compraIdx) => {
+            const total = compra.items.reduce(
+              (sum: number, item: any) =>
+                sum + item.item_paquete.cantidad_sesiones,
+              0
+            );
+
+            const restantes = compra.items.reduce(
+              (sum: number, item: any) =>
+                sum + item.sesiones_restantes,
+              0
+            );
+
+            const estadoPago = compra.pago?.estado;
+
+            const estadoKey =
+              !estadoPago ? "sin_pago"
+              : estadoPago === "pendiente" ? "pendiente"
+              : estadoPago !== "aprobado" ? "rechazado"
+              : restantes > 0 ? "activo"
+              : "finalizado";
+
+            const badge = ESTADO_BADGE[estadoKey];
+
+            return (
+              <div key={compra.compra_paquete_id} className={compraIdx > 0 ? "border-t-8 border-bg" : ""}>
+                {/* Encabezado del paquete — info + estado + acciones de pago */}
+                <div className="flex items-center gap-4 px-4 md:px-6 py-4">
+                  <div className="shrink-0 w-14 flex flex-col items-center justify-center bg-bg rounded-xl py-2">
+                    <ion-icon name="cube-outline" style={{ fontSize: "22px" }} />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-ink truncate mb-1">
+                      {compra.paquete.nombre}
+                    </p>
+                    <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap mb-2">
+                      <span>Compra #{compra.compra_paquete_id} · {compra.fecha_compra}</span>
+                      <span className="font-semibold text-ink">${Number(compra.paquete.precio_total).toFixed(0)}</span>
+                      <span>{restantes} de {total} sesiones restantes</span>
+                    </div>
+                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded ${badge.cls}`}>
+                      {badge.label}
+                    </span>
+                  </div>
+
+                  <div className="shrink-0 flex items-center gap-3">
+                    {estadoPago === "pendiente" && (
+                      <>
+                        <button
+                          onClick={() => navigate(`/client/compra-package/${compra.compra_paquete_id}/pay`)}
+                          className="px-4 py-2 rounded-full text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer"
+                        >
+                          Completar pago
+                        </button>
+                        <button
+                          onClick={() => cancelarCompra(compra.compra_paquete_id)}
+                          disabled={cancelling === compra.compra_paquete_id}
+                          className="px-4 py-2 rounded-full text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          {cancelling === compra.compra_paquete_id ? "Cancelando..." : "Cancelar"}
+                        </button>
+                      </>
+                    )}
+
+                    {(estadoPago === "rechazado" || estadoPago === "fallido") && (
+                      <button
+                        onClick={() => navigate(`/client/compra-package/${compra.compra_paquete_id}/pay`)}
+                        className="px-4 py-2 rounded-full text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer"
+                      >
+                        Reintentar pago
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Servicios incluidos en el paquete */}
+                {compra.items.map((item: any) => (
+                  <div
+                    key={item.compra_item_paquete_id}
+                    className="flex items-center gap-4 px-4 md:px-6 py-3 border-t border-border"
+                  >
+                    <span className="w-14 shrink-0 hidden md:block" />
+                    <div className="flex-1 min-w-0 pl-4 md:pl-0">
+                      <p className="text-sm font-medium text-ink truncate">
+                        {item.item_paquete.servicio.nombre}
+                      </p>
+                      <p className="text-xs text-ink-muted">
+                        {item.sesiones_restantes} de {item.item_paquete.cantidad_sesiones} sesiones restantes
+                      </p>
+                    </div>
+
+                    {estadoPago === "aprobado" && item.sesiones_restantes > 0 && (
+                      <button
+                        onClick={() =>
+                          navigate(
+                            `/client/professional/${item.item_paquete.servicio.profesional_id}?compraItem=${item.compra_item_paquete_id}&servicio=${item.item_paquete.servicio.servicio_id}`
+                          )
+                        }
+                        className="shrink-0 px-4 py-2 rounded-full text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors cursor-pointer"
+                      >
+                        Reservar sesión
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
 }
-

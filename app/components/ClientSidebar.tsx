@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "~/context/AuthContext";
 
 const navItems = [
-  { to: "/client", label: "Resumen", icon: HomeIcon, end: true },
+  { to: "/client", label: "Inicio", icon: HomeIcon, end: true },
   { to: "/client/discover", label: "Descubrir", icon: SearchIcon },
   { to: "/client/packages", label: "Paquetes", icon: PackageIcon },
   { to: "/client/reservas", label: "Reservas", icon: CalendarIcon, end: true },

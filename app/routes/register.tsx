@@ -156,8 +156,8 @@ export default function Register() {
 
           <p className="text-xs text-ink-muted text-center mt-6">
             Al continuar aceptás los{" "}
-            <a href="#" className="underline">Términos</a> y la{" "}
-            <a href="#" className="underline">Política de privacidad</a>.
+            <a href="#" onClick={(e) => e.preventDefault()} className="underline">Términos</a> y la{" "}
+            <a href="#" onClick={(e) => e.preventDefault()} className="underline">Política de privacidad</a>.
           </p>
         </div>
       </div>

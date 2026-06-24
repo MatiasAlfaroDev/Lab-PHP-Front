@@ -27,6 +27,8 @@ export const links: Route.LinksFunction = () => [
     href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Geist:wght@300;400;500;600;700&display=swap",
   },
   { rel: "manifest", href: "/manifest.webmanifest" },
+  { rel: "icon", type: "image/svg+xml", href: "/icon.svg" },
+  { rel: "icon", type: "image/png", href: "/icon-192.png" },
   { rel: "apple-touch-icon", href: "/icon.svg" },
 ];
 
@@ -51,6 +53,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="CitaPro" />
+        <title>CitaPro</title>
         <Meta />
         <Links />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
