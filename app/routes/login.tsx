@@ -57,7 +57,7 @@ export default function Login() {
         />
         <div className="relative z-10">
           <div className="flex items-center gap-2">
-            <span className="w-5 h-5 bg-surface flex items-center justify-center">
+            <span className="w-5 h-5 rounded bg-surface flex items-center justify-center">
               <span className="text-ink font-bold text-xs">+</span>
             </span>
             <span className="font-display text-white text-xl">Cita.Pro</span>
@@ -97,12 +97,12 @@ export default function Login() {
           <p className="text-ink-muted mb-8">Accedé a tu agenda y tus clientes.</p>
 
           {/* Role selector */}
-          <div className="flex rounded border border-border bg-surface mb-6">
+          <div className="flex rounded-full border border-border bg-surface p-1 mb-6">
             {(["professional", "client"] as Role[]).map((r) => (
               <button
                 key={r}
                 onClick={() => setRole(r)}
-                className={`flex-1 py-2.5 text-sm font-semibold transition-all ${
+                className={`flex-1 py-2 rounded-full text-sm font-semibold transition-all ${
                   role === r
                     ? "bg-ink-fixed text-white"
                     : "text-ink-muted hover:text-ink"
@@ -121,7 +121,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="maria.ortiz@cita.pro"
-                className="w-full px-4 py-3 border border-border bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink rounded"
+                className="w-full px-4 py-3 border border-border bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
               />
             </div>
             <div>
@@ -134,17 +134,17 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••"
-                className="w-full px-4 py-3 border border-border bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-ink rounded"
+                className="w-full px-4 py-3 border border-border bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-ink rounded-lg"
               />
             </div>
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{error}</p>
+              <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-ink-fixed hover:bg-primary text-white font-semibold py-3 rounded transition-colors disabled:opacity-60"
+              className="w-full bg-ink-fixed hover:bg-primary text-white font-semibold py-3 rounded-full transition-colors disabled:opacity-60"
             >
               {loading ? "Iniciando..." : "Iniciar sesión →"}
             </button>
@@ -162,7 +162,7 @@ export default function Login() {
               window.location.href =
                 `${APP_BASE_URL}/auth/google/redirect?role=${role}`;
             }}
-            className="flex-1 flex items-center justify-center gap-2 border border-border rounded py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink"
+            className="flex-1 flex items-center justify-center gap-2 border border-border rounded-full py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink"
           >
             <GoogleIcon /> Google
           </button>
