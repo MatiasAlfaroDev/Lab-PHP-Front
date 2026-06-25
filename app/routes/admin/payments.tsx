@@ -5,9 +5,10 @@ import { useAuth } from "~/context/AuthContext";
 const badgeCls: Record<string, string> = {
   aprobado: "badge badge-confirmada",
   pendiente: "badge badge-pendiente",
+  fallido: "badge badge-cancelada"
 };
 
-const PAYMENTS_COLS = "96px 1.4fr 1.4fr 2fr 90px 100px 110px";
+const PAYMENTS_COLS = "96px 2.5fr 2.5fr 3.5fr 90px 100px 110px";
 
 // ── Skeleton ───────────────────────────────────────────────────────────────
 function Skeleton({ className = "" }: { className?: string }) {
@@ -35,7 +36,7 @@ function PaymentsSkeleton() {
 
       {/* TABLE */}
       <div className="bg-surface border-t border-border w-full overflow-x-auto">
-        <div style={{ minWidth: "640px" }}>
+        <div style={{ minWidth: "900px" }}>
           <div className="grid px-5 py-2 border-b border-border" style={{ gridTemplateColumns: PAYMENTS_COLS }}>
             {Array.from({ length: 7 }).map((_, i) => (
               <Skeleton key={i} className="h-3 w-12" />
@@ -134,7 +135,7 @@ export default function AdminPayments() {
 
       {/* TABLE */}
       <div className="bg-surface border-t border-border w-full overflow-x-auto">
-        <div style={{ minWidth: "640px" }}>
+        <div style={{ minWidth: "900px" }}>
           {/* HEADER */}
           <div
             className="grid px-5 py-2 border-b border-border"
@@ -159,7 +160,7 @@ export default function AdminPayments() {
               <div className="text-ink-muted">{t.fecha}</div>
               <div className="text-ink font-semibold truncate pr-2">{t.de}</div>
               <div className="text-ink font-semibold truncate pr-2">{t.para}</div>
-              <div className="text-ink-muted truncate pr-2">{t.servicio}</div>
+              <div className="text-ink-muted break-words pr-2">{t.servicio}</div>
               <div className="font-bold text-ink">${t.total}</div>
               <div className="text-ink-muted uppercase text-xs">{t.metodo}</div>
               <div>

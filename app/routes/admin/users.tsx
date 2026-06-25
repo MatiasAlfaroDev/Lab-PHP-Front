@@ -126,7 +126,7 @@ export default function AdminUsers() {
       <h2 className="text-xl font-bold text-ink mb-3">{title}</h2>
 
       <div className="bg-surface border-t border-border w-full overflow-x-auto">
-        <div style={{ minWidth: "500px" }}>
+        <div style={{ minWidth: "900px" }}>
           {/* HEADER */}
           <div className="grid grid-cols-24 px-5 py-2 border-b border-border">
             {["Usuario", "Email", "Sesiones", "Desde", "Estado", ""].map((h, i) => (
@@ -134,31 +134,32 @@ export default function AdminUsers() {
                 key={i}
                 className={`text-sm text-ink-muted ${
                   i === 0
-                    ? "col-span-6"
+                    ? "col-span-5"
                     : i === 1
-                    ? "col-span-6"
+                    ? "col-span-7"
                     : i === 2
-                    ? "col-span-3"
+                    ? "col-span-3 flex justify-center items-center"
                     : i === 3
-                    ? "col-span-4"
+                    ? "col-span-6"
                     : i === 4
-                    ? "col-span-3"
-                    : "col-span-2"
+                    ? "col-span-2"
+                    : "col-span-1"
                 }`}
               >
                 {h}
               </div>
             ))}
+
           </div>
 
           {/* ROWS */}
           {data.map((u, idx) => (
             <div
               key={u.email}
-              className={`grid grid-cols-24 px-5 py-4 items-center hover:bg-bg transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
+              className={`grid grid-cols-24 px-5 py-4 items-start hover:bg-bg transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
             >
               {/* USER */}
-              <div className="col-span-6 flex items-center gap-3">
+              <div className="col-span-5 flex items-start gap-3">
                 <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold">
                   {getInitials(u.name)}
                 </div>
@@ -169,31 +170,31 @@ export default function AdminUsers() {
               </div>
 
               {/* EMAIL */}
-              <div className="col-span-6 min-w-0">
-                <span className="text-sm text-ink-muted block truncate sm:truncate-none sm:break-words">
+              <div className="col-span-7 min-w-0">
+                <span className="text-sm text-ink-muted truncate">
                   {u.email}
                 </span>
               </div>
 
               {/* SESSIONS */}
-              <div className="col-span-3">
+              <div className="col-span-3 flex items-center justify-center">
                 <span className="text-sm text-ink">{u.sessions}</span>
               </div>
 
               {/* JOINED */}
-              <div className="col-span-4">
-                <span className="text-sm text-ink-muted">{u.joined}</span>
+              <div className="col-span-6">
+                <span className="text-sm text-ink-muted truncate">{u.joined}</span>
               </div>
 
               {/* ESTADO */}
-              <div className="col-span-3">
+              <div className="col-span-2">
                 <span className={u.activo ? "badge badge-confirmada" : "badge badge-cancelada"}>
                   {u.activo ? "Activo" : "Bloqueado"}
                 </span>
               </div>
 
               {/* ACTIONS */}
-              <div className="col-span-2">
+              <div className="col-span-1 ml-3">
                 <button
                   onClick={() => blockUser(Number(u.id))}
                   disabled={loadingId === u.id}
