@@ -1,8 +1,6 @@
-// Web Push scaffolding. Nothing calls this yet: there's no VAPID public key
-// configured and no backend endpoint to store the subscription. Once the
-// backend exposes both, wire a UI action to `subscribeToPush()` and POST the
-// resulting subscription to that endpoint.
-
+// Web Push. Wired from NotificationContext's `enablePush()`. Stays a no-op
+// until the backend's VAPID_PUBLIC_KEY is set as VITE_VAPID_PUBLIC_KEY here —
+// until then `subscribeToPush()` returns null and the toggle button hides.
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
 
 function urlBase64ToUint8Array(base64String: string) {

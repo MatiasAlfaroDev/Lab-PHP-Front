@@ -3,6 +3,13 @@ import type { ReactNode } from "react";
 import { getEcho } from "~/lib/echo";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
+import { subscribeToPush } from "~/lib/push";
+
+const pushSupported =
+  typeof window !== "undefined" &&
+  "serviceWorker" in navigator &&
+  "PushManager" in window &&
+  !!import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 type NotificationType = {
   id: string;
@@ -22,6 +29,9 @@ type NotificationContextType = {
   loadNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  pushSupported: boolean;
+  pushEnabled: boolean;
+  enablePush: () => Promise<boolean>;
 };
 
 type NotificationsResponse = {
@@ -40,6 +50,25 @@ export function NotificationProvider({
 }) {
   const { token } = useAuth();
   const [notifications, setNotifications] = useState<NotificationType[]>([]);
+  const [pushEnabled, setPushEnabled] = useState(false);
+
+  // Check for an existing subscription so the toggle stays hidden once already on.
+  useEffect(() => {
+    if (!pushSupported) return;
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setPushEnabled(!!sub))
+      .catch(() => {});
+  }, []);
+
+  const enablePush = async () => {
+    const sub = await subscribeToPush();
+    if (!sub) return false;
+
+    await api.post("/push/subscribe", sub.toJSON(), token);
+    setPushEnabled(true);
+    return true;
+  };
 
   // 🔵 LOAD
   const loadNotifications = async () => {
@@ -138,6 +167,9 @@ export function NotificationProvider({
         loadNotifications,
         markAsRead,
         markAllAsRead,
+        pushSupported,
+        pushEnabled,
+        enablePush,
       }}
     >
       {children}
