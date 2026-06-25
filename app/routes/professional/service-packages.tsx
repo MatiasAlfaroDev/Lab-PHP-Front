@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
+import { toast } from "react-toastify";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,16 +69,10 @@ export default function ServicePackages() {
   const [editingId,   setEditingId]   = useState<number | "new" | null>(null);
   const [deletingId,  setDeletingId]  = useState<number | null>(null);
   const [form,        setForm]        = useState<FormState>({ ...EMPTY_FORM });
-  const [toast,       setToast]       = useState<{ msg: string; ok: boolean } | null>(null);
   const [search,      setSearch]      = useState("");
   const [armedId,     setArmedId]     = useState<number | null>(null);
   const [dragId,      setDragId]      = useState<number | null>(null);
   const [overId,      setOverId]      = useState<number | null>(null);
-
-  const showToast = (msg: string, ok = true) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  };
 
   // ── Reorder (visual/local only — no backend persistence) ───────────────────
   const handleDrop = (targetId: number) => {
@@ -173,8 +168,8 @@ export default function ServicePackages() {
   // ── Save / Delete ──────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!form.nombre.trim()) return showToast("El nombre es requerido", false);
-    if (form.items.length === 0) return showToast("Agregá al menos un servicio", false);
+    if (!form.nombre.trim()) return toast.error("El nombre es requerido");
+    if (form.items.length === 0) return toast.error("Agregá al menos un servicio");
 
     const body = {
       nombre:       form.nombre,
@@ -191,15 +186,15 @@ export default function ServicePackages() {
     try {
       if (typeof editingId === "number") {
         await api.put(`/paquetes/${editingId}`, body, token);
-        showToast("Paquete actualizado");
+        toast.success("Paquete actualizado");
       } else {
         await api.post("/paquetes", body, token);
-        showToast("Paquete creado");
+        toast.success("Paquete creado");
       }
       closeAll();
       fetchAll();
     } catch (e: any) {
-      showToast(e.message ?? "Error al guardar", false);
+      toast.error(e.message ?? "Error al guardar");
     } finally {
       setSaving(false);
     }
@@ -209,11 +204,11 @@ export default function ServicePackages() {
     setSaving(true);
     try {
       await api.delete(`/paquetes/${id}`, token);
-      showToast("Paquete eliminado");
+      toast.success("Paquete eliminado");
       setDeletingId(null);
       fetchAll();
     } catch (e: any) {
-      showToast(e.message ?? "Error al eliminar", false);
+      toast.error(e.message ?? "Error al eliminar");
     } finally {
       setSaving(false);
     }
@@ -227,15 +222,6 @@ export default function ServicePackages() {
 
   return (
     <div className="w-full">
-
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded border text-sm font-semibold shadow-lg ${
-          toast.ok ? "bg-accent text-ink-fixed border-ink-fixed/20" : "bg-red-100 text-red-800 border-red-200"
-        }`}>
-          {toast.msg}
-        </div>
-      )}
 
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border">

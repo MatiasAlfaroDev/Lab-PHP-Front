@@ -68,7 +68,7 @@ export default function GoogleCallback() {
 
             <button
               onClick={() => navigate("/login")}
-              className="bg-ink-fixed text-white px-4 py-2 rounded"
+              className="bg-ink-fixed text-white px-4 py-2 rounded cursor-pointer"
             >
               Volver al login
             </button>

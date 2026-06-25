@@ -56,7 +56,7 @@ export function AdminSidebar({ collapsed, isMobileOpen, onMobileClose }: Props) 
             <button
               onClick={onMobileClose}
               title="Cerrar menú"
-              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
+              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors cursor-pointer"
             >
               <ChevronLeftIcon className="w-4 h-4" />
             </button>
@@ -105,7 +105,7 @@ export function AdminSidebar({ collapsed, isMobileOpen, onMobileClose }: Props) 
                   navigate("/login");
                 }}
                 title="Cerrar sesión"
-                className="text-sidebar-muted hover:text-sidebar-text transition-colors"
+                className="text-sidebar-muted hover:text-sidebar-text transition-colors cursor-pointer"
               >
                 <LogoutIcon className="w-4 h-4" />
               </button>

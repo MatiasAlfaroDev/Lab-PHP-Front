@@ -28,7 +28,6 @@ export default [
     route("service-packages", "routes/professional/service-packages.tsx"),
     route("availability", "routes/professional/availability.tsx"),
     route("payments", "routes/professional/payments.tsx"),
-    route("messages", "routes/professional/messages.tsx"),
     route("profile", "routes/professional/profile.tsx"),
     route("notifications", "routes/professional/notifications.tsx"),
   ]),

@@ -76,7 +76,7 @@ export default function ClientPayments() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  useEffect(() => {
+  const loadPagos = () => {
     if (!token) return;
     Promise.all([
       api.get<{ success: boolean; data: Reserva[] }>("/mis-reservas", token),
@@ -90,6 +90,16 @@ export default function ClientPayments() {
         setComprasPaquetes(paquetesRes);
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadPagos();
+  }, [token]);
+
+  useEffect(() => {
+    const handler = () => loadPagos();
+    window.addEventListener("reserva-updated", handler);
+    return () => window.removeEventListener("reserva-updated", handler);
   }, [token]);
 
   const q = search.trim().toLowerCase();

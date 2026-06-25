@@ -144,7 +144,7 @@ function DeviceList({
           key={d.deviceId}
           type="button"
           onClick={() => onSelect(d.deviceId)}
-          className={`w-full text-left px-3 py-2 text-sm truncate transition-colors ${
+          className={`cursor-pointer w-full text-left px-3 py-2 text-sm truncate transition-colors ${
             d.deviceId === activeId
               ? "bg-primary/30 text-white"
               : "text-white/80 hover:bg-white/10"
@@ -499,7 +499,7 @@ export default function Videollamada() {
       {needsAudioUnlock && (
         <button
           onClick={enableAudio}
-          className="mx-auto mt-3 flex items-center gap-2 bg-amber-500 text-black px-4 py-2 rounded-full text-sm font-medium hover:bg-amber-400"
+          className="mx-auto mt-3 flex items-center gap-2 bg-amber-500 text-black px-4 py-2 rounded-full text-sm font-medium hover:bg-amber-400 cursor-pointer"
         >
           <Volume2 className="w-4 h-4" /> Activar audio
         </button>
@@ -572,7 +572,7 @@ export default function Videollamada() {
           onClick={toggleMic}
           disabled={micPending}
           title={micOn ? "Apagar micrófono" : "Encender micrófono"}
-          className={`w-12 h-12 flex items-center justify-center rounded-full transition disabled:opacity-50 ${
+          className={`cursor-pointer w-12 h-12 flex items-center justify-center rounded-full transition disabled:opacity-50 ${
             micOn ? "bg-white/10 hover:bg-white/20" : "bg-red-500 hover:bg-red-600"
           }`}
         >
@@ -589,7 +589,7 @@ export default function Videollamada() {
           onClick={toggleCam}
           disabled={camPending}
           title={camOn ? "Apagar cámara" : "Encender cámara"}
-          className={`w-12 h-12 flex items-center justify-center rounded-full transition disabled:opacity-50 ${
+          className={`cursor-pointer w-12 h-12 flex items-center justify-center rounded-full transition disabled:opacity-50 ${
             camOn ? "bg-white/10 hover:bg-white/20" : "bg-red-500 hover:bg-red-600"
           }`}
         >
@@ -606,7 +606,7 @@ export default function Videollamada() {
           <button
             onClick={switchCamera}
             title="Cambiar cámara"
-            className="w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition"
+            className="w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition cursor-pointer"
           >
             <SwitchCamera className="w-5 h-5" />
           </button>
@@ -615,7 +615,7 @@ export default function Videollamada() {
         <button
           onClick={() => setDevicesOpen((v) => !v)}
           title="Configurar dispositivos"
-          className={`w-12 h-12 flex items-center justify-center rounded-full transition ${
+          className={`cursor-pointer w-12 h-12 flex items-center justify-center rounded-full transition ${
             devicesOpen ? "bg-white/25" : "bg-white/10 hover:bg-white/20"
           }`}
         >
@@ -625,7 +625,7 @@ export default function Videollamada() {
         <button
           onClick={salir}
           title="Salir de la llamada"
-          className="w-14 h-12 flex items-center justify-center rounded-full bg-red-600 hover:bg-red-700 transition"
+          className="w-14 h-12 flex items-center justify-center rounded-full bg-red-600 hover:bg-red-700 transition cursor-pointer"
         >
           <PhoneOff className="w-5 h-5" />
         </button>
@@ -639,7 +639,7 @@ export default function Videollamada() {
           </p>
           <button
             onClick={() => navigate(0)}
-            className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-sm"
+            className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-sm cursor-pointer"
           >
             Reintentar
           </button>

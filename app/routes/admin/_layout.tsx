@@ -43,7 +43,7 @@ export default function AdminLayout() {
             <button
               onClick={() => setSidebarCollapsed((v) => !v)}
               title="Contraer menú"
-              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
+              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors cursor-pointer"
             >
               <ChevronLeftIcon className="w-4 h-4" />
             </button>
@@ -53,7 +53,7 @@ export default function AdminLayout() {
           <button
             onClick={() => setSidebarCollapsed(false)}
             title="Expandir menú"
-            className="flex items-center px-2 text-sidebar-muted hover:text-sidebar-text transition-colors"
+            className="flex items-center px-2 text-sidebar-muted hover:text-sidebar-text transition-colors cursor-pointer"
           >
             <ChevronRightIcon className="w-4 h-4" />
           </button>
@@ -73,7 +73,7 @@ export default function AdminLayout() {
         </div>
         <button
           onClick={() => setMobileOpen(true)}
-          className="text-sidebar-text p-1.5 rounded-lg hover:bg-sidebar-hover transition-colors"
+          className="text-sidebar-text p-1.5 rounded-lg hover:bg-sidebar-hover transition-colors cursor-pointer"
           aria-label="Abrir menú"
         >
           <MenuIcon className="w-5 h-5" />

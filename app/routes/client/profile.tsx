@@ -142,7 +142,7 @@ export default function ClientProfile() {
             <button
               type="submit"
               disabled={saving}
-              className="bg-ink-fixed text-white px-5 py-2 rounded text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="bg-ink-fixed text-white px-5 py-2 rounded text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer"
             >
               {saving ? "Guardando..." : "Guardar cambios"}
             </button>
@@ -195,7 +195,7 @@ export default function ClientProfile() {
             <button
               type="submit"
               disabled={savingPwd}
-              className="bg-ink-fixed text-white px-5 py-2 rounded text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="bg-ink-fixed text-white px-5 py-2 rounded text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer"
             >
               {savingPwd ? "Actualizando..." : "Cambiar contraseña"}
             </button>

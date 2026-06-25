@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
+import { toast } from "react-toastify";
 import "leaflet/dist/leaflet.css";
 const API_BASE  = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000/api";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -208,16 +209,10 @@ export default function Services() {
   const [editingId,  setEditingId]  = useState<number | "new" | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [form,       setForm]       = useState<FormState>({ ...EMPTY_FORM });
-  const [toast,      setToast]      = useState<{ msg: string; ok: boolean } | null>(null);
   const [search,     setSearch]     = useState("");
   const [armedId,    setArmedId]    = useState<number | null>(null);
   const [dragId,     setDragId]     = useState<number | null>(null);
   const [overId,     setOverId]     = useState<number | null>(null);
-
-  const showToast = (msg: string, ok = true) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  };
 
   const fetchServicios = async () => {
     try {
@@ -279,12 +274,12 @@ export default function Services() {
       form.tipo === "Otro"
         ? form.tipoPersonalizado.trim()
         : form.tipo;
-    if (!form.nombre.trim()) return showToast("El nombre es requerido", false);
-    if (!tipoFinal.trim())   return showToast("El tipo es requerido", false);
-    if (!form.precio)        return showToast("El precio es requerido", false);
-    if (!form.duracion)      return showToast("La duración es requerida", false);
+    if (!form.nombre.trim()) return toast.error("El nombre es requerido");
+    if (!tipoFinal.trim())   return toast.error("El tipo es requerido");
+    if (!form.precio)        return toast.error("El precio es requerido");
+    if (!form.duracion)      return toast.error("La duración es requerida");
     if (needsLocation && (form.latitud === null || form.longitud === null)) {
-      return showToast("Confirmá la ubicación en el mapa", false);
+      return toast.error("Confirmá la ubicación en el mapa");
     }
     setSaving(true);
     try {
@@ -306,15 +301,15 @@ export default function Services() {
 
       if (editingId === "new") {
         await api.post("/servicios", body, token);
-        showToast("Servicio creado");
+        toast.success("Servicio creado");
       } else if (typeof editingId === "number") {
         await api.put(`/servicios/${editingId}`, body, token);
-        showToast("Servicio actualizado");
+        toast.success("Servicio actualizado");
       }
       closeAll();
       fetchServicios();
     } catch (err: any) {
-      showToast(err.message ?? "Error al guardar", false);
+      toast.error(err.message ?? "Error al guardar");
     } finally {
       setSaving(false);
     }
@@ -324,11 +319,11 @@ export default function Services() {
     setSaving(true);
     try {
       await api.delete(`/servicios/${id}`, token);
-      showToast("Servicio eliminado");
+      toast.success("Servicio eliminado");
       setDeletingId(null);
       fetchServicios();
     } catch (err: any) {
-      showToast(err.message ?? "Error al eliminar", false);
+      toast.error(err.message ?? "Error al eliminar");
     } finally {
       setSaving(false);
     }
@@ -364,15 +359,6 @@ export default function Services() {
 
   return (
     <div className="w-full">
-
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded border text-sm font-semibold shadow-lg ${
-          toast.ok ? "bg-accent text-ink-fixed border-ink-fixed/20" : "bg-red-100 text-red-800 border-red-200"
-        }`}>
-          {toast.msg}
-        </div>
-      )}
 
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border">
