@@ -76,12 +76,6 @@ export default function Login() {
             Una plataforma para servicios profesionales — agenda, modalidades híbridas y pagos en una sola interfaz.
           </p>
         </div>
-
-        <div className="relative z-10 flex items-center gap-4 text-white/40 text-sm">
-          <span>+ 12.000 profesionales</span>
-          <span>·</span>
-          <span>4.9 ★ en App Store</span>
-        </div>
       </div>
 
       {/* Right — form */}
@@ -102,7 +96,7 @@ export default function Login() {
               <button
                 key={r}
                 onClick={() => setRole(r)}
-                className={`flex-1 py-2 rounded-full text-sm font-semibold transition-all ${
+                className={`cursor-pointer flex-1 py-2 rounded-full text-sm font-semibold transition-all ${
                   role === r
                     ? "bg-ink-fixed text-white"
                     : "text-ink-muted hover:text-ink"
@@ -144,7 +138,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-ink-fixed hover:bg-primary text-white font-semibold py-3 rounded-full transition-colors disabled:opacity-60"
+              className="w-full bg-ink-fixed hover:bg-primary text-white font-semibold py-3 rounded-full transition-colors disabled:opacity-60 cursor-pointer"
             >
               {loading ? "Iniciando..." : "Iniciar sesión →"}
             </button>
@@ -162,7 +156,7 @@ export default function Login() {
               window.location.href =
                 `${APP_BASE_URL}/auth/google/redirect?role=${role}`;
             }}
-            className="flex-1 flex items-center justify-center gap-2 border border-border rounded-full py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink"
+            className="flex-1 flex items-center justify-center gap-2 border border-border rounded-full py-3 bg-surface hover:bg-bg transition-colors text-sm font-semibold text-ink cursor-pointer"
           >
             <GoogleIcon /> Google
           </button>

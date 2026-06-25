@@ -61,7 +61,7 @@ export default function Rating() {
                   onMouseEnter={() => setHovered(s)}
                   onMouseLeave={() => setHovered(0)}
                   onClick={() => setStars(s)}
-                  className={`text-4xl transition-transform hover:scale-110 ${displayStars >= s ? "text-accent" : "text-border"}`}
+                  className={`cursor-pointer text-4xl transition-transform hover:scale-110 ${displayStars >= s ? "text-accent" : "text-border"}`}
                 >
                   ★
                 </button>
@@ -78,7 +78,7 @@ export default function Rating() {
                 <button
                   key={a}
                   onClick={() => toggleAspect(a)}
-                  className={`text-sm px-4 py-2 rounded-full border font-semibold transition-colors ${
+                  className={`cursor-pointer text-sm px-4 py-2 rounded-full border font-semibold transition-colors ${
                     selected.includes(a)
                       ? "bg-ink-fixed text-white border-ink-fixed"
                       : "border-border text-ink-muted hover:border-ink hover:text-ink"
@@ -120,13 +120,13 @@ export default function Rating() {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full bg-ink-fixed text-white font-semibold py-3 rounded hover:bg-primary transition-colors disabled:opacity-60"
+              className="w-full bg-ink-fixed text-white font-semibold py-3 rounded hover:bg-primary transition-colors disabled:opacity-60 cursor-pointer"
             >
               {loading ? "Enviando..." : "Enviar reseña →"}
             </button>
             <button
               onClick={() => navigate("/client")}
-              className="w-full border border-border text-ink-muted font-semibold py-3 rounded hover:bg-bg transition-colors"
+              className="w-full border border-border text-ink-muted font-semibold py-3 rounded hover:bg-bg transition-colors cursor-pointer"
             >
               Saltar por ahora
             </button>

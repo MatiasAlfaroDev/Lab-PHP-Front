@@ -75,7 +75,7 @@ function MiniCalendar({
       <div className="flex items-center justify-between mb-3">
         <button
           onClick={onPrev}
-          className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg text-sm"
+          className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg text-sm cursor-pointer"
         >
           ‹
         </button>
@@ -84,7 +84,7 @@ function MiniCalendar({
         </span>
         <button
           onClick={onNext}
-          className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg text-sm"
+          className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg text-sm cursor-pointer"
         >
           ›
         </button>
@@ -113,7 +113,7 @@ function MiniCalendar({
               key={i}
               disabled={!isAvailable}
               onClick={() => isAvailable && onSelect(dateStr)}
-              className={`relative text-xs py-1.5 rounded-lg transition-colors font-medium
+              className={`cursor-pointer relative text-xs py-1.5 rounded-lg transition-colors font-medium
                 ${isSelected
                   ? "bg-primary text-white"
                   : isAvailable
@@ -337,7 +337,7 @@ export function DateSlotPicker({
                     onClick={() =>
                       onSelectSlot(selectedSlot?.hora === slot.hora ? null : slot)
                     }
-                    className={`text-sm py-2 rounded-xl border transition-colors flex flex-col items-center ${
+                    className={`cursor-pointer text-sm py-2 rounded-xl border transition-colors flex flex-col items-center ${
                       selectedSlot?.hora === slot.hora
                         ? "bg-primary text-white border-primary"
                         : "border-border text-ink hover:bg-bg"

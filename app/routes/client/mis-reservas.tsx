@@ -325,14 +325,14 @@ export default function MisReservas() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setConfirmingCancel(null)}
-                    className="flex-1 px-4 py-2 rounded-xl border border-border text-ink text-sm font-medium hover:bg-surface transition-colors"
+                    className="flex-1 px-4 py-2 rounded-xl border border-border text-ink text-sm font-medium hover:bg-surface transition-colors cursor-pointer"
                   >
                     Volver
                   </button>
 
                   <button
                     onClick={handleCancel}
-                    className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors"
+                    className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors cursor-pointer"
                   >
                     Sí, cancelar
                   </button>
@@ -365,7 +365,7 @@ export default function MisReservas() {
                   <button
                     key={n}
                     onClick={() => setPuntuacion(n)}
-                    className={`text-3xl ${
+                    className={`cursor-pointer text-3xl ${
                       n <= puntuacion
                         ? "text-yellow-500"
                         : "text-gray-300"
@@ -394,7 +394,7 @@ export default function MisReservas() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowCalificacion(false)}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-100 transition-colors"
+                className="px-4 py-2 border rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
@@ -402,7 +402,7 @@ export default function MisReservas() {
               <button
                 onClick={guardarCalificacion}
                 disabled={enviandoCalificacion}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50"
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {enviandoCalificacion ? "Enviando..." : "Enviar"}
               </button>
@@ -445,14 +445,14 @@ export default function MisReservas() {
             <div className="flex gap-3 mt-5">
               <button
                 onClick={() => setReprogramando(null)}
-                className="flex-1 px-4 py-2 rounded-xl border border-border text-ink text-sm font-medium hover:bg-bg transition-colors"
+                className="flex-1 px-4 py-2 rounded-xl border border-border text-ink text-sm font-medium hover:bg-bg transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmarReprogramacion}
                 disabled={!reprogramSlot || reprogramSubmitting}
-                className="flex-1 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {reprogramSubmitting ? "Reprogramando..." : "Confirmar"}
               </button>

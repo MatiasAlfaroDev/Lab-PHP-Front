@@ -6,6 +6,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useLocation } from "react-router";
 import { DateSlotPicker, normalizeModality, type Slot } from "~/components/DateSlotPicker";
+import { useCatalogoUpdates } from "~/hooks/useCatalogoUpdates";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Servicio {
@@ -121,7 +122,7 @@ function BookingModal({
             <div className="flex gap-2 mt-2 w-full">
               <button
                 onClick={() => onClose(true)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-sm text-ink hover:bg-bg transition-colors"
+                className="flex-1 py-2.5 rounded-xl border border-border text-sm text-ink hover:bg-bg transition-colors cursor-pointer"
               >
                 Seguir explorando
               </button>
@@ -140,7 +141,7 @@ function BookingModal({
               <h3 className="font-display text-lg text-ink">Confirmar reserva</h3>
               <button
                 onClick={() => onClose(false)}
-                className="w-7 h-7 rounded-full hover:bg-bg flex items-center justify-center text-ink-muted transition-colors"
+                className="w-7 h-7 rounded-full hover:bg-bg flex items-center justify-center text-ink-muted transition-colors cursor-pointer"
               >
                 <ion-icon name="close-outline" style={{ fontSize: "16px" }} />
               </button>
@@ -177,7 +178,7 @@ function BookingModal({
                 <button
                   onClick={confirmSitio}
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-ink-fixed text-white text-sm font-semibold hover:bg-primary disabled:opacity-60 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-ink-fixed text-white text-sm font-semibold hover:bg-primary disabled:opacity-60 transition-colors cursor-pointer"
                 >
                   {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                   {loading ? "Procesando..." : "Confirmar reserva"}
@@ -225,6 +226,12 @@ export default function ProfessionalDetail() {
   const [promedio, setPromedio] = useState(0);
   const [cantidadCalificaciones, setCantidadCalificaciones] = useState(0);
   const [loadingCalificaciones, setLoadingCalificaciones] = useState(false);
+  const [catalogVersion, setCatalogVersion] = useState(0);
+  useCatalogoUpdates((evento) => {
+    if (Number(evento.profesional_id) === Number(id)) {
+      setCatalogVersion((v) => v + 1);
+    }
+  });
 
   const location = useLocation();
   const servicioIdPreseleccionado = location.state?.servicioId;
@@ -271,7 +278,7 @@ export default function ProfessionalDetail() {
       })
       .catch((e) => setProfileError(e.message))
       .finally(() => setLoadingProfile(false));
-  }, [id, servicioIdPreseleccionado, servicioPaqueteId, reprogramarId]);
+  }, [id, servicioIdPreseleccionado, servicioPaqueteId, reprogramarId, catalogVersion]);
 
 useEffect(() => {
     if (!reprogramarId) return;
@@ -447,7 +454,7 @@ useEffect(() => {
                       <p className="text-sm text-ink-muted">{servicios[0].tipo}</p>
                     )}
                   </div>
-                  <button className="w-9 h-9 border border-border rounded-xl flex items-center justify-center text-ink-muted hover:text-accent transition-colors">
+                  <button className="w-9 h-9 border border-border rounded-xl flex items-center justify-center text-ink-muted hover:text-accent transition-colors cursor-pointer">
                     <ion-icon name="heart-outline" style={{ fontSize: "16px" }} />
                   </button>
                 </div>
@@ -464,7 +471,7 @@ useEffect(() => {
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+                    className={`cursor-pointer px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
                       activeTab === tab
                         ? "border border-border border-b-surface -mb-px bg-surface text-ink"
                         : "text-ink-muted hover:text-ink"
@@ -697,7 +704,7 @@ useEffect(() => {
                       setShowModal(true);
                     }
                   }}
-                  className={`w-full font-medium py-3 rounded-xl transition-colors ${
+                  className={`cursor-pointer w-full font-medium py-3 rounded-xl transition-colors ${
                     selectedSlot && !procesando
                       ? "bg-primary hover:bg-primary-hover text-white"
                       : "bg-primary/30 text-white cursor-not-allowed"

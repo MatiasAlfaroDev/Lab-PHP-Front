@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
+import { toast } from "react-toastify";
+import { ESTADO_BADGE_CLASS, ESTADO_LABEL } from "~/lib/estado";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,22 +39,6 @@ interface Reserva {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const ESTADO_BADGE: Record<string, string> = {
-  pendiente:  "bg-amber-100 text-amber-800",
-  confirmada: "bg-blue-100  text-blue-800",
-  pagada:     "bg-green-100 text-green-800",
-  en_curso:   "bg-violet-100 text-violet-800",
-  finalizada: "bg-gray-100  text-gray-600",
-};
-
-const ESTADO_LABEL: Record<string, string> = {
-  pendiente:  "Pendiente",
-  confirmada: "Confirmada",
-  pagada:     "Pagada",
-  en_curso:   "En curso",
-  finalizada: "Finalizada",
-};
 
 function getInitials(nombre: string) {
   return nombre.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -191,16 +177,29 @@ export default function Clients() {
       if (selectedReserva?.reserva_id === reservaId) {
         setSelectedReserva((prev) => prev ? { ...prev, estado } : null);
       }
-    } catch (err) {
-      console.error(err);
+      toast.success(estado === "confirmada" ? "Reserva confirmada" : "Reserva cancelada");
+    } catch (err: any) {
+      toast.error(err.message ?? "No se pudo actualizar la reserva");
     } finally {
       setUpdatingId(null);
     }
   };
   const cancelarReserva = async (reservaId: number) => {
-      console.log("CANCELAR RESERVA", reservaId);
-
-    await api.put(`/reservas/${reservaId}/cancelar`, {}, token);
+    try {
+      setUpdatingId(reservaId);
+      await api.put(`/reservas/${reservaId}/cancelar`, {}, token);
+      setReservas((prev) =>
+        prev.map((r) => r.reserva_id === reservaId ? { ...r, estado: "cancelada" } : r)
+      );
+      if (selectedReserva?.reserva_id === reservaId) {
+        setSelectedReserva((prev) => prev ? { ...prev, estado: "cancelada" } : null);
+      }
+      toast.success("Reserva cancelada");
+    } catch (err: any) {
+      toast.error(err.message ?? "No se pudo cancelar la reserva");
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   // ── Computed ───────────────────────────────────────────────────────────────
@@ -220,18 +219,6 @@ export default function Clients() {
   const packageServiceNames = packageServicios.length > 0
     ? packageServicios.map((s) => s.servicio)
     : Array.from(new Set(clientReservas.map((r) => r.servicio?.nombre).filter((n): n is string => !!n)));
-
-  const servicioSeleccionado = servicioFiltro
-    ? packageServicios.find((s) => s.servicio === servicioFiltro) ?? null
-    : null;
-  const packageRestantes = servicioSeleccionado
-    ? servicioSeleccionado.sesiones_restantes
-    : packageServicios.length > 0
-      ? packageServicios.reduce((sum, s) => sum + s.sesiones_restantes, 0)
-      : selectedClient?.sesiones_restantes ?? 0;
-  const packageCompletadas = servicioSeleccionado
-    ? servicioSeleccionado.cantidad_sesiones - servicioSeleccionado.sesiones_restantes
-    : packageServicios.reduce((sum, s) => sum + (s.cantidad_sesiones - s.sesiones_restantes), 0);
 
   // Filtro por servicio dentro del panel — todas las sesiones por default,
   // o solo las del servicio elegido al apretar su chip.
@@ -284,45 +271,48 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
 );
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="p-5 w-full">
+    <div className="w-full">
       {/* Page header */}
-      <div className="mb-6">
+      <div className="px-4 pt-4 md:px-8 md:pt-8">
         <h1 className="font-display text-3xl text-ink">Clientes</h1>
         <p className="text-ink-muted mt-1">
           Hacé click en un cliente para ver detalles y gestionar sus reservas
         </p>
       </div>
 
-      {/* CLIENTES ────────────────────────────────────────────────────── */}
-      <section className="space-y-6">
-        <div className="relative max-w-2xl">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted">
+      {/* Toolbar */}
+      <div className="flex items-center gap-4 px-4 md:px-8 py-3 mt-4 border-y border-border">
+        <div className="relative flex-1 max-w-xs">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted">
             <SearchIcon />
           </span>
           <input
-            className="w-full border border-border rounded-full pl-10 pr-4 py-2.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink"
-            placeholder="Buscar por nombre o teléfono"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o email"
+            className="w-full pl-8 pr-3 py-1.5 text-sm text-ink placeholder-ink-muted bg-transparent focus:outline-none"
           />
         </div>
+      </div>
 
-        {/* TABLA 1 — Próximas reservas de servicio */}
-        <div>
-          <h2 className="text-sm font-bold text-ink mb-2">
-            Próximas reservas de servicio ({filteredProximos.length})
-          </h2>
+      {/* TABLA 1 — Próximas reservas de servicio */}
+      <div>
           {clientsLoading ? (
             <TableSkeleton gridClass={ROW_GRID_SERVICIO} columns={5} />
           ) : (
-            <div className="bg-surface border-t border-border w-full overflow-x-auto">
+            <div className="bg-surface w-full overflow-x-auto">
               <div className="min-w-max md:min-w-[760px]">
                   <div className={`${ROW_GRID_SERVICIO} px-5 py-2 border-b border-border`}>
-                    <div className="text-sm text-ink-muted">Cliente</div>
+                    <div className="text-sm text-ink-muted">Nombre</div>
                     <div className="hidden md:block text-sm text-ink-muted">Email</div>
                     <div className="hidden md:block text-sm text-ink-muted">Servicio</div>
                     <div className="text-sm text-ink-muted">Sesión</div>
                     <div className="hidden md:block text-sm text-ink-muted">Estado</div>
+                  </div>
+
+                  <div className="px-5 py-2 border-b border-border bg-sidebar">
+                    <span className="text-sm font-bold text-ink">Próximas reservas de servicio</span>
+                    <span className="text-sm text-ink-muted"> ({filteredProximos.length})</span>
                   </div>
 
                   {filteredProximos.length === 0 ? (
@@ -358,23 +348,25 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
             </div>
           )}
         </div>
-
+        <hr className="mt-10"></hr>
         {/* TABLA 2 — Próximas reservas de paquete */}
         <div>
-          <h2 className="text-sm font-bold text-ink mb-2">
-            Próximas reservas de paquete ({filteredpaquete.length})
-          </h2>
           {clientsLoading ? (
             <TableSkeleton gridClass={ROW_GRID_PAQUETE} columns={5} />
           ) : (
             <div className="bg-surface border-t border-border w-full overflow-x-auto">
               <div className="min-w-max md:min-w-[760px]">
                   <div className={`${ROW_GRID_PAQUETE} px-5 py-2 border-b border-border`}>
-                    <div className="text-sm text-ink-muted">Cliente</div>
+                    <div className="text-sm text-ink-muted">Nombre</div>
                     <div className="hidden md:block text-sm text-ink-muted">Email</div>
                     <div className="hidden md:block text-sm text-ink-muted">Servicio</div>
                     <div className="text-sm text-ink-muted">Sesión</div>
                     <div className="hidden md:block text-sm text-ink-muted">Restantes</div>
+                  </div>
+
+                  <div className="px-5 py-2 border-b border-border bg-sidebar">
+                    <span className="text-sm font-bold text-ink">Próximas reservas de paquete</span>
+                    <span className="text-sm text-ink-muted"> ({filteredpaquete.length})</span>
                   </div>
 
                   {filteredpaquete.length === 0 ? (
@@ -411,12 +403,10 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
             </div>
           )}
         </div>
+        <hr className="mt-10 bg-ink"></hr>
 
         {/* TABLA 3 — Historial de clientes */}
         <div>
-          <h2 className="text-sm font-bold text-ink mb-2">
-            Historial de clientes ({filteredHistoricos.length})
-          </h2>
           {clientsLoading ? (
             <TableSkeleton gridClass={ROW_GRID_HISTORIAL} columns={3} />
           ) : (
@@ -425,7 +415,12 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                   <div className={`${ROW_GRID_HISTORIAL} px-5 py-2 border-b border-border`}>
                     <div className="text-sm text-ink-muted">Nombre</div>
                     <div className="hidden md:block text-sm text-ink-muted">Email</div>
-                    <div className="text-sm text-ink-muted md:col-span-3">Servicios adquiridos</div>
+                    <div className="text-sm text-ink-muted md:col-span-3">Servicios</div>
+                  </div>
+
+                  <div className="px-5 py-2 border-b border-border bg-sidebar">
+                    <span className="text-sm font-bold text-ink">Historial de clientes</span>
+                    <span className="text-sm text-ink-muted"> ({filteredHistoricos.length})</span>
                   </div>
 
                   {filteredHistoricos.length === 0 ? (
@@ -452,7 +447,6 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
             </div>
           )}
         </div>
-      </section>
 
       {/* ── Panel de detalle — drawer lateral, como al editar/crear servicio ── */}
       {panelOpen && selectedClient && (
@@ -493,9 +487,6 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-primary mb-0.5">Paquete activo</p>
-                      <p className="text-sm text-ink">
-                        <span className="font-display text-xl font-bold">{packageRestantes}</span> sesiones restantes
-                      </p>
                       {selectedClient.proxima_sesion && (
                         <p className="text-xs text-ink-muted mt-0.5">
                           Próxima: {selectedClient.proxima_sesion} {selectedClient.hora_proxima_sesion?.slice(0, 5) ?? ""}
@@ -538,17 +529,6 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                       </div>
                     </div>
                   )}
-
-                  <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
-                    <div className="px-5 py-2.5">
-                      <p className="text-xs text-ink-muted uppercase tracking-widest font-bold mb-0.5">Realizadas</p>
-                      <p className="text-sm text-ink font-semibold">{packageCompletadas}</p>
-                    </div>
-                    <div className="px-5 py-2.5">
-                      <p className="text-xs text-ink-muted uppercase tracking-widest font-bold mb-0.5">Restantes</p>
-                      <p className="text-sm text-ink font-semibold">{packageRestantes}</p>
-                    </div>
-                  </div>
                 </div>
               ) : (
                 <div className={`grid border-b border-border ${selectedClient.sesiones_restantes > 0 ? "grid-cols-2 divide-x divide-border" : "grid-cols-1"}`}>
@@ -595,7 +575,7 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                         <div className="flex gap-2">
                           <button
                             disabled={marcandoAsistencia}
-                            className="flex-1 bg-green-600 text-white rounded py-1.5 text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                            className="flex-1 bg-green-600 text-white rounded-full py-1.5 text-xs font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors cursor-pointer"
                             onClick={async () => {
                               const r = selectedReserva;
                               setMarcandoAsistencia(true);
@@ -626,8 +606,10 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                                 );
 
                                 setAsistio(true);
+                                toast.success("Asistencia registrada");
                               } catch (e: any) {
                                 setAsistenciaError(e.message ?? "No se pudo marcar la asistencia");
+                                toast.error(e.message ?? "No se pudo marcar la asistencia");
                               } finally {
                                 setMarcandoAsistencia(false);
                               }
@@ -638,27 +620,32 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
 
                           <button
                             disabled={marcandoAsistencia}
-                            className="flex-1 bg-red-600 text-white rounded py-1.5 text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                            className="flex-1 bg-red-600 text-white rounded-full py-1.5 text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer"
                             onClick={async () => {
                               const r = selectedReserva;
 
-                              await api.put(
-                                `/reservas/${r.reserva_id}/no-asistida`,
-                                { estado: "no_asistida" },
-                                token
-                              );
+                              try {
+                                await api.put(
+                                  `/reservas/${r.reserva_id}/no-asistida`,
+                                  { estado: "no_asistida" },
+                                  token
+                                );
 
-                              setReservas((prev) =>
-                                prev.map((x) =>
-                                  x.reserva_id === r.reserva_id
-                                    ? { ...x, estado: "no_asistida" }
-                                    : x
-                                )
-                              );
+                                setReservas((prev) =>
+                                  prev.map((x) =>
+                                    x.reserva_id === r.reserva_id
+                                      ? { ...x, estado: "no_asistida" }
+                                      : x
+                                  )
+                                );
 
-                              setSelectedReserva((prev) =>
-                                prev ? { ...prev, estado: "no_asistida" } : null
-                              );
+                                setSelectedReserva((prev) =>
+                                  prev ? { ...prev, estado: "no_asistida" } : null
+                                );
+                                toast.success("Marcado como no asistido");
+                              } catch (e: any) {
+                                toast.error(e.message ?? "No se pudo marcar la asistencia");
+                              }
                             }}
                           >
                             No asistió
@@ -676,34 +663,39 @@ const filteredpaquete = clientesPaquetes.filter((c) =>
                     ["en_curso", "finalizada", "no_asistida"].includes(selectedReserva.estado) && (
                       <div className="mt-3">
                         {selectedReserva.pago.estado === "aprobado" ? (
-                          <div className="w-full bg-green-100 text-green-800 rounded py-1.5 text-xs font-semibold text-center">
+                          <div className="w-full bg-green-100 text-green-800 rounded-full py-1.5 text-xs font-semibold text-center">
                             ✓ Pagado
                           </div>
                         ) : (
                           <button
-                            className="w-full bg-blue-600 text-white rounded py-1.5 text-xs font-semibold hover:bg-blue-700 transition-colors"
+                            className="w-full bg-blue-600 text-white rounded-full py-1.5 text-xs font-semibold hover:bg-blue-700 transition-colors cursor-pointer"
                             onClick={async () => {
                               const r = selectedReserva;
 
-                              await api.post(
-                                `/reservas/${r.reserva_id}/pago-presencial`,
-                                {},
-                                token
-                              );
+                              try {
+                                await api.post(
+                                  `/reservas/${r.reserva_id}/pago-presencial`,
+                                  {},
+                                  token
+                                );
 
-                              setReservas((prev) =>
-                                prev.map((x) =>
-                                  x.reserva_id === r.reserva_id
-                                    ? { ...x, pago: { ...x.pago!, estado: "aprobado" } }
-                                    : x
-                                )
-                              );
+                                setReservas((prev) =>
+                                  prev.map((x) =>
+                                    x.reserva_id === r.reserva_id
+                                      ? { ...x, pago: { ...x.pago!, estado: "aprobado" } }
+                                      : x
+                                  )
+                                );
 
-                              setSelectedReserva((prev) =>
-                                prev
-                                  ? { ...prev, pago: { ...prev.pago!, estado: "aprobado" } }
-                                  : null
-                              );
+                                setSelectedReserva((prev) =>
+                                  prev
+                                    ? { ...prev, pago: { ...prev.pago!, estado: "aprobado" } }
+                                    : null
+                                );
+                                toast.success("Pago registrado");
+                              } catch (e: any) {
+                                toast.error(e.message ?? "No se pudo registrar el pago");
+                              }
                             }}
                           >
                             Marcar como pagado
@@ -761,6 +753,9 @@ function TableSkeleton({ gridClass, columns }: { gridClass: string; columns: num
           </div>
         ))}
       </div>
+      <div className="px-5 py-2 border-b border-border bg-sidebar">
+        <div className="h-3.5 w-44 rounded bg-border animate-pulse" />
+      </div>
       {[0, 1, 2].map((row) => (
         <div key={row} className={`${gridClass} px-5 py-4 items-center ${row > 0 ? "border-t border-border" : ""}`}>
           {Array.from({ length: columns }).map((_, i) => (
@@ -794,7 +789,7 @@ function ReservaCard({
   const isUpdating = updatingId === reserva.reserva_id;
 
   return (
-    <div className={`rounded-md border p-4 space-y-2 ${highlight ? "border-ink/30 bg-surface" : "border-border bg-surface"}`}>
+    <div className={`rounded-lg border p-4 space-y-2 ${highlight ? "border-ink/30 bg-surface" : "border-border bg-surface"}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-ink">
@@ -803,7 +798,7 @@ function ReservaCard({
           <p className="text-xs text-ink-muted truncate">{reserva.servicio?.nombre}</p>
           <p className="text-xs text-ink-muted">{reserva.servicio?.duracion} min · {reserva.servicio?.modalidad}</p>
         </div>
-        <span className={`text-xs font-bold px-1.5 py-0.5 rounded uppercase tracking-wide shrink-0 ${ESTADO_BADGE[reserva.estado] ?? "bg-gray-100 text-gray-600"}`}>
+        <span className={`shrink-0 ${ESTADO_BADGE_CLASS[reserva.estado] ?? "badge"}`}>
           {ESTADO_LABEL[reserva.estado] ?? reserva.estado}
         </span>
       </div>
@@ -811,7 +806,7 @@ function ReservaCard({
       {puedeEntrarVideollamada(reserva) && (
         <Link
           to={`/videollamada/${reserva.reserva_id}`}
-          className="flex items-center justify-center gap-1.5 bg-accent hover:bg-accent-hover text-white rounded py-1.5 text-xs font-semibold transition-colors"
+          className="flex items-center justify-center gap-1.5 bg-accent hover:bg-accent-hover text-white rounded-full py-1.5 text-xs font-semibold transition-colors"
         >
           <VideoIcon />
           Unirse a la videollamada
@@ -824,7 +819,7 @@ function ReservaCard({
             <button
               disabled={isUpdating}
               onClick={() => onCambiarEstado(reserva.reserva_id, "confirmada")}
-              className="flex-1 py-1 text-xs font-semibold bg-ink-fixed text-white rounded hover:bg-primary transition-colors disabled:opacity-50"
+              className="flex-1 py-1.5 text-xs font-semibold bg-ink-fixed text-white rounded-full hover:bg-primary transition-colors disabled:opacity-50 cursor-pointer"
             >
               {isUpdating ? "..." : "Confirmar"}
             </button>
@@ -839,7 +834,7 @@ function ReservaCard({
                   onCambiarEstado(reserva.reserva_id, "cancelada");
                 }
               }}
-              className={`py-1 text-xs font-semibold border border-border rounded hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-ink-muted transition-colors disabled:opacity-50 ${canConfirm ? "px-2" : "flex-1"}`}
+              className={`py-1.5 text-xs font-semibold border border-border rounded-full hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-ink-muted transition-colors disabled:opacity-50 cursor-pointer ${canConfirm ? "px-2" : "flex-1"}`}
             >
               {isUpdating ? "..." : "Cancelar"}
             </button>

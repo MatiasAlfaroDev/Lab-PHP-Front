@@ -61,7 +61,7 @@ export function ProfessionalSidebar({ collapsed, isMobileOpen, onMobileClose }: 
             <button
               onClick={onMobileClose}
               title="Cerrar menú"
-              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors"
+              className="text-sidebar-muted hover:text-sidebar-text p-1 rounded transition-colors cursor-pointer"
             >
               <ChevronLeftIcon className="w-4 h-4" />
             </button>
@@ -103,7 +103,7 @@ export function ProfessionalSidebar({ collapsed, isMobileOpen, onMobileClose }: 
               <button
                 onClick={() => { navigate("/professional/profile"); onMobileClose(); }}
                 title="Editar perfil"
-                className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink-fixed text-xs font-bold shrink-0 hover:ring-2 hover:ring-accent-hover/40 transition-all"
+                className="w-8 h-8 rounded-lg bg-primary-soft flex items-center justify-center text-ink-fixed text-xs font-bold shrink-0 hover:ring-2 hover:ring-accent-hover/40 transition-all cursor-pointer"
               >
                 {user?.initials ?? "MO"}
               </button>
@@ -117,7 +117,7 @@ export function ProfessionalSidebar({ collapsed, isMobileOpen, onMobileClose }: 
                   navigate("/login");
                 }}
                 title="Cerrar sesión"
-                className="text-sidebar-muted hover:text-sidebar-text transition-colors"
+                className="text-sidebar-muted hover:text-sidebar-text transition-colors cursor-pointer"
               >
                 <LogoutIcon className="w-4 h-4" />
               </button>

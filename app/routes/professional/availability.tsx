@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Servicio {
@@ -80,6 +79,9 @@ const HOURS = Array.from(
 const DEFAULT_SLOTS: WeekSlots = Object.fromEntries(
   DAYS.map((d) => [d, { active: false, blocks: [] }])
 );
+
+const inputCls = "w-full border border-border rounded-lg px-3 py-2 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
+const labelCls = "block text-sm font-semibold text-ink mb-1.5";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function hourToTime(h: number): string {
@@ -700,8 +702,6 @@ export default function Availability() {
       style={{ cursor: isDragging ? (drag.mode === "move" ? "grabbing" : "ns-resize") : undefined }}
     >
       {/* Header */}
-      <ToastContainer position="top-right" autoClose={3500} hideProgressBar={false} closeOnClick pauseOnHover />
-      <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Configuración</nav>
       <div className="mb-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <div>
@@ -728,7 +728,7 @@ export default function Availability() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]">
           <div className="bg-surface rounded-2xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
+              <h2 className="font-display text-2xl text-ink">
                 {excepcionEditando ? "Editar excepción" : "Nueva excepción"}
               </h2>
 
@@ -740,14 +740,14 @@ export default function Availability() {
                 }}
                 className="text-ink-muted hover:text-ink transition-colors cursor-pointer"
               >
-                ✕
+                <ion-icon name="close-outline" style={{ fontSize: "20px" }} />
               </button>
             </div>
 
             <div className="space-y-4">
 
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className={labelCls}>
                   Desde
                 </label>
 
@@ -761,12 +761,12 @@ export default function Availability() {
                       fecha_inicio: e.target.value,
                     })
                   }
-                  className="w-full border rounded-lg px-3 py-2"
+                  className={inputCls}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className={labelCls}>
                   Hasta
                 </label>
 
@@ -780,11 +780,11 @@ export default function Availability() {
                       fecha_fin: e.target.value,
                     })
                   }
-                  className="w-full border rounded-lg px-3 py-2"
+                  className={inputCls}
                 />
               </div>
 
-              <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
                 <input
                   type="checkbox"
                   checked={nuevaExcepcion.diaCompleto}
@@ -794,15 +794,16 @@ export default function Availability() {
                       diaCompleto: e.target.checked,
                     })
                   }
+                  className="cursor-pointer accent-accent-hover"
                 />
 
-                <span>Día completo</span>
-              </div>
+                Día completo
+              </label>
 
               {!nuevaExcepcion.diaCompleto && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium mb-1">
+                    <label className={labelCls}>
                       Hora inicio
                     </label>
 
@@ -815,12 +816,12 @@ export default function Availability() {
                           hora_inicio: e.target.value,
                         })
                       }
-                      className="w-full border rounded-lg px-3 py-2"
+                      className={inputCls}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-1">
+                    <label className={labelCls}>
                       Hora fin
                     </label>
 
@@ -833,14 +834,14 @@ export default function Availability() {
                           hora_fin: e.target.value,
                         })
                       }
-                      className="w-full border rounded-lg px-3 py-2"
+                      className={inputCls}
                     />
                   </div>
                 </>
               )}
 
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className={labelCls}>
                   Motivo
                 </label>
 
@@ -853,7 +854,7 @@ export default function Availability() {
                     })
                   }
                   rows={3}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className={`${inputCls} resize-none`}
                 />
               </div>
 
@@ -870,7 +871,7 @@ export default function Availability() {
                     resetNuevaExcepcion();
                     setShowNuevaExcepcion(false);
                   }}
-                  className="px-4 py-2 border border-border rounded-lg text-ink hover:bg-bg transition-colors cursor-pointer"
+                  className="px-4 py-2 border border-border rounded-full text-ink hover:bg-bg transition-colors cursor-pointer text-sm font-semibold"
                 >
                   Cancelar
                 </button>
@@ -878,7 +879,7 @@ export default function Availability() {
                 <button
                   onClick={handleGuardarExcepcion}
                   disabled={creatingExcepcion}
-                  className="px-4 py-2 bg-accent text-ink-fixed rounded-lg hover:bg-accent-hover transition-colors cursor-pointer font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="px-4 py-2 bg-accent text-white rounded-full hover:bg-accent-hover transition-colors cursor-pointer text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {creatingExcepcion && (
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1331,7 +1332,7 @@ export default function Availability() {
                       {puedeEliminarExcepcion(e) && (
                         <button
                           onClick={() => handleEditarExcepcion(e)}
-                          className="w-6 h-6 flex items-center justify-center rounded hover:bg-blue-50 text-blue-500"
+                          className="w-6 h-6 flex items-center justify-center rounded text-ink-muted hover:text-ink transition-colors cursor-pointer"
                           title="Editar"
                         >
                           <ion-icon name="pencil-outline" />
@@ -1345,7 +1346,7 @@ export default function Availability() {
                             setExcepcionAEliminar(e.excepcion_id);
                             setShowDeleteModal(true);
                           }}
-                          className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-red-500"
+                          className="w-6 h-6 flex items-center justify-center rounded text-red-500 hover:text-red-700 transition-colors cursor-pointer"
                           title="Eliminar"
                         >
                           <ion-icon name="trash-outline" />
@@ -1363,13 +1364,13 @@ export default function Availability() {
       </div>
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70]">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            
-            <h2 className="text-lg font-semibold mb-2">
+          <div className="bg-surface rounded-2xl p-6 w-full max-w-sm">
+
+            <h2 className="font-display text-xl text-ink mb-2">
               ¿Eliminar excepción?
             </h2>
 
-            <p className="text-sm text-gray-600 mb-5">
+            <p className="text-sm text-ink-muted mb-5">
               Esta acción no se puede deshacer.
             </p>
 
@@ -1380,7 +1381,7 @@ export default function Availability() {
                   resetNuevaExcepcion();
                   setExcepcionAEliminar(null);
                 }}
-                className="px-4 py-2 border rounded-lg"
+                className="px-4 py-2 border border-border rounded-full text-ink hover:bg-bg transition-colors cursor-pointer text-sm font-semibold"
               >
                 Cancelar
               </button>
@@ -1388,7 +1389,7 @@ export default function Availability() {
               <button
                 onClick={handleDeleteExcepcion}
                 disabled={deletingId !== null}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-60"
+                className="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors cursor-pointer text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {deletingId ? (
                   <>

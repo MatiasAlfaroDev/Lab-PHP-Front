@@ -91,7 +91,7 @@ export default function Session() {
 
           <button
             onClick={handleEnd}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-5 py-2.5 rounded transition-colors ml-4"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-5 py-2.5 rounded transition-colors ml-4 cursor-pointer"
           >
             📞 Finalizar sesión
           </button>
@@ -117,7 +117,7 @@ function ControlBtn({
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center gap-1 w-14 py-2 rounded transition-colors ${
+      className={`cursor-pointer relative flex flex-col items-center gap-1 w-14 py-2 rounded transition-colors ${
         active ? "text-white hover:bg-white/10" : "text-white/40 hover:bg-white/10"
       }`}
     >

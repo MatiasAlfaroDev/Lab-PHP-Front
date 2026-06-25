@@ -63,9 +63,6 @@ export default function Register() {
             Crea tu cuenta y empezá a gestionar tus reservas, clientes y pagos desde un solo lugar.
           </p>
         </div>
-        <div className="relative z-10 text-primary-soft text-sm">
-          + 12.000 profesionales · 4.9 ★
-        </div>
       </div>
 
       {/* Right panel */}
@@ -86,7 +83,7 @@ export default function Register() {
               <button
                 key={r}
                 onClick={() => setRole(r)}
-                className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`cursor-pointer flex-1 py-2 rounded-full text-sm font-medium transition-all ${
                   role === r ? "bg-ink-fixed text-white shadow" : "text-ink-muted hover:text-ink"
                 }`}
               >
@@ -148,7 +145,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-60"
+              className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
             >
               {loading ? "Creando cuenta..." : "Crear cuenta →"}
             </button>

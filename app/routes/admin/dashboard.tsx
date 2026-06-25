@@ -12,6 +12,61 @@ const defaultKpis = [
   { label: "RESERVAS TOTALES", value: "-", delta: "", sub: "" },
 ];
 
+// ── Skeleton ───────────────────────────────────────────────────────────────
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-border/60 ${className}`} />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="p-4 md:p-8 w-full">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-8 w-56" />
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-surface border border-border rounded p-4 space-y-2">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-7 w-16" />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* CHART */}
+        <div className="lg:col-span-2 bg-surface border border-border rounded p-6 space-y-4">
+          <Skeleton className="h-6 w-64" />
+          <Skeleton className="h-56 w-full" />
+          <div className="space-y-2 border-t border-border pt-4">
+            <Skeleton className="h-3 w-32" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </div>
+
+        {/* RIGHT */}
+        <div className="space-y-5">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="bg-surface border border-border rounded p-5 space-y-3">
+              <Skeleton className="h-5 w-40" />
+              {Array.from({ length: 3 }).map((_, j) => (
+                <Skeleton key={j} className="h-4 w-full" />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { token } = useAuth();
   const [kpis, setKpis] = useState(defaultKpis);
@@ -24,6 +79,7 @@ export default function AdminDashboard() {
   }>(null);
   const [serviceByType, setServiceByType] = useState<any[]>([]);
   const [topServices, setTopServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token) return;
@@ -66,6 +122,8 @@ export default function AdminDashboard() {
         setTopServices(res.data.servicios_mas_reservados);
       } catch (e) {
         console.error("Error KPIs:", e);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -105,8 +163,10 @@ const maxScale = step * 4;
     finalizada: "badge badge-no-asistida",
   };
 
+  if (loading) return <DashboardSkeleton />;
+
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 w-full">
 
       {/* HEADER */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">

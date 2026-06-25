@@ -3,6 +3,9 @@ import { useAuth } from "~/context/AuthContext";
 import { useTheme } from "~/context/ThemeContext";
 import { api } from "~/lib/api";
 
+const inputCls = "w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-surface text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-ink";
+const labelCls = "block text-sm font-semibold text-ink mb-1.5";
+
 function getInitials(name: string) {
   return name
     .trim()
@@ -109,35 +112,35 @@ export default function ProfessionalProfile() {
       </div>
 
       {/* Info personal */}
-      <div className="bg-surface border border-border rounded p-6 mb-6">
+      <div className="bg-surface border border-border rounded-2xl p-6 mb-6">
         <h2 className="font-semibold text-ink mb-4">Información personal</h2>
         <form onSubmit={handleSaveInfo} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-ink-muted uppercase mb-1">Nombre</label>
+            <label className={labelCls}>Nombre</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border border-border rounded px-3 py-2 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputCls}
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-ink-muted uppercase mb-1">Descripción</label>
+            <label className={labelCls}>Descripción</label>
             <input
               type="text"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              className="w-full border border-border rounded px-3 py-2 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputCls}
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-ink-muted uppercase mb-1">Correo electrónico</label>
+            <label className={labelCls}>Correo electrónico</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-border rounded px-3 py-2 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputCls}
               required
             />
           </div>
@@ -152,7 +155,7 @@ export default function ProfessionalProfile() {
             <button
               type="submit"
               disabled={saving}
-              className="bg-ink-fixed text-white px-5 py-2 rounded text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="bg-ink-fixed text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-primary disabled:opacity-50 transition-colors cursor-pointer"
             >
               {saving ? "Guardando..." : "Guardar cambios"}
             </button>
@@ -161,36 +164,36 @@ export default function ProfessionalProfile() {
       </div>
 
       {/* Contraseña */}
-      <div className="bg-surface border border-border rounded p-6">
+      <div className="bg-surface border border-border rounded-2xl p-6">
         <h2 className="font-semibold text-ink mb-4">Cambiar contraseña</h2>
         <form onSubmit={handleSavePassword} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-ink-muted uppercase mb-1">Contraseña actual</label>
+            <label className={labelCls}>Contraseña actual</label>
             <input
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full border border-border rounded px-3 py-2 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputCls}
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-ink-muted uppercase mb-1">Nueva contraseña</label>
+            <label className={labelCls}>Nueva contraseña</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full border border-border rounded px-3 py-2 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputCls}
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-ink-muted uppercase mb-1">Confirmar nueva contraseña</label>
+            <label className={labelCls}>Confirmar nueva contraseña</label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full border border-border rounded px-3 py-2 text-sm text-ink bg-bg focus:outline-none focus:ring-2 focus:ring-primary"
+              className={inputCls}
               required
             />
           </div>
@@ -205,7 +208,7 @@ export default function ProfessionalProfile() {
             <button
               type="submit"
               disabled={savingPwd}
-              className="bg-ink-fixed text-white px-5 py-2 rounded text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="bg-ink-fixed text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-primary disabled:opacity-50 transition-colors cursor-pointer"
             >
               {savingPwd ? "Actualizando..." : "Cambiar contraseña"}
             </button>

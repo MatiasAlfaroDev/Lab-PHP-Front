@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "~/context/AuthContext";
 import { api } from "~/lib/api";
+import { ESTADO_CALENDAR_CLASS } from "~/lib/estado";
 
 interface Reserva {
   reserva_id: number;
@@ -14,14 +15,6 @@ interface Reserva {
 const HOURS = Array.from({ length: 14 }, (_, i) => `${String(i + 8).padStart(2, "0")}:00`);
 const CELL  = 48;
 const GRID_START = 8;
-
-const ESTADO_COLOR: Record<string, string> = {
-  pendiente:  "bg-amber-100 border-l-4 border-amber-400",
-  confirmada: "bg-blue-100 border-l-4 border-blue-400",
-  pagada:     "bg-green-100 border-l-4 border-green-500",
-  en_curso:   "bg-violet-100 border-l-4 border-violet-500",
-  finalizada: "bg-surface border-l-4 border-border",
-};
 
 function getWeekDates(referenceMonday: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => {
@@ -150,7 +143,7 @@ export default function Agenda() {
           const [hh, mm] = r.hora.split(":").map(Number);
           const topH  = hh + mm / 60 - GRID_START;
           const durH  = (r.servicio?.duracion ?? 60) / 60;
-          const color = ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border";
+          const color = ESTADO_CALENDAR_CLASS[r.estado] ?? "bg-surface border-l-4 border-border";
           return (
             <div
               key={r.reserva_id}
@@ -199,27 +192,26 @@ export default function Agenda() {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
-      <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Profesional</nav>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="font-display text-3xl text-ink">Agenda</h1>
 
         <div className="flex items-center gap-2">
           <button
             onClick={prevWeek}
-            className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg transition-colors"
+            className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg transition-colors cursor-pointer"
           >
             <ion-icon name="chevron-back-outline" style={{ fontSize: "14px" }} />
           </button>
           <span className="text-sm font-medium text-ink min-w-[140px] sm:min-w-[180px] text-center">{weekLabel}</span>
           <button
             onClick={nextWeek}
-            className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg transition-colors"
+            className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-ink-muted hover:bg-bg transition-colors cursor-pointer"
           >
             <ion-icon name="chevron-forward-outline" style={{ fontSize: "14px" }} />
           </button>
           <button
             onClick={goToday}
-            className="ml-1 px-3 py-1.5 text-xs font-semibold border border-border rounded-lg hover:bg-bg text-ink-muted transition-colors"
+            className="ml-1 px-3 py-1.5 text-xs font-semibold border border-border rounded-lg hover:bg-bg text-ink-muted transition-colors cursor-pointer"
           >
             Hoy
           </button>
@@ -236,7 +228,7 @@ export default function Agenda() {
               <button
                 onClick={prevMobileDays}
                 disabled={mobileStartDay === 0}
-                className="w-8 h-8 border border-border rounded-lg flex items-center justify-center text-ink-muted disabled:opacity-30 hover:bg-bg transition-colors"
+                className="w-8 h-8 border border-border rounded-lg flex items-center justify-center text-ink-muted disabled:opacity-30 hover:bg-bg transition-colors cursor-pointer"
               >
                 <ion-icon name="chevron-back-outline" style={{ fontSize: "14px" }} />
               </button>
@@ -248,7 +240,7 @@ export default function Agenda() {
               <button
                 onClick={nextMobileDays}
                 disabled={mobileStartDay >= 4}
-                className="w-8 h-8 border border-border rounded-lg flex items-center justify-center text-ink-muted disabled:opacity-30 hover:bg-bg transition-colors"
+                className="w-8 h-8 border border-border rounded-lg flex items-center justify-center text-ink-muted disabled:opacity-30 hover:bg-bg transition-colors cursor-pointer"
               >
                 <ion-icon name="chevron-forward-outline" style={{ fontSize: "14px" }} />
               </button>
@@ -274,7 +266,7 @@ export default function Agenda() {
                 <button
                   key={i}
                   onClick={() => setMobileStartDay(i)}
-                  className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                  className={`cursor-pointer w-1.5 h-1.5 rounded-full transition-colors ${
                     i === mobileStartDay ? "bg-ink-fixed" : "bg-border"
                   }`}
                 />
