@@ -44,8 +44,12 @@ body {
   background-color: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-body);
-  /* Prevent horizontal overflow on mobile */
   overflow-x: hidden;
+  padding-top: env(safe-area-inset-top);
+}
+
+main {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 html {
