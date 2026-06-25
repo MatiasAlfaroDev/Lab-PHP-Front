@@ -37,7 +37,7 @@ export function ProfessionalSidebar({ collapsed, isMobileOpen, onMobileClose }: 
         className={[
           "flex flex-col bg-sidebar shrink-0 transition-all duration-200 ease-in-out overflow-y-auto",
           // Mobile: fixed overlay drawer
-          "fixed inset-y-0 left-0 z-50",
+          "fixed inset-y-0 left-0 z-50 [padding-top:env(safe-area-inset-top)] [padding-bottom:env(safe-area-inset-bottom)]",
           "w-72",
           isMobileOpen ? "translate-x-0" : "-translate-x-full",
           // Desktop: in-flow sidebar
