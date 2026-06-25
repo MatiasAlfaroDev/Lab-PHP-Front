@@ -1,11 +1,20 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "react-router";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
+// gsap y sus plugins son ESM-only y rompen el bundle SSR si se importan
+// de forma estatica (hotfixes de produccion del 2026-06-25). Se cargan
+// dinamicamente solo en cliente, dentro de useEffect (que nunca corre en SSR).
+let gsapPromise: Promise<typeof import("gsap").default> | null = null;
+function loadGsap() {
+  if (!gsapPromise) {
+    gsapPromise = Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(
+      ([{ default: gsap }, { default: ScrollTrigger }]) => {
+        gsap.registerPlugin(ScrollTrigger);
+        return gsap;
+      }
+    );
+  }
+  return gsapPromise;
 }
 
 function Reveal({
@@ -19,13 +28,18 @@ function Reveal({
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  useGSAP(
-    () => {
-      const el = ref.current;
-      if (!el) return;
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-      gsap.fromTo(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let tween: any;
+    let cancelled = false;
+
+    loadGsap().then((gsap) => {
+      if (cancelled) return;
+      tween = gsap.fromTo(
         el,
         { opacity: 0, y: 20 },
         {
@@ -41,9 +55,14 @@ function Reveal({
           },
         }
       );
-    },
-    { scope: ref, dependencies: [delay] }
-  );
+    });
+
+    return () => {
+      cancelled = true;
+      tween?.scrollTrigger?.kill();
+      tween?.kill();
+    };
+  }, [delay]);
 
   return (
     <div ref={ref} className={className}>
@@ -238,41 +257,52 @@ export default function Landing() {
   const heroRef = useRef<HTMLDivElement>(null);
   const accentSquareRef = useRef<HTMLDivElement>(null);
 
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let ctx: any;
+    let cancelled = false;
 
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        const tl = gsap.timeline({ defaults: { ease: "power2.out", duration: 0.7 } });
+    loadGsap().then((gsap) => {
+      if (cancelled) return;
+      ctx = gsap.context(() => {
+        const mm = gsap.matchMedia();
 
-        tl.from(
-          [".hero-eyebrow", ".hero-title", ".hero-desc", ".hero-visual", ".hero-ctas", ".hero-trust"],
-          { opacity: 0, y: 16, stagger: 0.08 }
-        ).from(
-          ".hero-mock-row",
-          { opacity: 0, x: 16, duration: 0.5, stagger: 0.12 },
-          "-=0.3"
-        );
+        mm.add("(prefers-reduced-motion: no-preference)", () => {
+          const tl = gsap.timeline({ defaults: { ease: "power2.out", duration: 0.7 } });
 
-        if (accentSquareRef.current) {
-          gsap.to(accentSquareRef.current, {
-            y: -24,
-            rotate: 20,
-            ease: "none",
-            scrollTrigger: {
-              trigger: heroRef.current,
-              start: "top top",
-              end: "bottom top",
-              scrub: true,
-            },
-          });
-        }
+          tl.from(
+            [".hero-eyebrow", ".hero-title", ".hero-desc", ".hero-visual", ".hero-ctas", ".hero-trust"],
+            { opacity: 0, y: 16, stagger: 0.08 }
+          ).from(
+            ".hero-mock-row",
+            { opacity: 0, x: 16, duration: 0.5, stagger: 0.12 },
+            "-=0.3"
+          );
 
-        return () => tl.kill();
-      });
-    },
-    { scope: heroRef }
-  );
+          if (accentSquareRef.current) {
+            gsap.to(accentSquareRef.current, {
+              y: -24,
+              rotate: 20,
+              ease: "none",
+              scrollTrigger: {
+                trigger: heroRef.current,
+                start: "top top",
+                end: "bottom top",
+                scrub: true,
+              },
+            });
+          }
+
+          return () => tl.kill();
+        });
+      }, heroRef);
+    });
+
+    return () => {
+      cancelled = true;
+      ctx?.revert();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-surface">
