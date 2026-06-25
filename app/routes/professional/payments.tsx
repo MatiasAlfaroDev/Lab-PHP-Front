@@ -24,7 +24,7 @@ export default function Payments() {
   const [loading, setLoading] = useState(true);
   const [search,  setSearch]  = useState("");
 
-  useEffect(() => {
+  const loadPagos = () => {
     if (!token || !user) return;
 
     api
@@ -32,6 +32,16 @@ export default function Payments() {
       .then((res: any) => setTransactions(res.data ?? []))
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadPagos();
+  }, [token, user]);
+
+  useEffect(() => {
+    const handler = () => loadPagos();
+    window.addEventListener("reserva-updated", handler);
+    return () => window.removeEventListener("reserva-updated", handler);
   }, [token, user]);
 
   const filteredTransactions = transactions.filter((t) =>

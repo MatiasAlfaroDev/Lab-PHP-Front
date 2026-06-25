@@ -186,7 +186,7 @@ export default function BookingPay() {
             <button
               onClick={handleConfirm}
               disabled={loading}
-              className="flex-1 bg-primary hover:bg-primary-hover text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-60"
+              className="flex-1 bg-primary hover:bg-primary-hover text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
             >
               {loading ? "Procesando..." : "Confirmar y pagar €48 →"}
             </button>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
+import { useCatalogoUpdates } from "~/hooks/useCatalogoUpdates";
 import "leaflet/dist/leaflet.css";
 
 interface Profesional {
@@ -99,6 +100,8 @@ export default function Discover() {
   const center: [number, number] = [-34.9011, -56.1645];
   const [LeafletMap, setLeafletMap] = useState<any>(null);
   const [markerIcon, setMarkerIcon] = useState<any>(null);
+  const [catalogVersion, setCatalogVersion] = useState(0);
+  useCatalogoUpdates(() => setCatalogVersion((v) => v + 1));
 
   // El ícono default de Leaflet apunta a rutas relativas a su propio paquete,
   // que se rompen al bundlear para producción — usamos un ícono propio servido
@@ -147,7 +150,7 @@ export default function Discover() {
       })
       .catch((e) => setErrorPkg(e.message ?? "Error al cargar paquetes"))
       .finally(() => setLoadingPkg(false));
-  }, [token]);
+  }, [token, catalogVersion]);
 
   // Servicios filtrados — debounced, consume los query params de GET /servicios
   useEffect(() => {
@@ -175,7 +178,7 @@ export default function Discover() {
     }, 350);
 
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [search, selectedType, selectedModality, priceRange, maxPrice, orden]);
+  }, [search, selectedType, selectedModality, priceRange, maxPrice, orden, catalogVersion]);
 
   const activeTab =
     searchParams.get("tab") === "packages"
@@ -200,12 +203,12 @@ export default function Discover() {
 
   const typeDropdown = (
     <div className="flex items-center gap-1.5 shrink-0">
-      <label className="text-xs md:text-sm text-ink-muted font-medium">Tipo</label>
+      <label className="text-xs text-ink-muted font-medium">Tipo</label>
       <select
         value={selectedType ?? ""}
         onChange={(e) => setSelectedType(e.target.value || null)}
         disabled={allTypes.length === 0}
-        className="text-xs md:text-sm border border-border rounded-full px-3 py-1.5 md:px-4 md:py-2.5 bg-transparent text-ink cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+        className="text-xs border border-border rounded-full px-3 py-1.5 bg-transparent text-ink cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <option value="">Todos</option>
         {allTypes.map(({ label, count }) => (
@@ -259,9 +262,9 @@ export default function Discover() {
 
         {filtersOpen && (
           <div className="px-4 pb-3 md:hidden space-y-3">
+            {typeDropdown}
+
             <div className="flex flex-wrap items-center gap-2">
-              {typeDropdown}
-              <span className="w-px h-5 bg-border shrink-0" />
               {modalityChips}
             </div>
 
@@ -312,7 +315,7 @@ export default function Discover() {
                 <select
                   value={orden}
                   onChange={(e) => setOrden(e.target.value)}
-                  className="text-xs md:text-sm border border-border rounded-full px-3 py-1.5 md:px-4 md:py-2.5 bg-transparent text-ink cursor-pointer"
+                  className="text-xs border border-border rounded-full px-3 py-1.5 bg-transparent text-ink cursor-pointer"
                 >
                   {ORDEN_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -391,8 +394,8 @@ export default function Discover() {
             )}
 
             {loadingSvc && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {[1,2,3,4,5,6].map((i) => (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+                {[1,2,3,4,5,6,7,8].map((i) => (
                   <div key={i} className="bg-surface border border-border rounded-2xl overflow-hidden animate-pulse">
                     <div className="h-28 bg-border/50" />
                     <div className="p-4 space-y-3">
@@ -413,7 +416,7 @@ export default function Discover() {
 
             {!loadingSvc && !error && filteredSvc.length > 0 && (
               <>
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
                   {filteredSvc.map((servicio) => {
                     const colors        = getCardColors(servicio.servicio_id);
                     const initials      = getInitials(servicio.nombre);
@@ -531,7 +534,7 @@ export default function Discover() {
                                 {servicio.tipo}
 
                                 <button
-                                  className="mt-2 w-full bg-primary text-white px-2 py-1 rounded text-sm"
+                                  className="mt-2 w-full bg-primary text-white px-2 py-1 rounded text-sm cursor-pointer"
                                   onClick={() =>
                                     navigate(
                                       `/client/professional/${servicio.profesional_id}`,
@@ -570,8 +573,8 @@ export default function Discover() {
             )}
 
             {loadingPkg && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {[1,2,3].map((i) => (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+                {[1,2,3,4].map((i) => (
                   <div key={i} className="bg-surface border border-border rounded-2xl overflow-hidden animate-pulse">
                     <div className="h-6 bg-border/50 rounded m-5 w-1/2" />
                     <div className="px-5 pb-5 space-y-3">
@@ -591,7 +594,7 @@ export default function Discover() {
               </div>
             )}
             {!loadingPkg && !errorPkg && filteredPkg.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
                 {filteredPkg.map((paquete) => (
                   <div
                     key={paquete.paquete_id}
@@ -636,7 +639,7 @@ export default function Discover() {
                             transition-colors
                             disabled:opacity-70
                             disabled:cursor-not-allowed
-                          "
+                           cursor-pointer"
                           onClick={async () => {
                             try {
                               setBuyingPackageId(paquete.paquete_id);

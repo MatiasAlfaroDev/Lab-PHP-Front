@@ -2,6 +2,8 @@ import { Link } from "react-router";
 import { useAuth } from "~/context/AuthContext";
 import { useState, useEffect, useMemo } from "react";
 import { api } from "~/lib/api";
+import { toast } from "react-toastify";
+import { ESTADO_CALENDAR_CLASS, ESTADO_BADGE_CLASS, ESTADO_LABEL } from "~/lib/estado";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 interface Reserva {
@@ -58,14 +60,6 @@ const HOURS      = Array.from({ length: 14 }, (_, i) => `${String(i + 8).padStar
 const CELL       = 44;
 const GRID_START = 8;
 const DOW_LABELS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
-
-const ESTADO_COLOR: Record<string, string> = {
-  pendiente:  "bg-amber-100  border-l-4 border-amber-400",
-  confirmada: "bg-blue-100   border-l-4 border-blue-400",
-  pagada:     "bg-green-100  border-l-4 border-green-500",
-  en_curso:   "bg-violet-100 border-l-4 border-violet-500",
-  finalizada: "bg-gray-50    border-l-4 border-gray-300",
-};
 
 // Ventana de acceso a la videollamada: desde 10 min antes hasta que termine la sesión.
 function puedeEntrarVideollamada(r: Reserva) {
@@ -335,8 +329,9 @@ export default function ProfessionalDashboard() {
             : r
         )
       );
-    } catch (err) {
-      console.error(err);
+      toast.success(estado === "confirmada" ? "Reserva confirmada" : "Reserva cancelada");
+    } catch (err: any) {
+      toast.error(err.message ?? "No se pudo actualizar la reserva");
     } finally {
       setLoadingId(null);
     }
@@ -465,7 +460,7 @@ export default function ProfessionalDashboard() {
                       const [hh, mm] = r.hora.split(":").map(Number);
                       const topH = hh + mm / 60 - GRID_START;
                       const durH = (r.servicio?.duracion ?? 60) / 60;
-                      const color = ESTADO_COLOR[r.estado] ?? "bg-surface border-l-4 border-border";
+                      const color = ESTADO_CALENDAR_CLASS[r.estado] ?? "bg-surface border-l-4 border-border";
                       return (
                         <div
                           key={r.reserva_id}
@@ -565,7 +560,7 @@ export default function ProfessionalDashboard() {
           <div className="bg-surface w-full max-w-lg rounded-2xl border border-border p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-semibold text-ink">Solicitudes de reserva</h3>
-              <button onClick={() => setOpenSolicitudes(false)} className="text-ink-muted hover:text-ink">
+              <button onClick={() => setOpenSolicitudes(false)} className="text-ink-muted hover:text-ink transition-colors cursor-pointer">
                 <XIcon />
               </button>
             </div>
@@ -574,7 +569,7 @@ export default function ProfessionalDashboard() {
                 <p className="text-sm text-ink-muted">No hay solicitudes pendientes.</p>
               ) : (
                 pendientes.map((r) => (
-                  <div key={r.reserva_id} className="p-3 border rounded bg-bg">
+                  <div key={r.reserva_id} className="p-3 border border-border rounded-lg bg-bg">
                     <p className="text-sm font-semibold text-ink">{r.cliente_nombre}</p>
                     <p className="text-xs text-ink-muted">{r.servicio?.nombre}</p>
                     <p className="text-xs text-ink-muted">{r.fecha} · {r.hora?.slice(0, 5)}</p>
@@ -582,14 +577,14 @@ export default function ProfessionalDashboard() {
                       <button
                         disabled={loadingId === r.reserva_id}
                         onClick={() => cambiarEstado(r.reserva_id, "confirmada")}
-                        className="px-3 py-1 text-xs bg-ink-fixed text-white rounded hover:bg-primary disabled:opacity-50 cursor-pointer"
+                        className="px-3 py-1.5 text-xs font-semibold bg-ink-fixed text-white rounded-full hover:bg-primary disabled:opacity-50 transition-colors cursor-pointer"
                       >
                         {loadingId === r.reserva_id ? "..." : "Confirmar"}
                       </button>
                       <button
                         disabled={loadingId === r.reserva_id}
                         onClick={() => cambiarEstado(r.reserva_id, "cancelada")}
-                        className="px-3 py-1 text-xs border border-border rounded hover:bg-bg disabled:opacity-50 cursor-pointer"
+                        className="px-3 py-1.5 text-xs font-semibold border border-border rounded-full hover:bg-bg disabled:opacity-50 transition-colors cursor-pointer"
                       >
                         {loadingId === r.reserva_id ? "..." : "Cancelar"}
                       </button>
@@ -663,7 +658,7 @@ export default function ProfessionalDashboard() {
 
         <button
           onClick={() => setSelectedReserva(null)}
-          className="text-ink-muted hover:text-ink"
+          className="text-ink-muted hover:text-ink transition-colors cursor-pointer"
         >
           <XIcon />
         </button>
@@ -674,11 +669,16 @@ export default function ProfessionalDashboard() {
         <p><b>Servicio:</b> {selectedReserva.servicio?.nombre}</p>
         <p><b>Fecha:</b> {selectedReserva.fecha}</p>
         <p><b>Hora:</b> {selectedReserva.hora?.slice(0,5)}</p>
-        <p><b>Estado:</b> {selectedReserva.estado}</p>
+        <p className="flex items-center gap-1.5">
+          <b>Estado:</b>
+          <span className={ESTADO_BADGE_CLASS[selectedReserva.estado] ?? "badge"}>
+            {ESTADO_LABEL[selectedReserva.estado] ?? selectedReserva.estado}
+          </span>
+        </p>
         {puedeEntrarVideollamada(selectedReserva) && (
           <Link
             to={`/videollamada/${selectedReserva.reserva_id}`}
-            className="flex items-center justify-center gap-1.5 bg-accent hover:bg-accent-hover text-white rounded py-1.5 text-xs font-semibold transition-colors mt-1"
+            className="flex items-center justify-center gap-1.5 bg-accent hover:bg-accent-hover text-white rounded-full py-1.5 text-xs font-semibold transition-colors mt-1"
           >
             <VideoIcon />
             Unirse a la videollamada
@@ -689,19 +689,24 @@ export default function ProfessionalDashboard() {
           selectedReserva.estado === "finalizada") && (
           <div className="flex gap-2 mt-3">
             <button
-              className="flex-1 bg-red-600 text-white rounded py-1.5 text-xs font-semibold"
+              className="flex-1 bg-red-600 text-white rounded-full py-1.5 text-xs font-semibold hover:bg-red-700 transition-colors cursor-pointer"
               onClick={async () => {
                 const r = selectedReserva;
 
-                await api.put(
-                  `/reservas/${r.reserva_id}/no-asistida`,
-                  { estado: "no_asistida" },
-                  token
-                );
+                try {
+                  await api.put(
+                    `/reservas/${r.reserva_id}/no-asistida`,
+                    { estado: "no_asistida" },
+                    token
+                  );
 
-                setSelectedReserva((prev) =>
-                  prev ? { ...prev, estado: "no_asistida" } : null
-                );
+                  setSelectedReserva((prev) =>
+                    prev ? { ...prev, estado: "no_asistida" } : null
+                  );
+                  toast.success("Marcado como no asistido");
+                } catch (err: any) {
+                  toast.error(err.message ?? "No se pudo marcar la asistencia");
+                }
               }}
             >
               No asistió
@@ -714,41 +719,47 @@ export default function ProfessionalDashboard() {
         ) && (
           <div className="flex gap-2 mt-3">
             <button
-              className={`flex-1 rounded py-1.5 text-xs font-semibold transition-colors ${
+              disabled={selectedReserva.pago?.estado === "aprobado"}
+              className={`flex-1 rounded-full py-1.5 text-xs font-semibold transition-colors ${
                 selectedReserva.pago?.estado === "aprobado"
-                  ? "bg-green-600 text-white"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
+                  ? "bg-green-600 text-white cursor-default"
+                  : "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
               }`}
               onClick={async () => {
                 const r = selectedReserva;
 
-                await api.post(`/reservas/${r.reserva_id}/pago-presencial`, {}, token);
+                try {
+                  await api.post(`/reservas/${r.reserva_id}/pago-presencial`, {}, token);
 
-                setAllReservas((prev) =>
-                  prev.map((res) =>
-                    res.reserva_id === r.reserva_id
+                  setAllReservas((prev) =>
+                    prev.map((res) =>
+                      res.reserva_id === r.reserva_id
+                        ? {
+                            ...res,
+                            pago: {
+                              ...res.pago,
+                              estado: "aprobado",
+                            },
+                          }
+                        : res
+                    )
+                  );
+
+                  setSelectedReserva((prev) =>
+                    prev
                       ? {
-                          ...res,
+                          ...prev,
                           pago: {
-                            ...res.pago,
+                            ...prev.pago!,
                             estado: "aprobado",
                           },
                         }
-                      : res
-                  )
-                );
-
-                setSelectedReserva((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        pago: {
-                          ...prev.pago!,
-                          estado: "aprobado",
-                        },
-                      }
-                    : null
-                );
+                      : null
+                  );
+                  toast.success("Pago registrado");
+                } catch (err: any) {
+                  toast.error(err.message ?? "No se pudo registrar el pago");
+                }
               }}
             >
               {selectedReserva.pago?.estado === "aprobado"

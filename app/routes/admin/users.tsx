@@ -2,11 +2,55 @@ import { useEffect, useState } from "react";
 import { api } from "~/lib/api";
 import { useAuth } from "~/context/AuthContext";
 
+// ── Skeleton ───────────────────────────────────────────────────────────────
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-border/60 ${className}`} />;
+}
+
+function TableSkeleton({ title }: { title: string }) {
+  return (
+    <div className="mb-10">
+      <h2 className="text-xl font-bold text-ink mb-3">{title}</h2>
+
+      <div className="bg-surface border-t border-border w-full overflow-x-auto">
+        <div style={{ minWidth: "500px" }}>
+          <div className="grid grid-cols-24 px-5 py-2 border-b border-border">
+            <div className="col-span-6"><Skeleton className="h-3 w-12" /></div>
+            <div className="col-span-6"><Skeleton className="h-3 w-12" /></div>
+            <div className="col-span-3"><Skeleton className="h-3 w-12" /></div>
+            <div className="col-span-4"><Skeleton className="h-3 w-12" /></div>
+            <div className="col-span-3"><Skeleton className="h-3 w-12" /></div>
+            <div className="col-span-2"><Skeleton className="h-3 w-12" /></div>
+          </div>
+
+          {[0, 1, 2].map((row) => (
+            <div
+              key={row}
+              className={`grid grid-cols-24 px-5 py-4 items-center ${row > 0 ? "border-t border-border" : ""}`}
+            >
+              <div className="col-span-6 flex items-center gap-3">
+                <Skeleton className="w-9 h-9 rounded-lg" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <div className="col-span-6"><Skeleton className="h-4 w-32" /></div>
+              <div className="col-span-3"><Skeleton className="h-4 w-8" /></div>
+              <div className="col-span-4"><Skeleton className="h-4 w-16" /></div>
+              <div className="col-span-3"><Skeleton className="h-5 w-16 rounded-full" /></div>
+              <div className="col-span-2"><Skeleton className="h-6 w-14 rounded" /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminUsers() {
   const { token } = useAuth();
   const [clients, setClients] = useState<any[]>([]);
   const [professionals, setProfessionals] = useState<any[]>([]);
   const [loadingId, setLoadingId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token) return;
@@ -22,6 +66,8 @@ export default function AdminUsers() {
         if (resPros.success) setProfessionals(resPros.data);
       } catch (e) {
         console.error("Error loading users:", e);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -79,24 +125,24 @@ export default function AdminUsers() {
     <div className="mb-10">
       <h2 className="text-xl font-bold text-ink mb-3">{title}</h2>
 
-      <div className="border border-border rounded overflow-x-auto">
+      <div className="bg-surface border-t border-border w-full overflow-x-auto">
         <div style={{ minWidth: "500px" }}>
           {/* HEADER */}
-          <div className="grid grid-cols-24 px-5 py-3 border-b border-border bg-bg">
-            {["USUARIO", "EMAIL", "SESIONES", "DESDE", "ESTADO", ""].map((h, i) => (
+          <div className="grid grid-cols-24 px-5 py-2 border-b border-border">
+            {["Usuario", "Email", "Sesiones", "Desde", "Estado", ""].map((h, i) => (
               <div
                 key={i}
-                className={`text-xs font-bold text-ink-muted uppercase tracking-widest ${
+                className={`text-sm text-ink-muted ${
                   i === 0
                     ? "col-span-6"
                     : i === 1
                     ? "col-span-6"
                     : i === 2
-                    ? "col-span-3 text-center"
+                    ? "col-span-3"
                     : i === 3
-                    ? "col-span-4 text-center"
+                    ? "col-span-4"
                     : i === 4
-                    ? "col-span-3 text-center"
+                    ? "col-span-3"
                     : "col-span-2"
                 }`}
               >
@@ -106,10 +152,11 @@ export default function AdminUsers() {
           </div>
 
           {/* ROWS */}
-          {data.map((u) => (
+          {data.map((u, idx) => (
             <div
               key={u.email}
-                className="grid grid-cols-24 px-5 py-4 border-b border-border last:border-b-0 items-center hover:bg-bg transition-colors bg-surface"            >
+              className={`grid grid-cols-24 px-5 py-4 items-center hover:bg-bg transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
+            >
               {/* USER */}
               <div className="col-span-6 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-ink-fixed text-xs font-bold">
@@ -129,17 +176,17 @@ export default function AdminUsers() {
               </div>
 
               {/* SESSIONS */}
-              <div className="col-span-3 text-center">
+              <div className="col-span-3">
                 <span className="text-sm text-ink">{u.sessions}</span>
               </div>
 
               {/* JOINED */}
-              <div className="col-span-4 text-center">
-                <span className="text-sm text-ink-muted justify items-center">{u.joined}</span>
+              <div className="col-span-4">
+                <span className="text-sm text-ink-muted">{u.joined}</span>
               </div>
 
               {/* ESTADO */}
-              <div className="col-span-3 text-center">
+              <div className="col-span-3">
                 <span className={u.activo ? "badge badge-confirmada" : "badge badge-cancelada"}>
                   {u.activo ? "Activo" : "Bloqueado"}
                 </span>
@@ -150,7 +197,7 @@ export default function AdminUsers() {
                 <button
                   onClick={() => blockUser(Number(u.id))}
                   disabled={loadingId === u.id}
-                  className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
+                  className={`cursor-pointer text-xs px-2 py-1 rounded font-medium transition-colors ${
                     u.activo
                       ? "border border-red-200 text-red-500 hover:bg-red-50"
                       : "bg-ink-fixed text-white hover:bg-primary"
@@ -170,8 +217,23 @@ export default function AdminUsers() {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="p-4 md:p-8 w-full">
+        <div className="mb-6 space-y-2">
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-56" />
+        </div>
+
+        <TableSkeleton title="Clientes" />
+        <TableSkeleton title="Profesionales" />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 w-full">
       <div className="mb-6">
         <nav className="text-xs text-ink-muted mb-2 uppercase tracking-widest font-semibold">Admin</nav>
         <h1 className="font-display text-3xl text-ink">Usuarios</h1>
@@ -195,7 +257,7 @@ export default function AdminUsers() {
 
             <button
               onClick={() => setModal({ open: false, message: "" })}
-              className="bg-ink-fixed text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary transition-colors"
+              className="bg-ink-fixed text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary transition-colors cursor-pointer"
             >
               OK
             </button>

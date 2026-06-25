@@ -18,26 +18,32 @@ export default function Packages() {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState<number | null>(null);
 
-  useEffect(() => {
+  const loadPackages = async () => {
     if (!token) return;
 
-    const loadPackages = async () => {
-      try {
-        const misCompras = await api.get<any[]>(
-          "/mis-compras-paquetes",
-          token
-        );
+    try {
+      const misCompras = await api.get<any[]>(
+        "/mis-compras-paquetes",
+        token
+      );
 
-        setPackages(misCompras);
+      setPackages(misCompras);
 
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadPackages();
+  }, [token]);
+
+  useEffect(() => {
+    const handler = () => loadPackages();
+    window.addEventListener("reserva-updated", handler);
+    return () => window.removeEventListener("reserva-updated", handler);
   }, [token]);
 
   const cancelarCompra = async (id: number) => {

@@ -127,7 +127,7 @@ export default function VerifyEmail() {
           <button
             type="submit"
             disabled={loading || code.length !== 6}
-            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-60"
+            className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
           >
             {loading ? "Verificando..." : "Verificar →"}
           </button>
@@ -137,7 +137,7 @@ export default function VerifyEmail() {
           type="button"
           onClick={handleResend}
           disabled={resending || cooldown > 0 || !email}
-          className="w-full mt-4 border border-border text-ink font-medium py-3 rounded-xl transition-colors hover:bg-surface disabled:opacity-60"
+          className="w-full mt-4 border border-border text-ink font-medium py-3 rounded-xl transition-colors hover:bg-surface disabled:opacity-60 cursor-pointer"
         >
           {cooldown > 0
             ? `Reenviar código (${cooldown}s)`

@@ -1,5 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { Link } from "react-router";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 function Reveal({
   children,
@@ -11,30 +18,35 @@ function Reveal({
   delay?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
+  useGSAP(
+    () => {
+      const el = ref.current;
+      if (!el) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+      gsap.fromTo(
+        el,
+        { opacity: 0, y: 20 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.6,
+          delay: delay / 1000,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: el,
+            start: "top 85%",
+            toggleActions: "play none none none",
+          },
         }
-      },
-      { threshold: 0.15 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+      );
+    },
+    { scope: ref, dependencies: [delay] }
+  );
 
   return (
-    <div
-      ref={ref}
-      className={`reveal ${visible ? "reveal-visible" : ""} ${className}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
+    <div ref={ref} className={className}>
       {children}
     </div>
   );
@@ -223,6 +235,45 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 }
 
 export default function Landing() {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const accentSquareRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        const tl = gsap.timeline({ defaults: { ease: "power2.out", duration: 0.7 } });
+
+        tl.from(
+          [".hero-eyebrow", ".hero-title", ".hero-desc", ".hero-visual", ".hero-ctas", ".hero-trust"],
+          { opacity: 0, y: 16, stagger: 0.08 }
+        ).from(
+          ".hero-mock-row",
+          { opacity: 0, x: 16, duration: 0.5, stagger: 0.12 },
+          "-=0.3"
+        );
+
+        if (accentSquareRef.current) {
+          gsap.to(accentSquareRef.current, {
+            y: -24,
+            rotate: 20,
+            ease: "none",
+            scrollTrigger: {
+              trigger: heroRef.current,
+              start: "top top",
+              end: "bottom top",
+              scrub: true,
+            },
+          });
+        }
+
+        return () => tl.kill();
+      });
+    },
+    { scope: heroRef }
+  );
+
   return (
     <div className="min-h-screen bg-surface">
       {/* Header */}
@@ -249,28 +300,22 @@ export default function Landing() {
       </header>
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 pt-16 pb-20 lg:pt-24 lg:pb-28 grid lg:grid-cols-2 gap-12 items-center">
+      <section
+        ref={heroRef}
+        className="max-w-6xl mx-auto px-6 pt-16 pb-20 lg:pt-24 lg:pb-28 grid lg:grid-cols-2 gap-12 items-center"
+      >
         <div>
-          <div className="animate-fade-in-up" style={{ animationDelay: "0ms" }}>
+          <div className="hero-eyebrow">
             <Eyebrow>Para profesionales y clientes independientes</Eyebrow>
           </div>
-          <h1
-            className="font-display text-ink text-5xl lg:text-6xl leading-tight mb-6 animate-fade-in-up"
-            style={{ animationDelay: "80ms" }}
-          >
+          <h1 className="hero-title font-display text-ink text-5xl lg:text-6xl leading-tight mb-6">
             Agenda, pagos y<br />videollamadas, todo junto.
           </h1>
-          <p
-            className="text-ink-muted text-lg leading-relaxed max-w-md mb-8 animate-fade-in-up"
-            style={{ animationDelay: "160ms" }}
-          >
+          <p className="hero-desc text-ink-muted text-lg leading-relaxed max-w-md mb-8">
             CitaPro conecta profesionales independientes con sus clientes: reservá sesiones
             presenciales, virtuales o híbridas, vendé paquetes y cobrá sin salir de la plataforma.
           </p>
-          <div
-            className="flex flex-wrap items-center gap-4 mb-10 animate-fade-in-up"
-            style={{ animationDelay: "240ms" }}
-          >
+          <div className="hero-ctas flex flex-wrap items-center gap-4 mb-10">
             <Link
               to="/register"
               className="bg-accent hover:bg-accent-hover text-ink-fixed font-semibold px-6 py-3 rounded-full transition-all hover:scale-105"
@@ -284,17 +329,15 @@ export default function Landing() {
               Ver cómo funciona
             </a>
           </div>
-          <div
-            className="flex flex-wrap items-center gap-3 text-sm text-ink-muted animate-fade-in-up"
-            style={{ animationDelay: "300ms" }}
-          >
+          <div className="hero-trust flex flex-wrap items-center gap-3 text-sm text-ink-muted">
             <span>Presencial, virtual e híbrida</span>
           </div>
         </div>
 
         {/* Visual mock */}
-        <div className="relative animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+        <div className="hero-visual relative">
           <div
+            ref={accentSquareRef}
             className="absolute -top-6 -right-6 w-40 h-40 bg-accent opacity-90 rotate-12 -z-10"
             style={{ borderRadius: "2px" }}
           />
@@ -304,7 +347,7 @@ export default function Landing() {
               <span className="badge badge-confirmada">3 reservas</span>
             </div>
             <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 border border-border rounded-xl transition-colors hover:bg-bg">
+              <div className="hero-mock-row flex items-center gap-3 p-3 border border-border rounded-xl transition-colors hover:bg-bg">
                 <div className="w-10 h-10 rounded-full bg-violet-400 flex items-center justify-center font-bold text-white text-sm">LP</div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-ink">Lucía Pérez</p>
@@ -312,7 +355,7 @@ export default function Landing() {
                 </div>
                 <span className="badge badge-pagada">Pagada</span>
               </div>
-              <div className="flex items-center gap-3 p-3 border border-border rounded-xl transition-colors hover:bg-bg">
+              <div className="hero-mock-row flex items-center gap-3 p-3 border border-border rounded-xl transition-colors hover:bg-bg">
                 <div className="w-10 h-10 rounded-full bg-orange-400 flex items-center justify-center font-bold text-white text-sm">RG</div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-ink">Rodrigo Gómez</p>
@@ -320,7 +363,7 @@ export default function Landing() {
                 </div>
                 <span className="badge badge-en-curso">Virtual</span>
               </div>
-              <div className="flex items-center gap-3 p-3 border border-border rounded-xl transition-colors hover:bg-bg">
+              <div className="hero-mock-row flex items-center gap-3 p-3 border border-border rounded-xl transition-colors hover:bg-bg">
                 <div className="w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center font-bold text-white text-sm">MO</div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-ink">María Ortiz</p>
@@ -445,7 +488,7 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-border">
-        <div className="max-w-6xl mx-auto px-6 py-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="max-w-6xl mx-auto px-6 py-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
           <div>
             <Logo />
             <p className="text-sm text-ink-muted mt-3 max-w-xs">
@@ -465,13 +508,6 @@ export default function Landing() {
             <ul className="space-y-2 text-sm text-ink-muted">
               <li><Link to="/login" className="hover:text-ink">Iniciar sesión</Link></li>
               <li><Link to="/register" className="hover:text-ink">Crear cuenta</Link></li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-xs font-bold text-ink-muted tracking-widest uppercase mb-3">Legal</p>
-            <ul className="space-y-2 text-sm text-ink-muted">
-              <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-ink">Términos</a></li>
-              <li><a href="#" onClick={(e) => e.preventDefault()} className="hover:text-ink">Política de privacidad</a></li>
             </ul>
           </div>
         </div>
