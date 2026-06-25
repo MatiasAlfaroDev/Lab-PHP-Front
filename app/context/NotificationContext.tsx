@@ -32,6 +32,7 @@ type NotificationContextType = {
   pushSupported: boolean;
   pushEnabled: boolean;
   enablePush: () => Promise<boolean>;
+  disablePush: () => Promise<boolean>;
 };
 
 type NotificationsResponse = {
@@ -67,6 +68,17 @@ export function NotificationProvider({
 
     await api.post("/push/subscribe", sub.toJSON(), token);
     setPushEnabled(true);
+    return true;
+  };
+
+  const disablePush = async () => {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await sub.unsubscribe();
+      await api.post("/push/unsubscribe", {}, token).catch(() => {});
+    }
+    setPushEnabled(false);
     return true;
   };
 
@@ -170,6 +182,7 @@ export function NotificationProvider({
         pushSupported,
         pushEnabled,
         enablePush,
+        disablePush,
       }}
     >
       {children}
