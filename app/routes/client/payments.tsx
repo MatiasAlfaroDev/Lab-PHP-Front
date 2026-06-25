@@ -26,6 +26,7 @@ const badgeCls: Record<string, string> = {
   aprobado:  "badge badge-pagada",
   rechazado: "badge badge-cancelada",
   fallido:   "badge badge-cancelada",
+  cancelado:   "badge badge-cancelada",
 };
 
 const TIPO_BADGE: Record<"reserva" | "paquete", string> = {

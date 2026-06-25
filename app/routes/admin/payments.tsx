@@ -5,7 +5,8 @@ import { useAuth } from "~/context/AuthContext";
 const badgeCls: Record<string, string> = {
   aprobado: "badge badge-confirmada",
   pendiente: "badge badge-pendiente",
-  fallido: "badge badge-cancelada"
+  fallido: "badge badge-cancelada",
+  cancelado: "badge badge-cancelada"
 };
 
 const PAYMENTS_COLS = "96px 2.5fr 2.5fr 3.5fr 90px 100px 110px";

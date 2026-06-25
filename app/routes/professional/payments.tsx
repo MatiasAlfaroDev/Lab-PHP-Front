@@ -13,6 +13,9 @@ interface Transaction {
 const badgeCls: Record<string, string> = {
   aprobado: "badge badge-confirmada",
   pendiente: "badge badge-pendiente",
+  cancelado: "badge badge-cancelada",
+  fallido: "badge badge-cancelada",
+  rechazado: "badge badge-cancelada",
 };
 
 const COLS = "120px minmax(160px, 3fr) minmax(180px, 4fr) 120px 120px";
