@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useGlobalNotifications } from "~/context/NotificationContext";
 import { Check } from "lucide-react";
+import { PushNotificationToggle } from "~/components/PushNotificationToggle";
 
 export default function NotificationsPage() {
   const {
@@ -25,14 +26,18 @@ export default function NotificationsPage() {
           </p>
         </div>
 
-        <button
-          onClick={markAllAsRead}
-          disabled={unreadCount === 0}
-          className="self-start sm:self-auto flex items-center gap-1.5 text-sm font-semibold border border-border px-4 py-2 rounded-full bg-surface hover:bg-bg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Check className="w-4 h-4" />
-          Marcar todas como leídas
-        </button>
+        <div className="flex items-center gap-3">
+          <PushNotificationToggle />
+
+          <button
+            onClick={markAllAsRead}
+            disabled={unreadCount === 0}
+            className="self-start sm:self-auto flex items-center gap-1.5 text-sm font-semibold border border-border px-4 py-2 rounded-full bg-surface hover:bg-bg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Check className="w-4 h-4" />
+            Marcar todas como leídas
+          </button>
+        </div>
       </div>
 
       {notifications.length === 0 ? (
