@@ -140,10 +140,10 @@ export default function AdminUsers() {
                     : i === 2
                     ? "col-span-3 flex justify-center items-center"
                     : i === 3
-                    ? "col-span-6"
+                    ? "col-span-4"
                     : i === 4
                     ? "col-span-2"
-                    : "col-span-1"
+                    : "col-span-2"
                 }`}
               >
                 {h}
@@ -182,7 +182,7 @@ export default function AdminUsers() {
               </div>
 
               {/* JOINED */}
-              <div className="col-span-6">
+              <div className="col-span-4">
                 <span className="text-sm text-ink-muted truncate">{u.joined}</span>
               </div>
 
